@@ -1115,16 +1115,27 @@ function obBack(){if(OB.page>0){OB.page--;buildOB();}}
 // ═══════════════════════════════════
 // BIBLIOTHÈQUE D'EXERCICES
 // ═══════════════════════════════════
+var LEVEL_LBL={beginner:'Débutant',intermediate:'Intermédiaire',advanced:'Avancé'};
+var LEVEL_RANK={beginner:1,intermediate:2,advanced:3};
+var libOnlyMine=false;
+function toggleLibFilter(el){libOnlyMine=!libOnlyMine;el.classList.toggle('on',libOnlyMine);renderLibrary();}
 function renderLibrary(){
+  var p=userProfile||OB.data;
+  var myRank=LEVEL_RANK[p.level||'beginner'];
+  var list=EX_DB.filter(function(ex){
+    if(!libOnlyMine)return true;
+    return exAllowed(ex)&&LEVEL_RANK[ex.level||'beginner']<=myRank;
+  });
   var cats={};
-  EX_DB.forEach(function(ex){if(!cats[ex.cat])cats[ex.cat]=[];cats[ex.cat].push(ex);});
-  var html='';
+  list.forEach(function(ex){if(!cats[ex.cat])cats[ex.cat]=[];cats[ex.cat].push(ex);});
+  var html='<div class="rec-filter"><div class="rec-chip'+(libOnlyMine?' on':'')+'" onclick="toggleLibFilter(this)">✓ Adaptés à mon profil</div></div>';
+  if(!list.length)html+='<div class="empty"><div class="empty-ico">🔍</div><p>Aucun exercice ne correspond à votre profil pour le moment.</p></div>';
   Object.keys(cats).forEach(function(cat){
     html+='<div class="ex-cat-title" data-cat="'+cat+'">'+cat+'</div><div class="ex-grid" data-cat="'+cat+'">';
     cats[cat].forEach(function(ex){
       html+='<div class="ex-chip" data-ex="'+ex.name+'" onclick="openExPreview(\''+ex.name.replace(/'/g,"\\'")+'\')">'
         +'<div class="ex-chip-body">'
-        +'<div class="ex-sel"><div><div>'+esc(ex.name)+'</div><div class="ex-muscle">'+esc(ex.muscle)+'</div></div></div>'
+        +'<div class="ex-sel"><div><div>'+esc(ex.name)+' <span class="chip chip-acc" style="font-size:9px">'+(LEVEL_LBL[ex.level]||'—')+'</span></div><div class="ex-muscle">'+esc(ex.muscle)+'</div></div></div>'
         +'<div class="ex-eye">👁</div>'
         +'</div></div>';
     });
@@ -1148,8 +1159,16 @@ function openExPreview(name){
     +'<div class="ex-modal-anim" style="color:var(--acc)">'+(SVG_ANIMS[ex.anim]||SVG_ANIMS.squat)+'</div>'
     +'<div class="ex-modal-tags"><span class="chip chip-acc">'+ex.cat+'</span><span class="chip chip-blue">'+ex.muscle+'</span></div>'
     +'<div class="ex-modal-desc">'+ex.desc+'</div>'
-    +'<div class="ex-modal-steps">'+ex.steps.map(function(s,i){return '<div class="ex-step"><div class="ex-step-n">'+(i+1)+'</div><div>'+s+'</div></div>';}).join('')+'</div>';
+    +'<div class="ex-modal-steps">'+ex.steps.map(function(s,i){return '<div class="ex-step"><div class="ex-step-n">'+(i+1)+'</div><div>'+s+'</div></div>';}).join('')
+    +'</div>'
+    +'<button class="btn-primary" style="margin-top:12px" onclick="addExFromLibrary(\''+ex.name.replace(/'/g,"\\'")+'\',\''+ex.muscle.replace(/'/g,"\\'")+'\')">+ Ajouter à ma séance en cours</button>';
   document.getElementById('prev-modal').classList.add('open');
+}
+function addExFromLibrary(name,muscle){
+  closeMBg(null,'prev-modal');
+  addExBlock(name,muscle);
+  goTo('log');
+  toast('Exercice ajouté à la séance ✓');
 }
 
 // ═══════════════════════════════════
