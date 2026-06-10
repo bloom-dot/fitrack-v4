@@ -814,7 +814,7 @@ async function routeAfterAuth(){
 
 // Convertit une ligne Supabase "profiles" vers le format utilisé par l'app
 function supabaseProfileToLocal(row){
-  return{sexe:row.sex,age:row.age,taille:row.height,poids:row.weight,bf:row.body_fat,act:row.activity_level?+row.activity_level:1.55,obj:row.goal,exercices:row.preferred_exercises||[]};
+  return{sexe:row.sex,age:row.age,taille:row.height,poids:row.weight,bf:row.body_fat,act:row.activity_level?+row.activity_level:1.55,obj:row.goal,exercices:row.preferred_exercises||[],freq:row.sessions_per_week||3,sessionDur:row.session_duration||60,goalWeeks:row.goal_weeks||8};
 }
 
 async function logout(){
@@ -1012,7 +1012,7 @@ async function obNext(){
   if(OB.page===5){
     userProfile=OB.data;
     selectedExercises=obSelEx;
-    var program=generateProgram();
+    program=generateProgram();
     DB.s('profile',userProfile);
     DB.s('selected_exercises',selectedExercises);
     DB.s('program',program);
@@ -1024,24 +1024,25 @@ async function obNext(){
 }
 
 // Enregistre le profil de l'onboarding dans la table Supabase "profiles"
-async function saveProfileToSupabase(program){
+async function saveProfileToSupabase(prog){
   var session=(await sb.auth.getSession()).data.session;
   if(!session)return;
+  var p=userProfile||OB.data;
   await sb.from('profiles').upsert({
     id:session.user.id,
     name:DB.g('user_name','FiTrack User'),
-    age:OB.data.age,
-    sex:OB.data.sexe,
-    height:OB.data.taille,
-    weight:OB.data.poids,
-    body_fat:OB.data.bf,
-    activity_level:String(OB.data.act),
-    goal:OB.data.obj,
-    preferred_exercises:OB.data.exercices,
-    sessions_per_week:OB.data.freq,
-    session_duration:OB.data.sessionDur,
-    goal_weeks:OB.data.goalWeeks,
-    program:program||null,
+    age:p.age,
+    sex:p.sexe,
+    height:p.taille,
+    weight:p.poids,
+    body_fat:p.bf,
+    activity_level:String(p.act),
+    goal:p.obj,
+    preferred_exercises:p.exercices,
+    sessions_per_week:p.freq,
+    session_duration:p.sessionDur,
+    goal_weeks:p.goalWeeks,
+    program:(prog!==undefined?prog:program)||null,
     onboarding_done:true
   });
 }
@@ -1377,7 +1378,8 @@ function renderProgramCard(){
 function openProgramModal(){
   var body=document.getElementById('program-modal-body');
   if(!program){
-    body.innerHTML='<div class="modal-handle"></div><div class="empty"><div class="empty-ico">📅</div><p>Aucun programme généré pour le moment.</p></div>';
+    body.innerHTML='<div class="modal-handle"></div><div class="empty"><div class="empty-ico">📅</div><p>Aucun programme généré pour le moment.</p></div>'
+      +'<button class="btn-primary" onclick="editProgramModal()">✏️ Créer mon programme manuellement</button>';
   }else{
     var end=new Date(program.endDate);
     var endStr=end.getDate()+' '+['jan','fév','mar','avr','mai','juin','juil','août','sep','oct','nov','déc'][end.getMonth()]+' '+end.getFullYear();
@@ -1387,12 +1389,82 @@ function openProgramModal(){
     html+=program.days.map(function(d){
       return '<div style="margin-bottom:14px">'
         +'<div style="font-weight:700;font-size:14px;margin-bottom:6px">'+d.day+' · <span style="color:var(--acc)">'+d.label+'</span></div>'
-        +d.exercises.map(function(e){return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)"><span>'+esc(e.name)+'</span><span style="color:var(--t2)">'+e.sets+' × '+e.reps+'</span></div>';}).join('')
+        +(d.exercises.length?d.exercises.map(function(e){return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)"><span>'+esc(e.name)+'</span><span style="color:var(--t2)">'+e.sets+' × '+e.reps+'</span></div>';}).join(''):'<div style="font-size:12px;color:var(--t3);padding:6px 0">Aucun exercice — repos ou libre</div>')
         +'</div>';
     }).join('');
+    html+='<button class="btn-outline" onclick="editProgramModal()">✏️ Modifier mon programme</button>';
     body.innerHTML=html;
   }
   document.getElementById('program-modal').classList.add('open');
+}
+
+// ─── Édition manuelle du programme ───
+function editProgramModal(){
+  if(!program){
+    program={freq:3,sessionDur:OB.data.sessionDur||60,goalWeeks:OB.data.goalWeeks||8,startDate:todayStr(),endDate:(function(){var d=new Date();d.setDate(d.getDate()+(OB.data.goalWeeks||8)*7);return d.toISOString().slice(0,10);})(),days:[]};
+  }
+  var body=document.getElementById('program-modal-body');
+  var html='<div class="modal-handle"></div>'
+    +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;text-transform:uppercase;margin-bottom:12px">Mon programme</div>'
+    +'<div style="font-size:11px;color:var(--t2);margin-bottom:12px">Renseignez vos propres jours d\'entraînement et exercices (utile si vous suivez déjà un programme).</div>'
+    +'<div id="prog-edit-days">'+program.days.map(function(d,i){return renderEditDay(d,i);}).join('')+'</div>'
+    +'<button class="btn-outline" style="margin-bottom:10px" onclick="addProgramDay()">+ Ajouter un jour</button>'
+    +'<button class="btn-primary" onclick="saveProgramEdits()">Enregistrer le programme</button>';
+  body.innerHTML=html;
+}
+function renderEditDay(d,i){
+  var dayOpts=DAYS_FR.slice(1).concat([DAYS_FR[0]]);
+  return '<div class="card" data-day-idx="'+i+'" style="margin-bottom:10px">'
+    +'<div style="display:flex;gap:8px;margin-bottom:8px">'
+    +'<select class="inp" style="flex:1" data-field="day">'+dayOpts.map(function(dn){return '<option'+(d.day===dn?' selected':'')+'>'+dn+'</option>';}).join('')+'</select>'
+    +'<input class="inp" style="flex:1" data-field="label" value="'+esc(d.label||'')+'" placeholder="Nom de la séance">'
+    +'<button class="btn-sm" onclick="removeProgramDay(this)">✕</button>'
+    +'</div>'
+    +'<div class="prog-ex-list">'+(d.exercises||[]).map(renderEditEx).join('')+'</div>'
+    +'<button class="btn-sm" onclick="addProgramExercise(this)">+ Exercice</button>'
+    +'</div>';
+}
+function renderEditEx(e){
+  return '<div style="display:flex;gap:6px;margin-bottom:6px" class="prog-ex-row">'
+    +'<input class="inp" style="flex:2" data-field="name" value="'+esc(e&&e.name||'')+'" placeholder="Nom de l\'exercice">'
+    +'<input class="inp" style="width:50px;flex:none" data-field="sets" value="'+(e&&e.sets||3)+'" placeholder="Sets">'
+    +'<input class="inp" style="width:60px;flex:none" data-field="reps" value="'+esc(e&&e.reps||'10')+'" placeholder="Reps">'
+    +'<button class="btn-sm" onclick="this.parentElement.remove()">✕</button>'
+    +'</div>';
+}
+function addProgramDay(){
+  var cont=document.getElementById('prog-edit-days');
+  var div=document.createElement('div');
+  div.innerHTML=renderEditDay({day:'Lundi',label:'',exercises:[]},cont.children.length);
+  cont.appendChild(div.firstElementChild);
+}
+function removeProgramDay(btn){btn.closest('.card').remove();}
+function addProgramExercise(btn){
+  var list=btn.previousElementSibling;
+  var div=document.createElement('div');
+  div.innerHTML=renderEditEx(null);
+  list.appendChild(div.firstElementChild);
+}
+async function saveProgramEdits(){
+  var cards=document.querySelectorAll('#prog-edit-days > .card');
+  var days=Array.from(cards).map(function(card){
+    var day=card.querySelector('[data-field="day"]').value;
+    var label=card.querySelector('[data-field="label"]').value.trim()||'Séance';
+    var exercises=Array.from(card.querySelectorAll('.prog-ex-row')).map(function(row){
+      var name=row.querySelector('[data-field="name"]').value.trim();
+      var sets=+row.querySelector('[data-field="sets"]').value||3;
+      var reps=row.querySelector('[data-field="reps"]').value.trim()||'10';
+      return name?{name:name,sets:sets,reps:reps}:null;
+    }).filter(Boolean);
+    return {day:day,label:label,type:'custom',exercises:exercises};
+  });
+  program.days=days;
+  program.freq=days.length;
+  DB.s('program',program);
+  await saveProfileToSupabase(program);
+  renderProgramCard();
+  toast('Programme enregistré ✅');
+  openProgramModal();
 }
 
 // ═══════════════════════════════════
