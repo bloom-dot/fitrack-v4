@@ -1171,18 +1171,21 @@ function checkPR(name,w,r){
 // EXERCISE BLOCKS
 // ═══════════════════════════════════
 var exCtr=0;
-function addExBlock(name,muscle){
+function addExBlock(name,muscle,sugWeight,sugReps){
   exCtr++;var id='ex-'+exCtr;
   var container=document.getElementById('ex-list');
   var ex=prs[name];var sug='';var est=0;
-  if(ex&&ex.weight){est=ex.est1RM||calc1RM(ex.weight,ex.reps);sug=round25(est*0.80);}
+  if(ex&&ex.weight){est=ex.est1RM||calc1RM(ex.weight,ex.reps);}
+  if(sugWeight)sug=sugWeight;else if(est)sug=round25(est*0.80);
+  var muscleLine=esc(muscle);
+  if(sugWeight)muscleLine+=' · <span style="color:var(--acc)">Suggestion : '+sugWeight+' kg'+(sugReps?' × '+sugReps:'')+'</span>';
   var block=document.createElement('div');
   block.className='ex-block';block.id=id;block.dataset.name=name;block.dataset.muscle=muscle||'—';block.dataset.est=est;
-  block.innerHTML='<div class="ex-block-hdr"><div><div class="ex-block-name">'+esc(name)+'</div><div class="ex-block-muscle">'+esc(muscle)+'</div></div>'
+  block.innerHTML='<div class="ex-block-hdr"><div><div class="ex-block-name">'+esc(name)+'</div><div class="ex-block-muscle">'+muscleLine+'</div></div>'
     +'<div class="ex-block-acts">'+(est?'<div class="rm-badge-btn" id="rmb-'+id+'" onclick="openRMModal(\''+name.replace(/'/g,"\\'")+'\','+est+')">1RM ~'+est+' kg</div>':'')+' <div class="ex-del" onclick="document.getElementById(\''+id+'\').remove();toast(\'Exercice retiré\')">✕</div></div></div>'
     +'<div class="sets-wrap" id="sets-'+id+'"><div class="sets-hdr"><span>#</span><span>Poids kg</span><span>Reps</span><span>Vol.</span><span>✓</span></div></div>';
   container.appendChild(block);
-  for(var i=0;i<3;i++)addSetRow(id,sug,'');
+  for(var i=0;i<3;i++)addSetRow(id,sug,sugWeight&&sugReps?sugReps:'');
   addSetBtn(id);
 }
 
@@ -1307,6 +1310,7 @@ function finishSession(){
   });
   sd.newPRs=newPRs;sessions.unshift(sd);DB.s('sessions',sessions);
   updateStreak();
+  adjustProgramAfterSession(sd);
   // Reset
   stopSessionTimer();sStart=null;document.getElementById('ex-list').innerHTML='';document.getElementById('session-name').value='Push Day';exCtr=0;
   if(newPRs.length){prQueue=newPRs.slice();pendingPRs=[];showNextPR();}
@@ -1322,6 +1326,43 @@ function showNextPR(){
 }
 function nextPR(){document.getElementById('pr-overlay').classList.remove('show');showNextPR();}
 
+// ─── Surcharge progressive : ajuste les poids cibles du programme ───
+function parseRepsRange(r){
+  if(!r)return [0,0];
+  var m=String(r).match(/(\d+)\s*-\s*(\d+)/);
+  if(m)return [+m[1],+m[2]];
+  var n=parseInt(r);return [n||0,n||0];
+}
+function adjustProgramAfterSession(sd){
+  if(!program)return;
+  var today=DAYS_FR[new Date().getDay()];
+  var d=program.days.find(function(x){return x.day===today;});
+  if(!d)return;
+  var changed=false;
+  sd.exercises.forEach(function(se){
+    if(!se.sets.length)return;
+    var pe=d.exercises.find(function(x){return x.name===se.name;});
+    if(!pe)return;
+    var range=parseRepsRange(pe.reps);
+    var avgW=se.sets.reduce(function(s,x){return s+x.kg;},0)/se.sets.length;
+    var allTop=range[1]&&se.sets.every(function(x){return x.reps>=range[1];});
+    var anyFail=range[0]&&se.sets.some(function(x){return x.reps<range[0];});
+    pe.topStreak=pe.topStreak||0;
+    if(allTop){
+      pe.topStreak++;
+      if(pe.topStreak>=2){pe.targetWeight=round25((pe.targetWeight||avgW)+2.5);pe.topStreak=0;}
+      else if(!pe.targetWeight)pe.targetWeight=round25(avgW);
+    }else if(anyFail){
+      pe.targetWeight=round25(Math.max(0,(pe.targetWeight||avgW)-2.5));
+      pe.topStreak=0;
+    }else{
+      if(!pe.targetWeight)pe.targetWeight=round25(avgW);
+      pe.topStreak=0;
+    }
+    changed=true;
+  });
+  if(changed){DB.s('program',program);saveProfileToSupabase(program);}
+}
 function buildDefaultSession(){
   var list=document.getElementById('ex-list');if(!list)return;list.innerHTML='';exCtr=0;
   var nameInp=document.getElementById('session-name');
@@ -1332,7 +1373,9 @@ function buildDefaultSession(){
       if(nameInp)nameInp.value=d.label;
       d.exercises.forEach(function(e){
         var ref=EX_DB.find(function(x){return x.name===e.name;});
-        addExBlock(e.name,ref?ref.muscle:'—');
+        var range=parseRepsRange(e.reps);
+        var sugReps=range[1]||range[0]||'';
+        addExBlock(e.name,ref?ref.muscle:'—',e.targetWeight||'',sugReps);
       });
       return;
     }
@@ -1415,7 +1458,7 @@ function openProgramModal(){
     html+=program.days.map(function(d,i){
       return '<div class="prog-day" style="margin-bottom:14px">'
         +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-weight:700;font-size:14px">'+d.day+' · <span style="color:var(--acc)">'+d.label+'</span></div><button class="btn-sm" onclick="moveProgramDay('+i+')">↔ Décaler</button></div>'
-        +(d.exercises.length?d.exercises.map(function(e){return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)"><span>'+esc(e.name)+'</span><span style="color:var(--t2)">'+e.sets+' × '+e.reps+'</span></div>';}).join(''):'<div style="font-size:12px;color:var(--t3);padding:6px 0">Aucun exercice — repos ou libre</div>')
+        +(d.exercises.length?d.exercises.map(function(e){return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)"><span>'+esc(e.name)+'</span><span style="color:var(--t2)">'+e.sets+' × '+e.reps+(e.targetWeight?' · <span style="color:var(--acc)">'+e.targetWeight+' kg</span>':' · <span style="color:var(--t3)">poids à définir</span>')+'</span></div>';}).join(''):'<div style="font-size:12px;color:var(--t3);padding:6px 0">Aucun exercice — repos ou libre</div>')
         +'</div>';
     }).join('');
     html+='<button class="btn-outline" onclick="editProgramModal()">✏️ Modifier mon programme</button>';
