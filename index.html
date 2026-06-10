@@ -331,6 +331,17 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .setting-lbl{font-size:14px;font-weight:500}
 .setting-val{font-size:12px;color:var(--t2)}
 
+/* ═══ MEASUREMENTS / BADGES ═══ */
+.ms-row{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);margin-bottom:7px}
+.ms-row .ms-date{font-size:12px;color:var(--t2)}
+.ms-row .ms-vals{font-size:13px;font-weight:600}
+.badge-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.badge-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px 12px;text-align:center;opacity:.4}
+.badge-card.unlocked{opacity:1;border-color:rgba(212,255,0,.3);background:var(--acc-d)}
+.badge-ico{font-size:32px;margin-bottom:8px}
+.badge-name{font-size:13px;font-weight:700}
+.badge-desc{font-size:10px;color:var(--t2);margin-top:3px}
+
 /* ═══ AI SCREEN ═══ */
 .ai-orb{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--acc),#6a7800);box-shadow:0 0 24px rgba(212,255,0,.3);animation:orb-pulse 2s ease-in-out infinite;flex-shrink:0}
 @keyframes orb-pulse{0%,100%{box-shadow:0 0 20px rgba(212,255,0,.25)}50%{box-shadow:0 0 36px rgba(212,255,0,.45)}}
@@ -601,11 +612,42 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
         <div class="pstat"><div class="pstat-val" id="pf-st">0</div><div class="pstat-lbl">Streak 🔥</div></div>
       </div>
       <div class="sh" style="margin-top:0"><h2 class="D">Paramètres</h2></div>
-      <div class="setting-row"><div class="setting-lbl">Programme actif</div><div class="setting-val">PPL</div></div>
+      <div class="setting-row"><div class="setting-lbl">Programme actif</div><div class="setting-val" id="pf-prog">—</div></div>
+      <div class="setting-row"><div class="setting-lbl">Niveau</div><div class="setting-val" id="pf-level">—</div></div>
       <div class="setting-row"><div class="setting-lbl">Objectif</div><div class="setting-val" id="pf-obj">—</div></div>
-      <div class="setting-row"><div class="setting-lbl">Modifier mon profil</div><div class="setting-val">→</div></div>
+      <div class="setting-row" onclick="goTo('measurements')"><div class="setting-lbl">Poids &amp; mensurations</div><div class="setting-val">→</div></div>
+      <div class="setting-row" onclick="goTo('badges')"><div class="setting-lbl">Mes badges 🏅</div><div class="setting-val">→</div></div>
+      <div class="setting-row" onclick="editProfile()"><div class="setting-lbl">Modifier mon profil</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="clearData()"><div class="setting-lbl" style="color:var(--red)">Se déconnecter</div><div class="setting-val">—</div></div>
     </div>
+  </div>
+
+  <!-- MEASUREMENTS -->
+  <div class="screen" id="screen-measurements">
+    <div class="topbar"><div><button onclick="goTo('profile')" style="background:none;border:none;color:var(--t2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;margin-bottom:4px">← Retour</button><h1 class="D">Poids &amp; mensurations</h1><div class="sub">Suis ton évolution dans le temps</div></div></div>
+    <div class="scroll">
+      <div class="card">
+        <div class="inp-label">Poids (kg)</div><input type="number" class="inp" id="ms-weight" step="0.1" placeholder="75" style="margin-bottom:10px">
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <div style="flex:1"><div class="inp-label">Tour de taille (cm)</div><input type="number" class="inp" id="ms-waist" step="0.5" placeholder="80"></div>
+          <div style="flex:1"><div class="inp-label">Poitrine (cm)</div><input type="number" class="inp" id="ms-chest" step="0.5" placeholder="100"></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:14px">
+          <div style="flex:1"><div class="inp-label">Hanches (cm)</div><input type="number" class="inp" id="ms-hips" step="0.5" placeholder="95"></div>
+          <div style="flex:1"><div class="inp-label">Bras (cm)</div><input type="number" class="inp" id="ms-arms" step="0.5" placeholder="35"></div>
+          <div style="flex:1"><div class="inp-label">Cuisses (cm)</div><input type="number" class="inp" id="ms-thighs" step="0.5" placeholder="55"></div>
+        </div>
+        <button class="btn-primary" onclick="saveMeasurement()">Enregistrer la mesure du jour</button>
+      </div>
+      <div class="week-chart"><div class="wc-title D">Évolution du poids</div><div class="wc-sub">Kg au fil du temps</div><div style="position:relative;height:140px"><canvas id="weight-chart"></canvas></div></div>
+      <div id="ms-list"></div>
+    </div>
+  </div>
+
+  <!-- BADGES -->
+  <div class="screen" id="screen-badges">
+    <div class="topbar"><div><button onclick="goTo('profile')" style="background:none;border:none;color:var(--t2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;margin-bottom:4px">← Retour</button><h1 class="D">Mes badges</h1><div class="sub">Débloque des récompenses en progressant</div></div></div>
+    <div class="scroll"><div class="badge-grid" id="badge-grid"></div></div>
   </div>
 
   <!-- NAV -->
@@ -687,6 +729,8 @@ var streak=DB.g('streak',{count:0,last:null});
 var userProfile=DB.g('profile',null);
 var selectedExercises=DB.g('selected_exercises',[]);
 var program=DB.g('program',null);
+var measurements=DB.g('measurements',[]);
+var unlockedBadges=DB.g('badges',[]);
 
 // ═══════════════════════════════════
 // EXERCISE DATABASE
@@ -817,6 +861,10 @@ async function routeAfterAuth(){
     OB.data=Object.assign({},OB.data,userProfile);
     if(res.data.preferred_exercises){selectedExercises=res.data.preferred_exercises;DB.s('selected_exercises',selectedExercises);}
     if(res.data.program){program=res.data.program;DB.s('program',program);}
+    var bm=await sb.from('body_measurements').select('*').eq('user_id',session.user.id).order('date',{ascending:true});
+    if(bm.data&&bm.data.length){measurements=bm.data;DB.s('measurements',measurements);}
+    var bg=await sb.from('badges').select('badge_key').eq('user_id',session.user.id);
+    if(bg.data&&bg.data.length){unlockedBadges=bg.data.map(function(b){return b.badge_key;});DB.s('badges',unlockedBadges);}
     showApp();
   }else{
     showOnboarding();
@@ -1183,7 +1231,7 @@ function showApp(){
   buildDefaultSession();
 }
 
-var SCREENS=['home','log','records','nutrition','history','ai','profile','library'];
+var SCREENS=['home','log','records','nutrition','history','ai','profile','library','measurements','badges'];
 function goTo(name){
   SCREENS.forEach(function(s){
     var sc=document.getElementById('screen-'+s);if(sc)sc.classList.remove('on');
@@ -1197,6 +1245,8 @@ function goTo(name){
   if(name==='nutrition')renderNutrition();
   if(name==='profile')renderProfile();
   if(name==='library')renderLibrary();
+  if(name==='measurements')renderMeasurements();
+  if(name==='badges')renderBadges();
 }
 
 // ═══════════════════════════════════
@@ -1395,6 +1445,7 @@ function finishSession(){
   sd.newPRs=newPRs;sessions.unshift(sd);DB.s('sessions',sessions);
   updateStreak();
   adjustProgramAfterSession(sd);
+  checkBadges();
   // Reset
   stopSessionTimer();sStart=null;document.getElementById('ex-list').innerHTML='';document.getElementById('session-name').value='Push Day';exCtr=0;
   if(newPRs.length){prQueue=newPRs.slice();pendingPRs=[];showNextPR();}
@@ -1778,6 +1829,124 @@ function renderProfile(){
   var s=document.getElementById('pf-s'),p=document.getElementById('pf-p'),st=document.getElementById('pf-st'),ob=document.getElementById('pf-obj');
   if(s)s.textContent=sessions.length;if(p)p.textContent=pk.length;if(st)st.textContent=streak.count;
   if(ob&&userProfile){var objMap={cut:'Perte de poids',bulk:'Prise de masse',recomp:'Recomposition',maintain:'Maintien',strength:'Force pure'};ob.textContent=objMap[userProfile.obj]||'—';}
+  var pl=document.getElementById('pf-level');
+  if(pl){var p2=userProfile||OB.data;pl.textContent=LEVEL_LBL[p2&&p2.level]||'—';}
+  var pp=document.getElementById('pf-prog');
+  if(pp){
+    if(program&&program.days&&program.days.length){
+      var labels=program.days.filter(function(d){return d.exercises&&d.exercises.length;}).map(function(d){return d.label;});
+      var uniq=labels.filter(function(l,i){return labels.indexOf(l)===i;});
+      pp.textContent=uniq.length?(uniq.length+' jours · '+uniq.join(', ')):'—';
+    }else pp.textContent='—';
+  }
+}
+
+// ─── Modifier le profil : relance l'onboarding pré-rempli ───
+function editProfile(){
+  if(userProfile)OB.data=Object.assign({},OB.data,userProfile);
+  OB.data.exercices=selectedExercises.slice();
+  obSelEx=selectedExercises.slice();
+  OB.page=0;
+  showOnboarding();
+}
+
+// ═══════════════════════════════════
+// POIDS & MENSURATIONS
+// ═══════════════════════════════════
+var weightChart=null;
+async function saveMeasurement(){
+  var w=parseFloat(document.getElementById('ms-weight').value);
+  if(!w){toast('Indique au moins ton poids');return;}
+  var entry={date:todayStr(),weight:w,
+    waist:parseFloat(document.getElementById('ms-waist').value)||null,
+    chest:parseFloat(document.getElementById('ms-chest').value)||null,
+    hips:parseFloat(document.getElementById('ms-hips').value)||null,
+    arms:parseFloat(document.getElementById('ms-arms').value)||null,
+    thighs:parseFloat(document.getElementById('ms-thighs').value)||null};
+  measurements=measurements.filter(function(m){return m.date!==entry.date;});
+  measurements.push(entry);
+  measurements.sort(function(a,b){return a.date<b.date?-1:1;});
+  DB.s('measurements',measurements);
+  if(userProfile){userProfile.poids=w;DB.s('profile',userProfile);}
+  OB.data.poids=w;
+  try{
+    var session=(await sb.auth.getSession()).data.session;
+    if(session){
+      await sb.from('body_measurements').insert({user_id:session.user.id,date:entry.date,weight:entry.weight,waist:entry.waist,chest:entry.chest,hips:entry.hips,arms:entry.arms,thighs:entry.thighs});
+      await sb.from('profiles').update({weight:w}).eq('id',session.user.id);
+    }
+  }catch(e){}
+  toast('Mesure enregistrée ✓');
+  checkBadges();
+  renderMeasurements();
+  renderNutrition();
+}
+function renderMeasurements(){
+  var last=measurements.length?measurements[measurements.length-1]:null;
+  if(last){
+    document.getElementById('ms-weight').value=last.weight||'';
+    document.getElementById('ms-waist').value=last.waist||'';
+    document.getElementById('ms-chest').value=last.chest||'';
+    document.getElementById('ms-hips').value=last.hips||'';
+    document.getElementById('ms-arms').value=last.arms||'';
+    document.getElementById('ms-thighs').value=last.thighs||'';
+  }
+  var canvas=document.getElementById('weight-chart');
+  if(canvas&&measurements.length){
+    var labels=measurements.map(function(m){var d=m.date.split('-');return d[2]+'/'+d[1];});
+    var data=measurements.map(function(m){return m.weight;});
+    if(weightChart)weightChart.destroy();
+    weightChart=new Chart(canvas.getContext('2d'),{type:'line',data:{labels:labels,datasets:[{data:data,borderColor:'#d4ff00',backgroundColor:'rgba(212,255,0,.1)',fill:true,tension:.3,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.raw+' kg';}}}},scales:{x:{grid:{display:false},ticks:{color:'#444',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#444',font:{size:10}}}}}});
+  }
+  var list=document.getElementById('ms-list');
+  if(list){
+    if(!measurements.length)list.innerHTML='<div class="empty"><div class="empty-ico">📏</div><p>Aucune mesure enregistrée.</p></div>';
+    else list.innerHTML=measurements.slice().reverse().map(function(m){
+      var d=m.date.split('-');
+      var extras=[];
+      if(m.waist)extras.push('Taille '+m.waist+'cm');
+      if(m.chest)extras.push('Poitrine '+m.chest+'cm');
+      if(m.hips)extras.push('Hanches '+m.hips+'cm');
+      if(m.arms)extras.push('Bras '+m.arms+'cm');
+      if(m.thighs)extras.push('Cuisses '+m.thighs+'cm');
+      return '<div class="ms-row"><div class="ms-date">'+d[2]+'/'+d[1]+'/'+d[0]+(extras.length?'<br>'+extras.join(' · '):'')+'</div><div class="ms-vals">'+m.weight+' kg</div></div>';
+    }).join('');
+  }
+}
+
+// ═══════════════════════════════════
+// BADGES (gamification)
+// ═══════════════════════════════════
+var BADGES=[
+  {key:'first_session',ico:'🎉',name:'Premier pas',desc:'Complète ta première séance',check:function(){return sessions.length>=1;}},
+  {key:'ten_sessions',ico:'🔥',name:'Régulier',desc:'10 séances complétées',check:function(){return sessions.length>=10;}},
+  {key:'fifty_sessions',ico:'💪',name:'Vétéran',desc:'50 séances complétées',check:function(){return sessions.length>=50;}},
+  {key:'first_pr',ico:'🏆',name:'Premier record',desc:'Bats ton premier record personnel',check:function(){return Object.keys(prs).length>=1;}},
+  {key:'streak_7',ico:'⚡',name:'Une semaine de feu',desc:'7 jours de série',check:function(){return streak.count>=7;}},
+  {key:'streak_30',ico:'🌟',name:'Un mois de feu',desc:'30 jours de série',check:function(){return streak.count>=30;}},
+  {key:'volume_10k',ico:'🏋️',name:'Grosse séance',desc:'10 000 kg de volume en une séance',check:function(){return sessions.some(function(s){return (s.totalVolume||0)>=10000;});}},
+  {key:'first_measure',ico:'📏',name:'Suivi lancé',desc:'Enregistre ta première mesure',check:function(){return measurements.length>=1;}}
+];
+async function checkBadges(){
+  var newly=[];
+  BADGES.forEach(function(b){
+    if(unlockedBadges.indexOf(b.key)===-1&&b.check()){unlockedBadges.push(b.key);newly.push(b);}
+  });
+  if(newly.length){
+    DB.s('badges',unlockedBadges);
+    newly.forEach(function(b){toast('🏅 Badge débloqué : '+b.name);});
+    try{
+      var session=(await sb.auth.getSession()).data.session;
+      if(session)for(var i=0;i<newly.length;i++)await sb.from('badges').upsert({user_id:session.user.id,badge_key:newly[i].key},{onConflict:'user_id,badge_key'});
+    }catch(e){}
+  }
+}
+function renderBadges(){
+  var grid=document.getElementById('badge-grid');if(!grid)return;
+  grid.innerHTML=BADGES.map(function(b){
+    var on=unlockedBadges.indexOf(b.key)!==-1;
+    return '<div class="badge-card'+(on?' unlocked':'')+'"><div class="badge-ico">'+b.ico+'</div><div class="badge-name">'+esc(b.name)+'</div><div class="badge-desc">'+esc(b.desc)+'</div></div>';
+  }).join('');
 }
 
 // ═══════════════════════════════════
