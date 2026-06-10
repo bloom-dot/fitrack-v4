@@ -1244,7 +1244,15 @@ function checkPR(name,w,r){
 // EXERCISE BLOCKS
 // ═══════════════════════════════════
 var exCtr=0;
-function addExBlock(name,muscle,sugWeight,sugReps){
+// Retourne la dernière performance enregistrée pour un exercice
+function lastPerf(name){
+  for(var i=0;i<sessions.length;i++){
+    var ex=sessions[i].exercises.find(function(e){return e.name===name;});
+    if(ex&&ex.sets&&ex.sets.length)return {date:sessions[i].date,sets:ex.sets};
+  }
+  return null;
+}
+function addExBlock(name,muscle,sugWeight,sugReps,nbSets){
   exCtr++;var id='ex-'+exCtr;
   var container=document.getElementById('ex-list');
   var ex=prs[name];var sug='';var est=0;
@@ -1252,13 +1260,16 @@ function addExBlock(name,muscle,sugWeight,sugReps){
   if(sugWeight)sug=sugWeight;else if(est)sug=round25(est*0.80);
   var muscleLine=esc(muscle);
   if(sugWeight)muscleLine+=' · <span style="color:var(--acc)">Suggestion : '+sugWeight+' kg'+(sugReps?' × '+sugReps:'')+'</span>';
+  var last=lastPerf(name);
+  if(last)muscleLine+='<br><span style="color:var(--t2)">Dernière fois ('+last.date+') : '+last.sets.map(function(s){return s.kg+'×'+s.reps;}).join(', ')+'</span>';
   var block=document.createElement('div');
   block.className='ex-block';block.id=id;block.dataset.name=name;block.dataset.muscle=muscle||'—';block.dataset.est=est;
   block.innerHTML='<div class="ex-block-hdr"><div><div class="ex-block-name">'+esc(name)+'</div><div class="ex-block-muscle">'+muscleLine+'</div></div>'
     +'<div class="ex-block-acts">'+(est?'<div class="rm-badge-btn" id="rmb-'+id+'" onclick="openRMModal(\''+name.replace(/'/g,"\\'")+'\','+est+')">1RM ~'+est+' kg</div>':'')+' <div class="ex-del" onclick="document.getElementById(\''+id+'\').remove();toast(\'Exercice retiré\')">✕</div></div></div>'
     +'<div class="sets-wrap" id="sets-'+id+'"><div class="sets-hdr"><span>#</span><span>Poids kg</span><span>Reps</span><span>Vol.</span><span>✓</span></div></div>';
   container.appendChild(block);
-  for(var i=0;i<3;i++)addSetRow(id,sug,sugWeight&&sugReps?sugReps:'');
+  var n=nbSets||3;
+  for(var i=0;i<n;i++)addSetRow(id,sug,sugWeight&&sugReps?sugReps:'');
   addSetBtn(id);
 }
 
@@ -1438,19 +1449,38 @@ function adjustProgramAfterSession(sd){
   });
   if(changed){DB.s('program',program);saveProfileToSupabase(program);}
 }
+// Numéro de la semaine en cours depuis le début du programme (1 = semaine 1)
+function programWeekNum(){
+  if(!program||!program.startDate)return 1;
+  var start=new Date(program.startDate);var now=new Date();
+  var diffDays=Math.floor((now-start)/86400000);
+  return Math.max(1,Math.floor(diffDays/7)+1);
+}
+// Une semaine sur 6 est une semaine de décharge (deload) : -1 série, charges allégées
+function isDeloadWeek(){return programWeekNum()%6===0;}
 function buildDefaultSession(){
   var list=document.getElementById('ex-list');if(!list)return;list.innerHTML='';exCtr=0;
   var nameInp=document.getElementById('session-name');
+  var deloadEl=document.getElementById('deload-banner');
+  if(deloadEl)deloadEl.remove();
   if(program){
     var today=DAYS_FR[new Date().getDay()];
     var d=program.days.find(function(x){return x.day===today;});
     if(d&&d.exercises.length){
       if(nameInp)nameInp.value=d.label;
+      var deload=isDeloadWeek();
+      if(deload){
+        var b=document.createElement('div');b.id='deload-banner';b.className='card';b.style.cssText='margin-bottom:12px;border:1px solid rgba(212,255,0,.3);background:var(--acc-d);font-size:12px;color:var(--t2)';
+        b.innerHTML='<span style="color:var(--acc);font-weight:600">💤 Semaine de récupération (deload)</span><br>Charges allégées et 1 série en moins cette semaine pour favoriser la récupération.';
+        list.parentNode.insertBefore(b,list);
+      }
       d.exercises.forEach(function(e){
         var ref=EX_DB.find(function(x){return x.name===e.name;});
         var range=parseRepsRange(e.reps);
         var sugReps=range[1]||range[0]||'';
-        addExBlock(e.name,ref?ref.muscle:'—',e.targetWeight||'',sugReps);
+        var sugWeight=e.targetWeight?(deload?round25(e.targetWeight*0.9):e.targetWeight):'';
+        var nbSets=deload?Math.max(2,(e.sets||3)-1):(e.sets||3);
+        addExBlock(e.name,ref?ref.muscle:'—',sugWeight,sugReps,nbSets);
       });
       return;
     }
