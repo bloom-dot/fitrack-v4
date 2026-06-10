@@ -588,7 +588,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
       <div class="setting-row"><div class="setting-lbl">Programme actif</div><div class="setting-val">PPL</div></div>
       <div class="setting-row"><div class="setting-lbl">Objectif</div><div class="setting-val" id="pf-obj">—</div></div>
       <div class="setting-row"><div class="setting-lbl">Modifier mon profil</div><div class="setting-val">→</div></div>
-      <div class="setting-row" onclick="clearData()"><div class="setting-lbl" style="color:var(--red)">Effacer les données</div><div class="setting-val">—</div></div>
+      <div class="setting-row" onclick="clearData()"><div class="setting-lbl" style="color:var(--red)">Se déconnecter</div><div class="setting-val">—</div></div>
     </div>
   </div>
 
@@ -637,9 +637,20 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 // ═══════════════════════════════════
-// DB
+// SUPABASE
+// ═══════════════════════════════════
+// Le Project URL et la clé "publishable" sont prévus pour être visibles
+// côté client : c'est la sécurité au niveau base de données (Row Level
+// Security) qui protège les données de chaque utilisateur.
+var SUPABASE_URL='https://wszhbpsuujcgjnvvtgfv.supabase.co';
+var SUPABASE_KEY='sb_publishable_T_-8kbP_q7_pGK4SCXJcyQ_0iBfmbmP';
+var sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+// ═══════════════════════════════════
+// DB (cache local, en plus de Supabase)
 // ═══════════════════════════════════
 var DB={
   s:function(k,v){try{localStorage.setItem('ft3_'+k,JSON.stringify(v))}catch(e){}},
@@ -712,43 +723,80 @@ function togglePwd(id,btn){var i=document.getElementById(id);i.type=i.type==='te
 function checkEmail(inp){var ok=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inp.value);document.getElementById('email-err').classList.toggle('show',inp.value.length>3&&!ok);}
 function checkPwd(v){var s=0;if(v.length>=8)s++;if(/[A-Z]/.test(v))s++;if(/[0-9]/.test(v))s++;if(/[^A-Za-z0-9]/.test(v))s++;var cols=['#ff5252','#ffc340','#52e87a','#52e87a'];var lbs=['Faible','Moyen','Fort','Très fort'];var f=document.getElementById('pwd-fill');var l=document.getElementById('pwd-lbl');f.style.width=(s*25)+'%';f.style.background=s>0?cols[s-1]:'transparent';l.textContent=s>0?lbs[s-1]:'';l.style.color=s>0?cols[s-1]:'var(--t2)';}
 function checkMatch(){var p1=document.getElementById('reg-pwd').value;var p2=document.getElementById('reg-pwd2').value;document.getElementById('match-err').classList.toggle('show',p2.length>0&&p1!==p2);}
-function doLogin(){
+async function doLogin(){
   var e=document.getElementById('login-email').value.trim();
   var p=document.getElementById('login-pwd').value;
-  if(!e||!p){document.getElementById('login-err').classList.add('show');return;}
-  document.getElementById('login-err').classList.remove('show');
+  var errEl=document.getElementById('login-err');
+  if(!e||!p){errEl.textContent='Veuillez remplir tous les champs.';errEl.classList.add('show');return;}
+  errEl.classList.remove('show');
   var btn=event.currentTarget;
   btn.textContent='Connexion...';btn.disabled=true;
-  setTimeout(function(){
-    btn.textContent='Se connecter';btn.disabled=false;
-    var savedProfile=DB.g('profile',null);
-    if(!savedProfile){showOnboarding();}
-    else{showApp();}
-  },1200);
+  var res=await sb.auth.signInWithPassword({email:e,password:p});
+  btn.textContent='Se connecter';btn.disabled=false;
+  if(res.error){errEl.textContent='E-mail ou mot de passe incorrect.';errEl.classList.add('show');return;}
+  await routeAfterAuth();
 }
-function doRegister(){
+async function doRegister(){
   var fn=document.getElementById('reg-fname').value.trim();
+  var ln=document.getElementById('reg-lname').value.trim();
   var e=document.getElementById('reg-email').value.trim();
   var p=document.getElementById('reg-pwd').value;
   var p2=document.getElementById('reg-pwd2').value;
   var cgu=document.getElementById('cgu').checked;
   var emailOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-  if(!fn||!e||!emailOk||p.length<8||p!==p2||!cgu){document.getElementById('reg-err').classList.add('show');return;}
-  document.getElementById('reg-err').classList.remove('show');
+  var errEl=document.getElementById('reg-err');
+  if(!fn||!e||!emailOk||p.length<8||p!==p2||!cgu){errEl.textContent='Veuillez remplir tous les champs correctement.';errEl.classList.add('show');return;}
+  errEl.classList.remove('show');
   var btn=event.currentTarget;
   btn.textContent='Création...';btn.disabled=true;
-  setTimeout(function(){
-    btn.textContent='Créer mon compte';btn.disabled=false;
-    DB.s('user_name',fn+' '+document.getElementById('reg-lname').value.trim());
-    showOnboarding();
-  },1400);
+  var res=await sb.auth.signUp({email:e,password:p,options:{data:{first_name:fn,last_name:ln}}});
+  btn.textContent='Créer mon compte';btn.disabled=false;
+  if(res.error){errEl.textContent=res.error.message==='User already registered'?'Un compte existe déjà avec cet e-mail.':'Erreur lors de la création du compte.';errEl.classList.add('show');return;}
+  DB.s('user_name',fn+' '+ln);
+  if(!res.data.session){toast('Vérifiez votre boîte mail pour confirmer votre compte ✉');return;}
+  await routeAfterAuth();
 }
-function doForgot(){
+async function doForgot(){
   var btn=document.getElementById('forgot-btn');
+  var email=document.getElementById('forgot-email').value.trim();
+  if(!email){toast('Entrez votre e-mail.');return;}
   btn.textContent='Envoi...';btn.disabled=true;
-  setTimeout(function(){btn.textContent='Lien envoyé ✓';btn.disabled=false;},1200);
+  await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});
+  btn.textContent='Lien envoyé ✓';btn.disabled=false;
 }
-function socialAuth(p){toast('Connexion '+p+'...');setTimeout(function(){var savedProfile=DB.g('profile',null);if(!savedProfile){showOnboarding();}else{showApp();}},1500);}
+async function socialAuth(p){
+  if(p==='Apple'){toast('Connexion Apple bientôt disponible.');return;}
+  await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin}});
+}
+
+// Détermine quel écran afficher après une connexion réussie :
+// si un profil existe déjà dans Supabase -> app, sinon -> onboarding.
+async function routeAfterAuth(){
+  var session=(await sb.auth.getSession()).data.session;
+  if(!session){return;}
+  var res=await sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle();
+  if(res.data&&res.data.onboarding_done){
+    userProfile=supabaseProfileToLocal(res.data);
+    DB.s('profile',userProfile);
+    showApp();
+  }else{
+    showOnboarding();
+  }
+}
+
+// Convertit une ligne Supabase "profiles" vers le format utilisé par l'app
+function supabaseProfileToLocal(row){
+  return{sexe:row.sex,age:row.age,taille:row.height,poids:row.weight,bf:row.body_fat,act:row.activity_level?+row.activity_level:1.55,obj:row.goal,exercices:row.preferred_exercises||[]};
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  DB.d('profile');DB.d('selected_exercises');DB.d('user_name');
+  userProfile=null;selectedExercises=[];
+  document.getElementById('app').style.display='none';
+  document.getElementById('ob-screen').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+}
 
 // ═══════════════════════════════════
 // ONBOARDING
@@ -871,7 +919,7 @@ function removeOBEx(name){var idx=obSelEx.indexOf(name);if(idx!==-1){obSelEx.spl
 function addCustomOBEx(){var inp=document.getElementById('ob-custom-ex');var v=inp.value.trim();if(!v)return;if(obSelEx.indexOf(v)===-1)obSelEx.push(v);inp.value='';var cnt=document.getElementById('ob-sel-count');if(cnt)cnt.textContent=obSelEx.length;var tw=document.getElementById('ob-tags');if(tw)tw.innerHTML=renderOBTags();}
 function filterOBEx(q){document.querySelectorAll('.ex-chip').forEach(function(c){c.style.display=(!q||c.dataset.ex.toLowerCase().indexOf(q.toLowerCase())!==-1)?'':'none';});document.querySelectorAll('[data-cat]').forEach(function(el){if(el.tagName==='DIV'){var any=Array.from(el.querySelectorAll('.ex-chip')).some(function(c){return c.style.display!=='none';});el.style.display=any?'':'none';}});}
 
-function obNext(){
+async function obNext(){
   if(OB.page===0){OB.data.age=+document.getElementById('ob-age').value;OB.data.taille=+document.getElementById('ob-t').value;OB.data.poids=+document.getElementById('ob-p').value;}
   if(OB.page===4){
     OB.data.exercices=obSelEx;
@@ -880,9 +928,29 @@ function obNext(){
     DB.s('profile',userProfile);
     DB.s('selected_exercises',selectedExercises);
     DB.s('user_name',DB.g('user_name','FiTrack User'));
+    await saveProfileToSupabase();
     showApp();return;
   }
   OB.page++;buildOB();
+}
+
+// Enregistre le profil de l'onboarding dans la table Supabase "profiles"
+async function saveProfileToSupabase(){
+  var session=(await sb.auth.getSession()).data.session;
+  if(!session)return;
+  await sb.from('profiles').upsert({
+    id:session.user.id,
+    name:DB.g('user_name','FiTrack User'),
+    age:OB.data.age,
+    sex:OB.data.sexe,
+    height:OB.data.taille,
+    weight:OB.data.poids,
+    body_fat:OB.data.bf,
+    activity_level:String(OB.data.act),
+    goal:OB.data.obj,
+    preferred_exercises:OB.data.exercices,
+    onboarding_done:true
+  });
 }
 function obBack(){if(OB.page>0){OB.page--;buildOB();}}
 
@@ -1305,15 +1373,22 @@ function yesterdayStr(){var d=new Date();d.setDate(d.getDate()-1);return d.toISO
 function getMonShort(m){return['','jan','fév','mar','avr','mai','juin','juil','août','sep','oct','nov','déc'][parseInt(m)]||'—';}
 function fmtDur(s){if(!s)return '—';return Math.floor(s/60)+' min';}
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2800);}
-function clearData(){if(confirm('Effacer toutes vos données FiTrack ? Action irréversible.')){DB.d('sessions');DB.d('prs');DB.d('streak');DB.d('profile');DB.d('selected_exercises');DB.d('user_name');sessions=[];prs={};streak={count:0,last:null};userProfile=null;selectedExercises=[];document.getElementById('app').style.display='none';document.getElementById('auth-screen').style.display='flex';}}
+function clearData(){if(confirm('Te déconnecter de FiTrack ?')){logout();}}
 
 // ═══════════════════════════════════
 // INIT
 // ═══════════════════════════════════
-(function init(){
-  var savedProfile=DB.g('profile',null);
-  if(savedProfile){userProfile=savedProfile;showApp();}
+(async function init(){
+  var session=(await sb.auth.getSession()).data.session;
+  if(session){await routeAfterAuth();}
   // else: show auth screen (already visible by default)
+
+  // Gère le retour de connexion via Google (redirection OAuth)
+  sb.auth.onAuthStateChange(function(event,session){
+    if(event==='SIGNED_IN'&&document.getElementById('auth-screen').style.display!=='none'){
+      routeAfterAuth();
+    }
+  });
 })();
 </script>
 </body>
