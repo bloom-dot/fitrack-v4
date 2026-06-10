@@ -683,6 +683,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
   </div>
 </div>
 
+<!-- PROGRESSION MODAL -->
+<div class="modal-bg" id="progression-modal" onclick="closeMBg(event,'progression-modal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div id="progression-modal-body"></div>
+  </div>
+</div>
+
 <!-- PROGRAM MODAL -->
 <div class="modal-bg" id="program-modal" onclick="closeMBg(event,'program-modal')">
   <div class="modal">
@@ -1732,9 +1740,40 @@ function renderRecords(filter){
   if(filter&&filter!=='all')keys=keys.filter(function(k){return exMap[k]===filter;});
   if(!keys.length){list.innerHTML='<div class="empty"><div class="empty-ico">🏆</div><p>Aucun record'+(filter!=='all'?' pour cette catégorie.':'. Loggez une séance !')+'</p></div>';return;}
   keys.sort(function(a,b){return(prs[b].est1RM||0)-(prs[a].est1RM||0);});
-  list.innerHTML=keys.map(function(name,i){var pr=prs[name];var cat=exMap[name]||'—';return '<div class="rec-item"><div class="rec-rank">'+(i+1)+'</div><div class="rec-info"><div class="rec-name">'+esc(name)+'</div><div class="rec-sub"><span class="chip chip-acc" style="font-size:10px">'+esc(cat)+'</span></div></div><div class="rec-vals"><div class="rec-main">'+pr.weight+' <span class="rec-unit">kg×'+pr.reps+'</span></div>'+(pr.est1RM?'<div class="rec-est">1RM ~'+pr.est1RM+' kg</div>':'')+'<div class="rec-date">'+pr.date+'</div></div></div>';}).join('');
+  list.innerHTML=keys.map(function(name,i){var pr=prs[name];var cat=exMap[name]||'—';var nm=name.replace(/'/g,"\\'");return '<div class="rec-item" onclick="openProgressionModal(\''+nm+'\')"><div class="rec-rank">'+(i+1)+'</div><div class="rec-info"><div class="rec-name">'+esc(name)+'</div><div class="rec-sub"><span class="chip chip-acc" style="font-size:10px">'+esc(cat)+'</span></div></div><div class="rec-vals"><div class="rec-main">'+pr.weight+' <span class="rec-unit">kg×'+pr.reps+'</span></div>'+(pr.est1RM?'<div class="rec-est">1RM ~'+pr.est1RM+' kg</div>':'')+'<div class="rec-date">'+pr.date+'</div></div></div>';}).join('');
 }
 function filterRec(el,cat){document.querySelectorAll('.rec-chip').forEach(function(c){c.classList.remove('on');});el.classList.add('on');renderRecords(cat);}
+
+// ─── Progression 1RM dans le temps ───
+var progChart=null;
+function openProgressionModal(name){
+  var pts=[];
+  sessions.slice().reverse().forEach(function(s){
+    var ex=s.exercises&&s.exercises.find(function(e){return e.name===name;});
+    if(!ex||!ex.sets||!ex.sets.length)return;
+    var best1RM=0,bestVol=0;
+    ex.sets.forEach(function(st){if(st.kg&&st.reps){best1RM=Math.max(best1RM,calc1RM(st.kg,st.reps));bestVol+=st.volume||Math.round(st.kg*st.reps);}});
+    if(best1RM)pts.push({date:s.date,est1RM:best1RM,vol:bestVol});
+  });
+  var b=document.getElementById('progression-modal-body');
+  if(pts.length<2){
+    b.innerHTML='<div class="modal-handle"></div>'
+      +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;text-transform:uppercase;margin-bottom:10px">'+esc(name)+'</div>'
+      +'<div class="empty"><div class="empty-ico">📈</div><p>Pas encore assez de séances enregistrées pour afficher une progression. Continue à logger tes séances !</p></div>';
+    document.getElementById('progression-modal').classList.add('open');
+    return;
+  }
+  b.innerHTML='<div class="modal-handle"></div>'
+    +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;text-transform:uppercase;margin-bottom:4px">'+esc(name)+'</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">Évolution du 1RM estimé</div>'
+    +'<div style="position:relative;height:160px"><canvas id="progression-chart"></canvas></div>';
+  document.getElementById('progression-modal').classList.add('open');
+  var canvas=document.getElementById('progression-chart');
+  var labels=pts.map(function(p){var d=p.date.split('-');return d[2]+'/'+d[1];});
+  var data=pts.map(function(p){return p.est1RM;});
+  if(progChart)progChart.destroy();
+  progChart=new Chart(canvas.getContext('2d'),{type:'line',data:{labels:labels,datasets:[{data:data,borderColor:'#ffc340',backgroundColor:'rgba(255,195,64,.1)',fill:true,tension:.3,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return '1RM ~'+c.raw+' kg';}}}},scales:{x:{grid:{display:false},ticks:{color:'#444',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#444',font:{size:10}}}}}});
+}
 
 // ═══════════════════════════════════
 // RENDER NUTRITION
