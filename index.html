@@ -829,7 +829,7 @@ async function logout(){
 // ═══════════════════════════════════
 // ONBOARDING
 // ═══════════════════════════════════
-var OB={page:0,data:{sexe:'H',age:28,taille:175,poids:75,bf:16,act:1.55,obj:'bulk',jours:[],exercices:[],freq:3,sessionDur:60,goalWeeks:8}};
+var OB={page:0,data:{sexe:'H',age:28,taille:175,poids:75,bf:16,act:1.55,obj:'bulk',jours:[],exercices:[],freq:3,sessionDur:60,goalWeeks:8,trainDays:['Lundi','Mercredi','Vendredi']}};
 var BF_H=[{v:8,l:'~8 %',s:'Athlète compétition',sh:'lean_x'},{v:12,l:'~12 %',s:'Musclé, veines',sh:'lean'},{v:16,l:'~16 %',s:'Tonique, abs légers',sh:'fit'},{v:20,l:'~20 %',s:'Forme normale',sh:'normal'},{v:25,l:'~25 %',s:'Embonpoint léger',sh:'over'},{v:32,l:'~32 %',s:'Embonpoint modéré',sh:'over2'}];
 var BF_F=[{v:14,l:'~14 %',s:'Athlète compétition',sh:'lean_x'},{v:18,l:'~18 %',s:'Musclée, tonique',sh:'lean'},{v:22,l:'~22 %',s:'Forme athlétique',sh:'fit'},{v:27,l:'~27 %',s:'Forme normale',sh:'normal'},{v:33,l:'~33 %',s:'Embonpoint léger',sh:'over'},{v:38,l:'~38 %',s:'Embonpoint modéré',sh:'over2'}];
 var ACT=[{v:1.2,t:'Très sédentaire',d:'Bureau toute la journée, peu de marche.',eg:'< 5 000 pas/jour, aucun sport'},{v:1.375,t:'Légèrement actif',d:'Un peu de marche, sport 1-2×/sem.',eg:'~20 min marche/jour, 1 séance/sem'},{v:1.55,t:'Modérément actif',d:'Sport régulier 3-5×/sem.',eg:'Salle 3-4×/sem, 8 000-12 000 pas/jour'},{v:1.725,t:'Très actif',d:'Sport intense presque chaque jour.',eg:'Salle 5-6×/sem + cardio'},{v:1.9,t:'Athlète / pro',d:'Entraînement biquotidien.',eg:'Préparation compétition, travail physique'}];
@@ -950,20 +950,25 @@ function filterOBEx(q){document.querySelectorAll('.ex-chip').forEach(function(c)
 
 function buildOBPage6(){
   var c=document.getElementById('ob-content');
-  var freqs=[2,3,4,5,6];
-  c.innerHTML='<div style="margin-bottom:18px"><div class="inp-label">Séances par semaine</div><div class="pills">'+freqs.map(function(f){return '<div class="pill'+(OB.data.freq===f?' on':'')+'" onclick="setOBFreq('+f+',this)">'+f+'</div>';}).join('')+'</div></div>'
+  var days=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+  if(!OB.data.trainDays||!OB.data.trainDays.length)OB.data.trainDays=['Lundi','Mercredi','Vendredi'];
+  c.innerHTML='<div style="margin-bottom:18px"><div class="inp-label">Vos jours d\'entraînement</div><div class="pills">'+days.map(function(d){return '<div class="pill'+(OB.data.trainDays.indexOf(d)!==-1?' on':'')+'" onclick="toggleOBDay(\''+d+'\',this)">'+d.slice(0,3)+'</div>';}).join('')+'</div></div>'
     +'<div style="margin-bottom:18px"><div class="inp-label">Durée par séance</div><div class="slider-row"><input type="range" id="ob-dur" min="30" max="120" value="'+OB.data.sessionDur+'" step="15" oninput="OB.data.sessionDur=+this.value;document.getElementById(\'ob-dur-v\').textContent=this.value+\' min\'"><span class="slider-val" id="ob-dur-v">'+OB.data.sessionDur+' min</span></div></div>'
     +'<div style="margin-bottom:18px"><div class="inp-label">Atteindre votre objectif en</div><div class="slider-row"><input type="range" id="ob-goal" min="4" max="24" value="'+OB.data.goalWeeks+'" step="1" oninput="OB.data.goalWeeks=+this.value;document.getElementById(\'ob-goal-v\').textContent=this.value+\' semaines\'"><span class="slider-val" id="ob-goal-v">'+OB.data.goalWeeks+' semaines</span></div></div>'
-    +'<div style="font-size:11px;color:var(--t2);line-height:1.5">FiTrack va générer un programme hebdomadaire adapté à vos exercices, votre fréquence et votre objectif.</div>';
+    +'<div style="font-size:11px;color:var(--t2);line-height:1.5">FiTrack va générer un programme adapté à vos jours choisis, vos exercices et votre objectif.</div>';
 }
-function setOBFreq(v,el){OB.data.freq=v;document.querySelectorAll('#ob-content .pill').forEach(function(p){p.classList.remove('on');});el.classList.add('on');}
+function toggleOBDay(d,el){
+  var idx=OB.data.trainDays.indexOf(d);
+  if(idx!==-1){if(OB.data.trainDays.length>1){OB.data.trainDays.splice(idx,1);el.classList.remove('on');}}
+  else{OB.data.trainDays.push(d);el.classList.add('on');}
+}
 
 // ═══════════════════════════════════
 // GÉNÉRATION DU PROGRAMME
 // ═══════════════════════════════════
-var SPLITS={2:['full','full'],3:['push','pull','legs'],4:['upper','lower','upper','lower'],5:['push','pull','legs','upper','lower'],6:['push','pull','legs','push','pull','legs']};
-var DAY_NAMES={2:['Lundi','Jeudi'],3:['Lundi','Mercredi','Vendredi'],4:['Lundi','Mardi','Jeudi','Vendredi'],5:['Lundi','Mardi','Mercredi','Jeudi','Vendredi'],6:['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi']};
+var SPLITS={1:['full'],2:['full','full'],3:['push','pull','legs'],4:['upper','lower','upper','lower'],5:['push','pull','legs','upper','lower'],6:['push','pull','legs','push','pull','legs'],7:['push','pull','legs','upper','lower','push','pull']};
 var SPLIT_LABELS={push:'Push (Poussée)',pull:'Pull (Tirage)',legs:'Jambes',upper:'Haut du corps',lower:'Bas du corps',full:'Full Body'};
+var WEEK_ORDER=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
 function exGroup(ex){
   if(ex.cat==='Poitrine'||ex.cat==='Épaules')return 'push';
   if(ex.cat==='Dos')return 'pull';
@@ -971,22 +976,27 @@ function exGroup(ex){
   if(ex.cat==='Jambes')return 'legs';
   return 'core';
 }
-function groupsForDay(type){
-  if(type==='push')return ['push','push','push','core'];
-  if(type==='pull')return ['pull','pull','pull','core'];
-  if(type==='legs')return ['legs','legs','legs','core'];
-  if(type==='upper')return ['push','pull','push','pull'];
-  if(type==='lower')return ['legs','legs','legs','core'];
-  return ['push','pull','legs','core'];
+function groupsForDay(type,nbEx){
+  var base;
+  if(type==='push')base=['push','push','push','core'];
+  else if(type==='pull')base=['pull','pull','pull','core'];
+  else if(type==='legs')base=['legs','legs','legs','core'];
+  else if(type==='upper')base=['push','pull','push','pull'];
+  else if(type==='lower')base=['legs','legs','core','legs'];
+  else base=['push','pull','legs','core'];
+  var groups=[];
+  for(var i=0;i<nbEx;i++)groups.push(base[i%base.length]);
+  return groups;
 }
 function repsSchemeFor(obj){
   var schemes={cut:{sets:3,reps:'12-15'},bulk:{sets:4,reps:'8-10'},recomp:{sets:3,reps:'10-12'},maintain:{sets:3,reps:'10-12'},strength:{sets:5,reps:'4-6'}};
   return schemes[obj]||schemes.maintain;
 }
 function generateProgram(){
-  var freq=OB.data.freq||3;
+  var trainDays=(OB.data.trainDays&&OB.data.trainDays.length)?OB.data.trainDays.slice():['Lundi','Mercredi','Vendredi'];
+  trainDays.sort(function(a,b){return WEEK_ORDER.indexOf(a)-WEEK_ORDER.indexOf(b);});
+  var freq=Math.max(1,Math.min(7,trainDays.length));
   var split=SPLITS[freq]||SPLITS[3];
-  var dayNames=DAY_NAMES[freq]||DAY_NAMES[3];
   var nbEx=Math.max(3,Math.min(6,Math.round((OB.data.sessionDur||60)/12)));
   var scheme=repsSchemeFor(OB.data.obj);
   var pool=EX_DB.filter(function(e){return obSelEx.indexOf(e.name)!==-1;});
@@ -997,12 +1007,12 @@ function generateProgram(){
   var ptr={push:0,pull:0,legs:0,core:0};
   function pick(g){var arr=byGroup[g];if(!arr.length)return null;var ex=arr[ptr[g]%arr.length];ptr[g]++;return {name:ex.name,muscle:ex.muscle,sets:scheme.sets,reps:scheme.reps};}
   var days=split.map(function(type,i){
-    var groups=groupsForDay(type).slice(0,nbEx);
-    while(groups.length<nbEx)groups.push('core');
+    var groups=groupsForDay(type,nbEx);
     var exos=groups.map(pick).filter(Boolean);
-    return {day:dayNames[i],type:type,label:SPLIT_LABELS[type],exercises:exos};
+    return {day:trainDays[i],type:type,label:SPLIT_LABELS[type],exercises:exos};
   });
   var end=new Date();end.setDate(end.getDate()+(OB.data.goalWeeks||8)*7);
+  OB.data.freq=freq;
   return {freq:freq,sessionDur:OB.data.sessionDur||60,goalWeeks:OB.data.goalWeeks||8,startDate:todayStr(),endDate:end.toISOString().slice(0,10),days:days};
 }
 
@@ -1314,6 +1324,22 @@ function nextPR(){document.getElementById('pr-overlay').classList.remove('show')
 
 function buildDefaultSession(){
   var list=document.getElementById('ex-list');if(!list)return;list.innerHTML='';exCtr=0;
+  var nameInp=document.getElementById('session-name');
+  if(program){
+    var today=DAYS_FR[new Date().getDay()];
+    var d=program.days.find(function(x){return x.day===today;});
+    if(d&&d.exercises.length){
+      if(nameInp)nameInp.value=d.label;
+      d.exercises.forEach(function(e){
+        var ref=EX_DB.find(function(x){return x.name===e.name;});
+        addExBlock(e.name,ref?ref.muscle:'—');
+      });
+      return;
+    }
+    if(nameInp)nameInp.value='Repos';
+    return;
+  }
+  if(nameInp)nameInp.value='Push Day';
   var defaults=[{name:'Développé couché',muscle:'Poitrine · Triceps'},{name:'Overhead Press',muscle:'Épaules · Triceps'},{name:'Dips',muscle:'Poitrine · Triceps'}];
   defaults.forEach(function(ex){addExBlock(ex.name,ex.muscle);});
 }
