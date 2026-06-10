@@ -914,7 +914,7 @@ function toggleOBEx(name,chip){
   var cnt=document.getElementById('ob-sel-count');if(cnt)cnt.textContent=obSelEx.length;
   var tw=document.getElementById('ob-tags');if(tw)tw.innerHTML=renderOBTags();
 }
-function renderOBTags(){if(!obSelEx.length)return '<span style="font-size:11px;color:var(--t3)">Aucun sélectionné</span>';return obSelEx.map(function(e){return '<span class="ex-tag">'+e+'<button onclick="removeOBEx(\''+e.replace(/'/g,"\\'")+'\')">×</button></span>';}).join('');}
+function renderOBTags(){if(!obSelEx.length)return '<span style="font-size:11px;color:var(--t3)">Aucun sélectionné</span>';return obSelEx.map(function(e){return '<span class="ex-tag">'+esc(e)+'<button onclick="removeOBEx(\''+e.replace(/'/g,"\\'")+'\')">×</button></span>';}).join('');}
 function removeOBEx(name){var idx=obSelEx.indexOf(name);if(idx!==-1){obSelEx.splice(idx,1);}var chip=document.querySelector('.ex-chip[data-ex="'+name+'"]');if(chip){chip.dataset.sel='0';chip.querySelector('.ex-ck').textContent='';}var cnt=document.getElementById('ob-sel-count');if(cnt)cnt.textContent=obSelEx.length;var tw=document.getElementById('ob-tags');if(tw)tw.innerHTML=renderOBTags();}
 function addCustomOBEx(){var inp=document.getElementById('ob-custom-ex');var v=inp.value.trim();if(!v)return;if(obSelEx.indexOf(v)===-1)obSelEx.push(v);inp.value='';var cnt=document.getElementById('ob-sel-count');if(cnt)cnt.textContent=obSelEx.length;var tw=document.getElementById('ob-tags');if(tw)tw.innerHTML=renderOBTags();}
 function filterOBEx(q){document.querySelectorAll('.ex-chip').forEach(function(c){c.style.display=(!q||c.dataset.ex.toLowerCase().indexOf(q.toLowerCase())!==-1)?'':'none';});document.querySelectorAll('[data-cat]').forEach(function(el){if(el.tagName==='DIV'){var any=Array.from(el.querySelectorAll('.ex-chip')).some(function(c){return c.style.display!=='none';});el.style.display=any?'':'none';}});}
@@ -1048,7 +1048,7 @@ function addExBlock(name,muscle){
   if(ex&&ex.weight){est=ex.est1RM||calc1RM(ex.weight,ex.reps);sug=round25(est*0.80);}
   var block=document.createElement('div');
   block.className='ex-block';block.id=id;block.dataset.name=name;block.dataset.muscle=muscle||'—';block.dataset.est=est;
-  block.innerHTML='<div class="ex-block-hdr"><div><div class="ex-block-name">'+name+'</div><div class="ex-block-muscle">'+muscle+'</div></div>'
+  block.innerHTML='<div class="ex-block-hdr"><div><div class="ex-block-name">'+esc(name)+'</div><div class="ex-block-muscle">'+esc(muscle)+'</div></div>'
     +'<div class="ex-block-acts">'+(est?'<div class="rm-badge-btn" id="rmb-'+id+'" onclick="openRMModal(\''+name.replace(/'/g,"\\'")+'\','+est+')">1RM ~'+est+' kg</div>':'')+' <div class="ex-del" onclick="document.getElementById(\''+id+'\').remove();toast(\'Exercice retiré\')">✕</div></div></div>'
     +'<div class="sets-wrap" id="sets-'+id+'"><div class="sets-hdr"><span>#</span><span>Poids kg</span><span>Reps</span><span>Vol.</span><span>✓</span></div></div>';
   container.appendChild(block);
@@ -1107,7 +1107,7 @@ function openRMModal(name,est){
   var sugs=getRmSuggestions(est);
   var b=document.getElementById('rm-modal-body');
   b.innerHTML='<div class="modal-handle"></div>'
-    +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;text-transform:uppercase;margin-bottom:4px">'+name+'</div>'
+    +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;text-transform:uppercase;margin-bottom:4px">'+esc(name)+'</div>'
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">1RM estimé : <span style="color:var(--blue);font-weight:600">'+est+' kg</span> · Formule d\'Epley</div>'
     +'<div style="font-size:11px;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Charges suggérées — cliquez pour appliquer</div>'
     +'<div class="rm-grid">'+sugs.map(function(s){
@@ -1223,12 +1223,12 @@ function renderHome(){
   var hpr=document.getElementById('home-prs');
   if(hpr){
     if(!pk.length){hpr.innerHTML='<div class="empty"><div class="empty-ico">🏆</div><p>Loggez des séances pour voir vos records ici.</p></div>';}
-    else{hpr.innerHTML=pk.slice(0,4).map(function(n){var pr=prs[n];return '<div class="pr-row" onclick="goTo(\'records\')"><div class="pr-ico">🏆</div><div class="pr-info"><div class="pr-name">'+n+'</div><div class="pr-det">'+pr.reps+' reps · '+pr.date+'</div></div><div><div class="pr-val">'+pr.weight+'</div><div class="pr-unit">kg</div></div></div>';}).join('');}
+    else{hpr.innerHTML=pk.slice(0,4).map(function(n){var pr=prs[n];return '<div class="pr-row" onclick="goTo(\'records\')"><div class="pr-ico">🏆</div><div class="pr-info"><div class="pr-name">'+esc(n)+'</div><div class="pr-det">'+pr.reps+' reps · '+pr.date+'</div></div><div><div class="pr-val">'+pr.weight+'</div><div class="pr-unit">kg</div></div></div>';}).join('');}
   }
   var hh=document.getElementById('home-hist');
   if(hh){
     if(!sessions.length){hh.innerHTML='<div class="empty"><div class="empty-ico">📋</div><p>Aucune séance. Lancez votre premier entraînement !</p></div>';}
-    else{hh.innerHTML=sessions.slice(0,3).map(function(s){var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+s.name+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+'</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';}).join('');}
+    else{hh.innerHTML=sessions.slice(0,3).map(function(s){var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+esc(s.name)+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+'</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';}).join('');}
   }
   renderProfile();
 }
@@ -1243,7 +1243,7 @@ function renderRecords(filter){
   if(filter&&filter!=='all')keys=keys.filter(function(k){return exMap[k]===filter;});
   if(!keys.length){list.innerHTML='<div class="empty"><div class="empty-ico">🏆</div><p>Aucun record'+(filter!=='all'?' pour cette catégorie.':'. Loggez une séance !')+'</p></div>';return;}
   keys.sort(function(a,b){return(prs[b].est1RM||0)-(prs[a].est1RM||0);});
-  list.innerHTML=keys.map(function(name,i){var pr=prs[name];var cat=exMap[name]||'—';return '<div class="rec-item"><div class="rec-rank">'+(i+1)+'</div><div class="rec-info"><div class="rec-name">'+name+'</div><div class="rec-sub"><span class="chip chip-acc" style="font-size:10px">'+cat+'</span></div></div><div class="rec-vals"><div class="rec-main">'+pr.weight+' <span class="rec-unit">kg×'+pr.reps+'</span></div>'+(pr.est1RM?'<div class="rec-est">1RM ~'+pr.est1RM+' kg</div>':'')+'<div class="rec-date">'+pr.date+'</div></div></div>';}).join('');
+  list.innerHTML=keys.map(function(name,i){var pr=prs[name];var cat=exMap[name]||'—';return '<div class="rec-item"><div class="rec-rank">'+(i+1)+'</div><div class="rec-info"><div class="rec-name">'+esc(name)+'</div><div class="rec-sub"><span class="chip chip-acc" style="font-size:10px">'+esc(cat)+'</span></div></div><div class="rec-vals"><div class="rec-main">'+pr.weight+' <span class="rec-unit">kg×'+pr.reps+'</span></div>'+(pr.est1RM?'<div class="rec-est">1RM ~'+pr.est1RM+' kg</div>':'')+'<div class="rec-date">'+pr.date+'</div></div></div>';}).join('');
 }
 function filterRec(el,cat){document.querySelectorAll('.rec-chip').forEach(function(c){c.classList.remove('on');});el.classList.add('on');renderRecords(cat);}
 
@@ -1303,7 +1303,7 @@ function renderNutrition(){
   setTimeout(function(){
     var ctx=document.getElementById('nutr-donut');
     if(!ctx)return;
-    new Chart(ctx.getContext('2d'),{type:'doughnut',data:{labels:['Protéines','Glucides','Lipides'],datasets:[{data:[protK,carbK,fatK],backgroundColor:['#5b9cf6','#ffc340','#52e87a'],borderColor:'transparent',hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:false,cutout:'66%',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return ' '+c.label+' : '+c.raw.toLocaleString('fr-FR')+' kcal';}}}}});
+    new Chart(ctx.getContext('2d'),{type:'doughnut',data:{labels:['Protéines','Glucides','Lipides'],datasets:[{data:[protK,carbK,fatK],backgroundColor:['#5b9cf6','#ffc340','#52e87a'],borderColor:'transparent',hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:false,cutout:'66%',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return ' '+c.label+' : '+c.raw.toLocaleString('fr-FR')+' kcal';}}}}}});
   },100);
 }
 
@@ -1325,7 +1325,7 @@ function renderHistory(){
   }
   var list=document.getElementById('hist-list');if(!list)return;
   if(!sessions.length){list.innerHTML='<div class="empty"><div class="empty-ico">📋</div><p>Aucune séance enregistrée.</p></div>';return;}
-  list.innerHTML=sessions.map(function(s){var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+s.name+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+' · '+(s.exercises?s.exercises.reduce(function(a,e){return a+e.sets.length;},0):0)+' séries</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';}).join('');
+  list.innerHTML=sessions.map(function(s){var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+esc(s.name)+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+' · '+(s.exercises?s.exercises.reduce(function(a,e){return a+e.sets.length;},0):0)+' séries</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';}).join('');
 }
 
 // ═══════════════════════════════════
@@ -1360,7 +1360,7 @@ async function sendAI(){
   }catch(e){ld.remove();appendMsg('bot','Connexion impossible. Vérifie ta connexion internet.');}
 }
 function sendQP(txt){goTo('ai');document.getElementById('ai-inp').value=txt;sendAI();}
-function appendMsg(role,txt){var chat=document.getElementById('ai-chat');var div=document.createElement('div');div.className='ai-msg '+role;if(role==='bot')div.innerHTML='<div class="ai-bot-lbl">🤖 FitAI</div>'+txt.replace(/\n/g,'<br>');else div.textContent=txt;chat.appendChild(div);div.scrollIntoView({behavior:'smooth',block:'nearest'});return div;}
+function appendMsg(role,txt){var chat=document.getElementById('ai-chat');var div=document.createElement('div');div.className='ai-msg '+role;if(role==='bot')div.innerHTML='<div class="ai-bot-lbl">🤖 FitAI</div>'+esc(txt).replace(/\n/g,'<br>');else div.textContent=txt;chat.appendChild(div);div.scrollIntoView({behavior:'smooth',block:'nearest'});return div;}
 function appendLoading(){var chat=document.getElementById('ai-chat');var div=document.createElement('div');div.className='ai-msg bot';div.innerHTML='<div class="ai-bot-lbl">🤖 FitAI</div><div class="ai-dots"><span></span><span></span><span></span></div>';chat.appendChild(div);div.scrollIntoView({behavior:'smooth',block:'nearest'});return div;}
 function autoResize(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 function aiKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAI();}}
@@ -1368,6 +1368,7 @@ function aiKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAI();}
 // ═══════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function todayStr(){return new Date().toISOString().slice(0,10);}
 function yesterdayStr(){var d=new Date();d.setDate(d.getDate()-1);return d.toISOString().slice(0,10);}
 function getMonShort(m){return['','jan','fév','mar','avr','mai','juin','juil','août','sep','oct','nov','déc'][parseInt(m)]||'—';}

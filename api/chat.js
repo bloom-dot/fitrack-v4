@@ -20,6 +20,11 @@ const MAX_TOKENS = 1024;
 
 // Limite de messages par requête (anti-abus simple)
 const MAX_MESSAGES = 30;
+// Limite de taille par message (caractères) — évite l'envoi de payloads
+// énormes qui consommeraient inutilement le crédit API
+const MAX_MESSAGE_LENGTH = 4000;
+// Origine autorisée à appeler cette API (ton site déployé)
+const ALLOWED_ORIGIN = "https://fitrack-v4.vercel.app";
 
 export default async function handler(request) {
   // --- 1. Préflight CORS ---
@@ -51,6 +56,9 @@ export default async function handler(request) {
   for (const m of messages) {
     if (!m || typeof m.content !== "string" || !["user", "assistant"].includes(m.role)) {
       return jsonError("Format de message invalide", 400);
+    }
+    if (m.content.length > MAX_MESSAGE_LENGTH) {
+      return jsonError("Message trop long", 400);
     }
   }
 
@@ -84,7 +92,7 @@ export default async function handler(request) {
 
 function corsHeaders() {
   return {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
   };
