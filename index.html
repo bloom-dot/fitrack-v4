@@ -473,7 +473,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 
   <!-- HOME -->
   <div class="screen on" id="screen-home">
-    <div class="topbar"><div><h1 class="D">FiTrack</h1><div class="sub" id="home-date"></div></div><div class="tbr"><div class="ib">🔔</div><div class="ib" onclick="goTo('profile')">👤</div></div></div>
+    <div class="topbar"><div><h1 class="D">FiTrack</h1><div class="sub" id="home-date"></div></div><div class="tbr"><div class="ib" onclick="goTo('library')">📖</div><div class="ib">🔔</div><div class="ib" onclick="goTo('profile')">👤</div></div></div>
     <div class="scroll">
       <div class="banner">
         <div class="banner-date" id="next-label">Séance du jour</div>
@@ -574,6 +574,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
         <textarea class="ai-inp" id="ai-inp" placeholder="Pose une question..." rows="1" oninput="autoResize(this)" onkeydown="aiKey(event)"></textarea>
         <button class="ai-send" onclick="sendAI()">➤</button>
       </div>
+    </div>
+  </div>
+
+  <!-- LIBRARY -->
+  <div class="screen" id="screen-library">
+    <div class="topbar"><div><h1 class="D">Exercices</h1><div class="sub">Muscles ciblés &amp; technique d'exécution</div></div></div>
+    <div class="scroll">
+      <input class="ex-search" placeholder="🔍 Rechercher un exercice..." oninput="filterLibEx(this.value)">
+      <div id="lib-list"></div>
     </div>
   </div>
 
@@ -1039,6 +1048,31 @@ async function saveProfileToSupabase(program){
 function obBack(){if(OB.page>0){OB.page--;buildOB();}}
 
 // ═══════════════════════════════════
+// BIBLIOTHÈQUE D'EXERCICES
+// ═══════════════════════════════════
+function renderLibrary(){
+  var cats={};
+  EX_DB.forEach(function(ex){if(!cats[ex.cat])cats[ex.cat]=[];cats[ex.cat].push(ex);});
+  var html='';
+  Object.keys(cats).forEach(function(cat){
+    html+='<div class="ex-cat-title" data-cat="'+cat+'">'+cat+'</div><div class="ex-grid" data-cat="'+cat+'">';
+    cats[cat].forEach(function(ex){
+      html+='<div class="ex-chip" data-ex="'+ex.name+'" onclick="openExPreview(\''+ex.name.replace(/'/g,"\\'")+'\')">'
+        +'<div class="ex-chip-body">'
+        +'<div class="ex-sel"><div><div>'+esc(ex.name)+'</div><div class="ex-muscle">'+esc(ex.muscle)+'</div></div></div>'
+        +'<div class="ex-eye">👁</div>'
+        +'</div></div>';
+    });
+    html+='</div>';
+  });
+  document.getElementById('lib-list').innerHTML=html;
+}
+function filterLibEx(q){
+  document.querySelectorAll('#lib-list .ex-chip').forEach(function(c){c.style.display=(!q||c.dataset.ex.toLowerCase().indexOf(q.toLowerCase())!==-1)?'':'none';});
+  document.querySelectorAll('#lib-list [data-cat]').forEach(function(el){if(el.tagName==='DIV'){var any=Array.from(el.querySelectorAll('.ex-chip')).some(function(c){return c.style.display!=='none';});el.style.display=any?'':'none';}});
+}
+
+// ═══════════════════════════════════
 // EXERCISE PREVIEW MODAL
 // ═══════════════════════════════════
 function openExPreview(name){
@@ -1065,7 +1099,7 @@ function showApp(){
   buildDefaultSession();
 }
 
-var SCREENS=['home','log','records','nutrition','history','ai','profile'];
+var SCREENS=['home','log','records','nutrition','history','ai','profile','library'];
 function goTo(name){
   SCREENS.forEach(function(s){
     var sc=document.getElementById('screen-'+s);if(sc)sc.classList.remove('on');
@@ -1078,6 +1112,7 @@ function goTo(name){
   if(name==='history')renderHistory();
   if(name==='nutrition')renderNutrition();
   if(name==='profile')renderProfile();
+  if(name==='library')renderLibrary();
 }
 
 // ═══════════════════════════════════
