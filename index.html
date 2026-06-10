@@ -556,9 +556,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 
   <!-- HISTORY -->
   <div class="screen" id="screen-history">
-    <div class="topbar"><div><h1 class="D">Historique</h1><div class="sub" id="hist-count">0 séances</div></div></div>
+    <div class="topbar"><div><h1 class="D">Historique</h1><div class="sub" id="hist-count">0 séances</div></div><button class="btn-outline" style="width:auto;padding:8px 14px;font-size:11px" onclick="exportHistoryCSV()">⬇ Export CSV</button></div>
     <div class="scroll">
-      <div class="week-chart"><div class="wc-title D">Volume hebdo</div><div class="wc-sub">Kg soulevés par jour</div><div style="position:relative;height:90px"><canvas id="vol-chart" role="img" aria-label="Graphique volume hebdomadaire"></canvas></div></div>
+      <div class="week-chart"><div class="wc-title D">Volume hebdo</div><div class="wc-sub">Kg soulevés par jour</div><div style="position:relative;height:90px"><canvas id="vol-chart" role="img" aria-label="Graphique volume hebdomadaire"></canvas></div><div id="hist-compare" style="margin-top:10px;font-size:12px;color:var(--t2)"></div></div>
       <div id="hist-list"></div>
     </div>
   </div>
@@ -1850,10 +1850,44 @@ function renderHistory(){
     var colors=dates.map(function(dt){return dt===todayStr()?'#d4ff00':'rgba(212,255,0,.3)';});
     if(wChart)wChart.destroy();
     wChart=new Chart(canvas.getContext('2d'),{type:'bar',data:{labels:dn,datasets:[{data:vols,backgroundColor:colors,borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.raw.toLocaleString('fr-FR')+' kg';}}}},scales:{x:{grid:{display:false},ticks:{color:'#444',font:{size:11}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#444',font:{size:11}}}}}});
+    var thisWeekVol=vols.reduce(function(a,v){return a+v;},0);
+    var prevDates=[];for(var j=0;j<7;j++){var d2=new Date(now);d2.setDate(now.getDate()+off+j-7);prevDates.push(d2.toISOString().slice(0,10));}
+    var lastWeekVol=prevDates.map(function(dt){return sessions.filter(function(s){return s.date===dt;}).reduce(function(a,ss){return a+(ss.totalVolume||0);},0);}).reduce(function(a,v){return a+v;},0);
+    var cmp=document.getElementById('hist-compare');
+    if(cmp){
+      if(!lastWeekVol&&!thisWeekVol)cmp.textContent='';
+      else if(!lastWeekVol)cmp.innerHTML='Cette semaine : <span style="color:var(--text);font-weight:600">'+thisWeekVol.toLocaleString('fr-FR')+' kg</span> (pas de données la semaine dernière)';
+      else{
+        var diff=Math.round((thisWeekVol-lastWeekVol)/lastWeekVol*100);
+        var col=diff>=0?'var(--acc)':'var(--red)';
+        var arrow=diff>=0?'▲':'▼';
+        cmp.innerHTML='Cette semaine : <span style="color:var(--text);font-weight:600">'+thisWeekVol.toLocaleString('fr-FR')+' kg</span> vs <span style="color:var(--text);font-weight:600">'+lastWeekVol.toLocaleString('fr-FR')+' kg</span> la semaine dernière — <span style="color:'+col+';font-weight:600">'+arrow+' '+Math.abs(diff)+'%</span>';
+      }
+    }
   }
   var list=document.getElementById('hist-list');if(!list)return;
   if(!sessions.length){list.innerHTML='<div class="empty"><div class="empty-ico">📋</div><p>Aucune séance enregistrée.</p></div>';return;}
   list.innerHTML=sessions.map(function(s){var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+esc(s.name)+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+' · '+(s.exercises?s.exercises.reduce(function(a,e){return a+e.sets.length;},0):0)+' séries</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';}).join('');
+}
+
+// ─── Export CSV de l'historique ───
+function exportHistoryCSV(){
+  if(!sessions.length){toast('Aucune séance à exporter');return;}
+  var rows=[['Date','Séance','Exercice','Série','Poids (kg)','Reps','Volume (kg)']];
+  sessions.slice().reverse().forEach(function(s){
+    (s.exercises||[]).forEach(function(ex){
+      (ex.sets||[]).forEach(function(set,i){
+        rows.push([s.date,s.name,ex.name,(i+1),set.kg,set.reps,set.volume||Math.round(set.kg*set.reps)]);
+      });
+    });
+  });
+  var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c==null?'':c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  var blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='fitrack_historique_'+todayStr()+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Export CSV téléchargé ✓');
 }
 
 // ═══════════════════════════════════
