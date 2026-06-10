@@ -23,6 +23,10 @@ create table profiles (
   activity_level text,
   goal text,
   preferred_exercises jsonb default '[]',
+  sessions_per_week int,
+  session_duration int,
+  goal_weeks int,
+  program jsonb,
   onboarding_done boolean default false,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -132,3 +136,14 @@ alter table badges enable row level security;
 
 create policy "Users can manage their own badges"
   on badges for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+
+-- ─────────────────────────────────────────────
+-- MIGRATION : programmation hebdomadaire (à exécuter si la table
+-- "profiles" existe déjà depuis l'étape 2 — ajoute les nouvelles
+-- colonnes sans rien supprimer)
+-- ─────────────────────────────────────────────
+alter table profiles add column if not exists sessions_per_week int;
+alter table profiles add column if not exists session_duration int;
+alter table profiles add column if not exists goal_weeks int;
+alter table profiles add column if not exists program jsonb;
