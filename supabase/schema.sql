@@ -26,6 +26,9 @@ create table profiles (
   sessions_per_week int,
   session_duration int,
   goal_weeks int,
+  level text,
+  equip text,
+  injuries jsonb,
   program jsonb,
   onboarding_done boolean default false,
   created_at timestamptz default now(),
@@ -147,3 +150,10 @@ alter table profiles add column if not exists sessions_per_week int;
 alter table profiles add column if not exists session_duration int;
 alter table profiles add column if not exists goal_weeks int;
 alter table profiles add column if not exists program jsonb;
+
+-- ─────────────────────────────────────────────
+-- MIGRATION : profil sportif (niveau, matériel, blessures)
+-- ─────────────────────────────────────────────
+alter table profiles add column if not exists level text;
+alter table profiles add column if not exists equip text;
+alter table profiles add column if not exists injuries jsonb;

@@ -692,32 +692,42 @@ var program=DB.g('program',null);
 // EXERCISE DATABASE
 // ═══════════════════════════════════
 var EX_DB=[
-  {name:'Développé couché',muscle:'Poitrine · Triceps',cat:'Poitrine',anim:'bench',desc:'Exercice roi de la poitrine. Allongé sur banc, descendre la barre jusqu\'à la poitrine puis pousser.',steps:['S\'allonger, pieds à plat au sol','Saisir la barre légèrement plus large que les épaules','Descendre contrôlé jusqu\'à effleurer la poitrine','Pousser explosif jusqu\'à extension quasi-complète']},
-  {name:'Développé incliné',muscle:'Poitrine supérieure',cat:'Poitrine',anim:'bench',desc:'Cible la partie haute des pectoraux. Banc incliné à 30-45°.',steps:['Régler le banc à 30-45°','Omoplates serrées contre le dossier','Descendre en ligne avec la poitrine haute','Pousser en arc vers le haut']},
-  {name:'Écarté haltères',muscle:'Poitrine isolation',cat:'Poitrine',anim:'fly',desc:'Isolation pour étirer et contracter les pectoraux en fin de séance.',steps:['Allongé banc plat, haltères au-dessus','Bras légèrement fléchis pendant tout le mouvement','Descendre les bras sur les côtés en arc','Ramener en contractant fort les pecs']},
-  {name:'Dips',muscle:'Poitrine · Triceps',cat:'Poitrine',anim:'dip',desc:'Au poids du corps ou lesté. Inclinaison vers l\'avant = pectoraux, droit = triceps.',steps:['Monter sur les barres, bras tendus','Fléchir les coudes en descente contrôlée','Descendre jusqu\'à 90° de flexion','Pousser jusqu\'à extension complète']},
-  {name:'Pompes',muscle:'Poitrine · Triceps',cat:'Poitrine',anim:'pushup',desc:'Fondamental au poids du corps. Déclinable large/serré/explosif.',steps:['Position planche, mains légèrement plus larges','Corps droit, gainé','Descendre jusqu\'à frôler le sol','Pousser explosif en contractant les pecs']},
-  {name:'Tractions',muscle:'Dos · Biceps',cat:'Dos',anim:'pullup',desc:'Mouvement vertical incontournable pour la largeur du dos.',steps:['Saisir en pronation, plus large que les épaules','Partir en suspension, corps gainé','Tirer les coudes vers le bas et les hanches','Monter jusqu\'au menton au-dessus de la barre']},
-  {name:'Deadlift',muscle:'Dos · Ischios · Fessiers',cat:'Dos',anim:'deadlift',desc:'Le roi des exercices. Recrutement musculaire total. Technique primordiale.',steps:['Barre au sol, pieds à largeur de hanches','Dos droit, prise juste à l\'extérieur des jambes','Pousser le sol vers le bas comme un squat','Hanches et épaules montent simultanément']},
-  {name:'Tirage horizontal',muscle:'Dos moyen · Biceps',cat:'Dos',anim:'row',desc:'Développe l\'épaisseur du dos. Indispensable pour un dos dense.',steps:['Assis à la poulie, dos droit','Tirer le câble vers le ventre','Coudes le long du corps en fin de mouvement','Revenir lentement en étirant le dos']},
-  {name:'Tirage poulie haute',muscle:'Grand dorsal · Biceps',cat:'Dos',anim:'pulldown',desc:'Alternative aux tractions. Idéale pour les débutants.',steps:['Assis, cuisses bloquées sous les appuis','Saisir la barre large','Tirer vers le haut de la poitrine','Contrôler le retour lentement']},
-  {name:'Rowing haltères',muscle:'Dos · Rhomboïdes',cat:'Dos',anim:'row',desc:'Traction unilatérale pour un travail équilibré.',steps:['Un genou et une main sur le banc','Dos parallèle au sol','Tirer l\'haltère vers la hanche','Redescendre lentement en étirant']},
-  {name:'Overhead Press',muscle:'Épaules · Triceps',cat:'Épaules',anim:'press',desc:'Le développé militaire. Exercice composé vertical pour les épaules.',steps:['Barre à hauteur de clavicules','Corps gainé, fessiers contractés','Pousser la barre verticalement','Revenir à hauteur de clavicules']},
-  {name:'Élévations latérales',muscle:'Épaules médianes',cat:'Épaules',anim:'fly',desc:'Donne de la largeur aux épaules. Poids léger, contraction maximale.',steps:['Debout, haltères le long du corps','Coudes très légèrement fléchis','Monter latéralement jusqu\'à hauteur des épaules','Descendre lentement sans balancer']},
-  {name:'Face pull',muscle:'Épaules post · Trapèzes',cat:'Épaules',anim:'row',desc:'Exercice correctif excellent pour la santé des épaules.',steps:['Poulie haute avec corde','Tirer vers le visage, coudes hauts','Écarter les mains en fin de mouvement','Contracter fort les épaules arrière']},
-  {name:'Squat barre',muscle:'Quadriceps · Fessiers',cat:'Jambes',anim:'squat',desc:'Roi des exercices de jambes. Recrutement total du bas du corps.',steps:['Barre sur trapèzes, pieds légèrement ouverts','Pousser les genoux vers l\'extérieur','Descendre au minimum à parallèle','Monter en poussant le sol']},
-  {name:'Leg press',muscle:'Quadriceps',cat:'Jambes',anim:'squat',desc:'Machine pour quadriceps et fessiers. Permet de charger lourd en sécurité.',steps:['Pieds à largeur d\'épaules sur la plateforme','Déverrouiller la sécurité','Fléchir jusqu\'à 90°','Pousser sans verrouiller les genoux']},
-  {name:'Fentes marchées',muscle:'Quadriceps · Fessiers',cat:'Jambes',anim:'lunge',desc:'Exercice unilatéral pour l\'équilibre et les quadriceps.',steps:['Debout, haltères dans les mains','Grand pas en avant','Fléchir les deux genoux','Pousser pour revenir et alterner']},
-  {name:'Romanian Deadlift',muscle:'Ischios · Fessiers',cat:'Jambes',anim:'deadlift',desc:'Cible les ischios en excentrique. L\'un des meilleurs exercices.',steps:['Debout, barre devant les cuisses','Hip hinge en gardant le dos droit','Descendre jusqu\'à l\'étirement des ischios','Remonter en contractant fessiers et ischios']},
-  {name:'Hip thrust',muscle:'Fessiers',cat:'Jambes',anim:'squat',desc:'Numéro un pour développer les fessiers.',steps:['Dos contre un banc, barre sur les hanches','Pieds à plat, genoux à 90° en haut','Pousser les hanches vers le ciel','Tenir une seconde en haut']},
-  {name:'Leg curl',muscle:'Ischios',cat:'Jambes',anim:'curl',desc:'Isolation des ischios en position allongée.',steps:['Allongé à plat ventre','Bloquer les hanches contre le coussin','Fléchir jusqu\'aux fessiers','Redescendre lentement 3 secondes']},
-  {name:'Curl barre',muscle:'Biceps',cat:'Bras',anim:'curl',desc:'Classique pour les biceps. La barre permet de charger plus lourd.',steps:['Debout, barre en supination','Coudes fixes le long du corps','Monter vers les épaules','Descendre lentement 3 secondes']},
-  {name:'Curl haltères',muscle:'Biceps',cat:'Bras',anim:'curl',desc:'Supination complète pour maximiser le pic de contraction.',steps:['Debout, haltères de chaque côté','Supiner le poignet en montant','Monter jusqu\'à contraction maximale','Contrôler la descente complète']},
-  {name:'Curl marteau',muscle:'Brachial · Biceps',cat:'Bras',anim:'curl',desc:'Variante neutre pour l\'épaisseur du bras.',steps:['Prise neutre, pouces vers le haut','Fléchir sans faire pivoter le poignet','Monter alternativement ou simultanément','Revenir lentement']},
-  {name:'Extension triceps',muscle:'Triceps',cat:'Bras',anim:'press',desc:'Isolation des triceps à la poulie haute.',steps:['Face à la poulie, barre en main','Coudes collés contre le corps','Pousser vers le bas jusqu\'à extension complète','Remonter lentement']},
-  {name:'Skullcrushers',muscle:'Triceps long chef',cat:'Bras',anim:'press',desc:'Barre au front. Développe le long chef du triceps.',steps:['Allongé sur banc, barre EZ au-dessus','Coudes fixes, ni vers l\'avant ni l\'extérieur','Descendre vers le front ou derrière','Étendre les coudes']},
-  {name:'Planche',muscle:'Core',cat:'Core',anim:'plank',desc:'Gainage isométrique fondamental. Renforce tout le tronc.',steps:['Sur les avant-bras ou les mains','Corps droit de la tête aux talons','Contracter abdos et fessiers','Maintenir la position']},
-  {name:'Ab wheel',muscle:'Abdominaux · Épaules',cat:'Core',anim:'plank',desc:'L\'un des plus efficaces pour le gainage dynamique.',steps:['À genoux, roue devant soi','Rouler vers l\'avant lentement','Aller le plus loin possible','Ramener en contractant les abdos']},
+  {name:'Développé couché',muscle:'Poitrine · Triceps',cat:'Poitrine',level:'intermediate',equip:["gym"],injury:["epaule"],anim:'bench',desc:'Exercice roi de la poitrine. Allongé sur banc, descendre la barre jusqu\'à la poitrine puis pousser.',steps:['S\'allonger, pieds à plat au sol','Saisir la barre légèrement plus large que les épaules','Descendre contrôlé jusqu\'à effleurer la poitrine','Pousser explosif jusqu\'à extension quasi-complète']},
+  {name:'Développé incliné',muscle:'Poitrine supérieure',cat:'Poitrine',level:'intermediate',equip:["gym"],injury:["epaule"],anim:'bench',desc:'Cible la partie haute des pectoraux. Banc incliné à 30-45°.',steps:['Régler le banc à 30-45°','Omoplates serrées contre le dossier','Descendre en ligne avec la poitrine haute','Pousser en arc vers le haut']},
+  {name:'Écarté haltères',muscle:'Poitrine isolation',cat:'Poitrine',level:'beginner',equip:["gym","home_dumbbells"],injury:["epaule"],anim:'fly',desc:'Isolation pour étirer et contracter les pectoraux en fin de séance.',steps:['Allongé banc plat, haltères au-dessus','Bras légèrement fléchis pendant tout le mouvement','Descendre les bras sur les côtés en arc','Ramener en contractant fort les pecs']},
+  {name:'Dips',muscle:'Poitrine · Triceps',cat:'Poitrine',level:'intermediate',equip:["gym"],injury:["epaule","poignet"],anim:'dip',desc:'Au poids du corps ou lesté. Inclinaison vers l\'avant = pectoraux, droit = triceps.',steps:['Monter sur les barres, bras tendus','Fléchir les coudes en descente contrôlée','Descendre jusqu\'à 90° de flexion','Pousser jusqu\'à extension complète']},
+  {name:'Pompes',muscle:'Poitrine · Triceps',cat:'Poitrine',level:'beginner',equip:["gym","home_dumbbells","home_bodyweight"],injury:["poignet"],anim:'pushup',desc:'Fondamental au poids du corps. Déclinable large/serré/explosif.',steps:['Position planche, mains légèrement plus larges','Corps droit, gainé','Descendre jusqu\'à frôler le sol','Pousser explosif en contractant les pecs']},
+  {name:'Tractions',muscle:'Dos · Biceps',cat:'Dos',level:'advanced',equip:["gym"],injury:["epaule"],anim:'pullup',desc:'Mouvement vertical incontournable pour la largeur du dos.',steps:['Saisir en pronation, plus large que les épaules','Partir en suspension, corps gainé','Tirer les coudes vers le bas et les hanches','Monter jusqu\'au menton au-dessus de la barre']},
+  {name:'Deadlift',muscle:'Dos · Ischios · Fessiers',cat:'Dos',level:'advanced',equip:["gym"],injury:["dos"],anim:'deadlift',desc:'Le roi des exercices. Recrutement musculaire total. Technique primordiale.',steps:['Barre au sol, pieds à largeur de hanches','Dos droit, prise juste à l\'extérieur des jambes','Pousser le sol vers le bas comme un squat','Hanches et épaules montent simultanément']},
+  {name:'Tirage horizontal',muscle:'Dos moyen · Biceps',cat:'Dos',level:'beginner',equip:["gym"],injury:[],anim:'row',desc:'Développe l\'épaisseur du dos. Indispensable pour un dos dense.',steps:['Assis à la poulie, dos droit','Tirer le câble vers le ventre','Coudes le long du corps en fin de mouvement','Revenir lentement en étirant le dos']},
+  {name:'Tirage poulie haute',muscle:'Grand dorsal · Biceps',cat:'Dos',level:'beginner',equip:["gym"],injury:["epaule"],anim:'pulldown',desc:'Alternative aux tractions. Idéale pour les débutants.',steps:['Assis, cuisses bloquées sous les appuis','Saisir la barre large','Tirer vers le haut de la poitrine','Contrôler le retour lentement']},
+  {name:'Rowing haltères',muscle:'Dos · Rhomboïdes',cat:'Dos',level:'beginner',equip:["gym","home_dumbbells"],injury:["dos"],anim:'row',desc:'Traction unilatérale pour un travail équilibré.',steps:['Un genou et une main sur le banc','Dos parallèle au sol','Tirer l\'haltère vers la hanche','Redescendre lentement en étirant']},
+  {name:'Overhead Press',muscle:'Épaules · Triceps',cat:'Épaules',level:'intermediate',equip:["gym","home_dumbbells"],injury:["epaule"],anim:'press',desc:'Le développé militaire. Exercice composé vertical pour les épaules.',steps:['Barre à hauteur de clavicules','Corps gainé, fessiers contractés','Pousser la barre verticalement','Revenir à hauteur de clavicules']},
+  {name:'Élévations latérales',muscle:'Épaules médianes',cat:'Épaules',level:'beginner',equip:["gym","home_dumbbells"],injury:["epaule"],anim:'fly',desc:'Donne de la largeur aux épaules. Poids léger, contraction maximale.',steps:['Debout, haltères le long du corps','Coudes très légèrement fléchis','Monter latéralement jusqu\'à hauteur des épaules','Descendre lentement sans balancer']},
+  {name:'Face pull',muscle:'Épaules post · Trapèzes',cat:'Épaules',level:'beginner',equip:["gym"],injury:[],anim:'row',desc:'Exercice correctif excellent pour la santé des épaules.',steps:['Poulie haute avec corde','Tirer vers le visage, coudes hauts','Écarter les mains en fin de mouvement','Contracter fort les épaules arrière']},
+  {name:'Squat barre',muscle:'Quadriceps · Fessiers',cat:'Jambes',level:'intermediate',equip:["gym"],injury:["genou","dos"],anim:'squat',desc:'Roi des exercices de jambes. Recrutement total du bas du corps.',steps:['Barre sur trapèzes, pieds légèrement ouverts','Pousser les genoux vers l\'extérieur','Descendre au minimum à parallèle','Monter en poussant le sol']},
+  {name:'Leg press',muscle:'Quadriceps',cat:'Jambes',level:'beginner',equip:["gym"],injury:["genou"],anim:'squat',desc:'Machine pour quadriceps et fessiers. Permet de charger lourd en sécurité.',steps:['Pieds à largeur d\'épaules sur la plateforme','Déverrouiller la sécurité','Fléchir jusqu\'à 90°','Pousser sans verrouiller les genoux']},
+  {name:'Fentes marchées',muscle:'Quadriceps · Fessiers',cat:'Jambes',level:'beginner',equip:["gym","home_dumbbells","home_bodyweight"],injury:["genou"],anim:'lunge',desc:'Exercice unilatéral pour l\'équilibre et les quadriceps.',steps:['Debout, haltères dans les mains','Grand pas en avant','Fléchir les deux genoux','Pousser pour revenir et alterner']},
+  {name:'Romanian Deadlift',muscle:'Ischios · Fessiers',cat:'Jambes',level:'advanced',equip:["gym","home_dumbbells"],injury:["dos"],anim:'deadlift',desc:'Cible les ischios en excentrique. L\'un des meilleurs exercices.',steps:['Debout, barre devant les cuisses','Hip hinge en gardant le dos droit','Descendre jusqu\'à l\'étirement des ischios','Remonter en contractant fessiers et ischios']},
+  {name:'Hip thrust',muscle:'Fessiers',cat:'Jambes',level:'beginner',equip:["gym","home_dumbbells"],injury:["dos"],anim:'squat',desc:'Numéro un pour développer les fessiers.',steps:['Dos contre un banc, barre sur les hanches','Pieds à plat, genoux à 90° en haut','Pousser les hanches vers le ciel','Tenir une seconde en haut']},
+  {name:'Leg curl',muscle:'Ischios',cat:'Jambes',level:'beginner',equip:["gym"],injury:["genou"],anim:'curl',desc:'Isolation des ischios en position allongée.',steps:['Allongé à plat ventre','Bloquer les hanches contre le coussin','Fléchir jusqu\'aux fessiers','Redescendre lentement 3 secondes']},
+  {name:'Curl barre',muscle:'Biceps',cat:'Bras',level:'beginner',equip:["gym"],injury:["poignet"],anim:'curl',desc:'Classique pour les biceps. La barre permet de charger plus lourd.',steps:['Debout, barre en supination','Coudes fixes le long du corps','Monter vers les épaules','Descendre lentement 3 secondes']},
+  {name:'Curl haltères',muscle:'Biceps',cat:'Bras',level:'beginner',equip:["gym","home_dumbbells"],injury:[],anim:'curl',desc:'Supination complète pour maximiser le pic de contraction.',steps:['Debout, haltères de chaque côté','Supiner le poignet en montant','Monter jusqu\'à contraction maximale','Contrôler la descente complète']},
+  {name:'Curl marteau',muscle:'Brachial · Biceps',cat:'Bras',level:'beginner',equip:["gym","home_dumbbells"],injury:[],anim:'curl',desc:'Variante neutre pour l\'épaisseur du bras.',steps:['Prise neutre, pouces vers le haut','Fléchir sans faire pivoter le poignet','Monter alternativement ou simultanément','Revenir lentement']},
+  {name:'Extension triceps',muscle:'Triceps',cat:'Bras',level:'beginner',equip:["gym"],injury:["poignet","epaule"],anim:'press',desc:'Isolation des triceps à la poulie haute.',steps:['Face à la poulie, barre en main','Coudes collés contre le corps','Pousser vers le bas jusqu\'à extension complète','Remonter lentement']},
+  {name:'Skullcrushers',muscle:'Triceps long chef',cat:'Bras',level:'intermediate',equip:["gym"],injury:["epaule"],anim:'press',desc:'Barre au front. Développe le long chef du triceps.',steps:['Allongé sur banc, barre EZ au-dessus','Coudes fixes, ni vers l\'avant ni l\'extérieur','Descendre vers le front ou derrière','Étendre les coudes']},
+  {name:'Planche',muscle:'Core',cat:'Core',level:'beginner',equip:["gym","home_dumbbells","home_bodyweight"],injury:["poignet"],anim:'plank',desc:'Gainage isométrique fondamental. Renforce tout le tronc.',steps:['Sur les avant-bras ou les mains','Corps droit de la tête aux talons','Contracter abdos et fessiers','Maintenir la position']},
+  {name:'Ab wheel',muscle:'Abdominaux · Épaules',cat:'Core',level:'advanced',equip:["gym","home_dumbbells","home_bodyweight"],injury:["dos","poignet"],anim:'plank',desc:'L\'un des plus efficaces pour le gainage dynamique.',steps:['À genoux, roue devant soi','Rouler vers l\'avant lentement','Aller le plus loin possible','Ramener en contractant les abdos']},
+  {name:"Squat gobelet",muscle:"Quadriceps · Fessiers",cat:"Jambes",level:"beginner",equip:["gym","home_dumbbells","home_bodyweight"],injury:["genou"],anim:"squat",desc:"Variante accessible du squat, idéale pour apprendre la technique. Avec ou sans charge.",steps:["Tenir une charge contre la poitrine (ou mains vides)","Pieds largeur d'épaules, pointes légèrement ouvertes","Descendre en gardant le dos droit et les talons au sol","Remonter en poussant le sol"]},
+  {name:"Mollets debout",muscle:"Mollets",cat:"Jambes",level:"beginner",equip:["gym","home_dumbbells","home_bodyweight"],injury:[],anim:"squat",desc:"Isolation des mollets. Peut se faire au poids du corps, avec haltères ou sur machine.",steps:["Debout, pieds largeur de hanches","Monter sur la pointe des pieds le plus haut possible","Marquer une pause en haut","Redescendre lentement sous le niveau de départ"]},
+  {name:"Crunch",muscle:"Abdominaux",cat:"Core",level:"beginner",equip:["gym","home_dumbbells","home_bodyweight"],injury:["dos"],anim:"plank",desc:"Exercice de base pour les abdominaux. Mouvement court et contrôlé.",steps:["Allongé sur le dos, genoux fléchis","Mains derrière ou sur la tête sans tirer sur la nuque","Enrouler le buste en contractant les abdos","Redescendre lentement sans relâcher totalement"]},
+  {name:"Relevé de jambes",muscle:"Abdominaux · Hanches",cat:"Core",level:"intermediate",equip:["gym","home_dumbbells","home_bodyweight"],injury:["dos"],anim:"plank",desc:"Cible le bas des abdominaux. Suspendu à la barre ou allongé au sol selon le niveau.",steps:["Allongé au sol ou suspendu à une barre","Jambes tendues ou légèrement fléchies","Monter les jambes en contractant le bas du ventre","Redescendre sans cambrer le bas du dos"]},
+  {name:"Tirage poulie basse",muscle:"Dos moyen · Biceps",cat:"Dos",level:"intermediate",equip:["gym"],injury:["dos"],anim:"row",desc:"Variante à la poulie basse pour travailler l'épaisseur du dos avec un grand contrôle.",steps:["Assis, pieds calés sur la plateforme","Dos droit, légère bascule du buste","Tirer la poignée vers le nombril","Revenir en étirant complètement le dos"]},
+  {name:"Élévations frontales",muscle:"Épaules antérieures",cat:"Épaules",level:"beginner",equip:["gym","home_dumbbells"],injury:["epaule"],anim:"fly",desc:"Isolation du faisceau antérieur de l'épaule. Charge légère recommandée.",steps:["Debout, haltères devant les cuisses","Coudes légèrement fléchis","Lever un bras (ou les deux) jusqu'à hauteur d'épaule","Redescendre lentement et contrôlé"]},
+  {name:"Pompes diamant",muscle:"Triceps · Poitrine",cat:"Bras",level:"intermediate",equip:["gym","home_dumbbells","home_bodyweight"],injury:["poignet"],anim:"pushup",desc:"Variante de pompes mains rapprochées pour cibler les triceps.",steps:["Position de pompe, mains rapprochées formant un losange","Corps gainé, aligné de la tête aux talons","Descendre la poitrine vers les mains","Pousser jusqu'à extension complète des bras"]},
+  {name:"Superman",muscle:"Lombaires · Fessiers",cat:"Dos",level:"beginner",equip:["gym","home_dumbbells","home_bodyweight"],injury:[],anim:"plank",desc:"Renforcement doux des lombaires et fessiers, idéal pour la santé du dos.",steps:["Allongé sur le ventre, bras tendus devant","Lever simultanément bras, buste et jambes","Contracter fessiers et lombaires en haut","Redescendre lentement et contrôlé"]},
+  {name:"Good morning",muscle:"Ischios · Lombaires",cat:"Jambes",level:"advanced",equip:["gym"],injury:["dos"],anim:"deadlift",desc:"Exercice avancé pour la chaîne postérieure. Charge légère et technique stricte indispensables.",steps:["Barre sur le haut du dos comme un squat","Genoux légèrement fléchis et fixes","Hip hinge : buste vers l'avant, dos plat","Revenir en poussant les hanches vers l'avant"]},
+  {name:"Chaise isométrique",muscle:"Quadriceps",cat:"Jambes",level:"beginner",equip:["gym","home_dumbbells","home_bodyweight"],injury:["genou"],anim:"squat",desc:"Gainage statique des quadriceps, dos contre un mur.",steps:["Dos plaqué contre un mur","Descendre jusqu'à cuisses parallèles au sol","Genoux à 90°, dos bien droit contre le mur","Maintenir la position le temps indiqué"]},
 ];
 
 var GROUND='<line x1="10" y1="92" x2="110" y2="92" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".12"/>';
@@ -804,6 +814,7 @@ async function routeAfterAuth(){
   if(res.data&&res.data.onboarding_done){
     userProfile=supabaseProfileToLocal(res.data);
     DB.s('profile',userProfile);
+    OB.data=Object.assign({},OB.data,userProfile);
     if(res.data.preferred_exercises){selectedExercises=res.data.preferred_exercises;DB.s('selected_exercises',selectedExercises);}
     if(res.data.program){program=res.data.program;DB.s('program',program);}
     showApp();
@@ -814,7 +825,7 @@ async function routeAfterAuth(){
 
 // Convertit une ligne Supabase "profiles" vers le format utilisé par l'app
 function supabaseProfileToLocal(row){
-  return{sexe:row.sex,age:row.age,taille:row.height,poids:row.weight,bf:row.body_fat,act:row.activity_level?+row.activity_level:1.55,obj:row.goal,exercices:row.preferred_exercises||[],freq:row.sessions_per_week||3,sessionDur:row.session_duration||60,goalWeeks:row.goal_weeks||8};
+  return{sexe:row.sex,age:row.age,taille:row.height,poids:row.weight,bf:row.body_fat,act:row.activity_level?+row.activity_level:1.55,obj:row.goal,exercices:row.preferred_exercises||[],freq:row.sessions_per_week||3,sessionDur:row.session_duration||60,goalWeeks:row.goal_weeks||8,level:row.level||'beginner',equip:row.equip||'gym',injuries:row.injuries||[]};
 }
 
 async function logout(){
@@ -829,7 +840,7 @@ async function logout(){
 // ═══════════════════════════════════
 // ONBOARDING
 // ═══════════════════════════════════
-var OB={page:0,data:{sexe:'H',age:28,taille:175,poids:75,bf:16,act:1.55,obj:'bulk',jours:[],exercices:[],freq:3,sessionDur:60,goalWeeks:8,trainDays:['Lundi','Mercredi','Vendredi']}};
+var OB={page:0,data:{sexe:'H',age:28,taille:175,poids:75,bf:16,act:1.55,obj:'bulk',jours:[],exercices:[],freq:3,sessionDur:60,goalWeeks:8,trainDays:['Lundi','Mercredi','Vendredi'],level:'beginner',equip:'gym',injuries:[]}};
 var BF_H=[{v:8,l:'~8 %',s:'Athlète compétition',sh:'lean_x'},{v:12,l:'~12 %',s:'Musclé, veines',sh:'lean'},{v:16,l:'~16 %',s:'Tonique, abs légers',sh:'fit'},{v:20,l:'~20 %',s:'Forme normale',sh:'normal'},{v:25,l:'~25 %',s:'Embonpoint léger',sh:'over'},{v:32,l:'~32 %',s:'Embonpoint modéré',sh:'over2'}];
 var BF_F=[{v:14,l:'~14 %',s:'Athlète compétition',sh:'lean_x'},{v:18,l:'~18 %',s:'Musclée, tonique',sh:'lean'},{v:22,l:'~22 %',s:'Forme athlétique',sh:'fit'},{v:27,l:'~27 %',s:'Forme normale',sh:'normal'},{v:33,l:'~33 %',s:'Embonpoint léger',sh:'over'},{v:38,l:'~38 %',s:'Embonpoint modéré',sh:'over2'}];
 var ACT=[{v:1.2,t:'Très sédentaire',d:'Bureau toute la journée, peu de marche.',eg:'< 5 000 pas/jour, aucun sport'},{v:1.375,t:'Légèrement actif',d:'Un peu de marche, sport 1-2×/sem.',eg:'~20 min marche/jour, 1 séance/sem'},{v:1.55,t:'Modérément actif',d:'Sport régulier 3-5×/sem.',eg:'Salle 3-4×/sem, 8 000-12 000 pas/jour'},{v:1.725,t:'Très actif',d:'Sport intense presque chaque jour.',eg:'Salle 5-6×/sem + cardio'},{v:1.9,t:'Athlète / pro',d:'Entraînement biquotidien.',eg:'Préparation compétition, travail physique'}];
@@ -859,6 +870,7 @@ function buildOB(){
     {title:'Votre silhouette',sub:'Choisissez la silhouette qui vous ressemble le plus en ce moment. Pas besoin de se peser ni de calculer.',content:buildOBPage2},
     {title:'Votre quotidien',sub:'En dehors du sport, à quel point êtes-vous actif(ve) dans la vie de tous les jours ?',content:buildOBPage3},
     {title:'Votre objectif',sub:'Qu\'est-ce que vous voulez accomplir avec FiTrack ?',content:buildOBPage4},
+    {title:'Votre profil sportif',sub:'Ces infos permettent d\'adapter le programme à votre niveau, votre matériel et d\'éviter les exercices à risque.',content:buildOBPage4b},
     {title:'Vos exercices',sub:'Sélectionnez les exercices que vous aimez et souhaitez intégrer dans votre programme.',content:buildOBPage5},
     {title:'Votre disponibilité',sub:'Ces infos servent à générer une programmation hebdomadaire adaptée pour atteindre votre objectif.',content:buildOBPage6},
   ];
@@ -909,10 +921,38 @@ function buildOBPage4(){
 }
 function setObj(v,el){OB.data.obj=v;document.querySelectorAll('#ob-content .pill').forEach(function(p){p.classList.remove('on');});el.classList.add('on');}
 
+function buildOBPage4b(){
+  var c=document.getElementById('ob-content');
+  var levels=[{v:'beginner',l:'Débutant',s:'Moins de 6 mois de pratique régulière'},{v:'intermediate',l:'Intermédiaire',s:'6 mois à 2 ans, technique maîtrisée'},{v:'advanced',l:'Avancé',s:'2+ ans, entraînement structuré régulier'}];
+  var equips=[{v:'gym',l:'Salle de sport',s:'Accès à machines, poulies, barres, haltères'},{v:'home_dumbbells',l:'Maison — haltères',s:'Haltères / kettlebells, peu ou pas de machines'},{v:'home_bodyweight',l:'Poids du corps',s:'Aucun matériel, exercices au poids du corps'}];
+  var injuries=[{v:'epaule',l:'Épaule'},{v:'genou',l:'Genou'},{v:'dos',l:'Dos / lombaires'},{v:'poignet',l:'Poignet'},{v:'aucune',l:'Aucune'}];
+  if(!OB.data.injuries)OB.data.injuries=[];
+  c.innerHTML='<div style="margin-bottom:18px"><div class="inp-label">Votre niveau</div><div style="display:flex;flex-direction:column;gap:8px">'+levels.map(function(o){
+      return '<div class="pill'+(OB.data.level===o.v?' on':'')+'" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px" onclick="setOBLevel(\''+o.v+'\',this)"><div><div style="font-weight:600;font-size:14px">'+o.l+'</div><div style="font-size:11px;color:var(--t2);margin-top:2px">'+o.s+'</div></div></div>';
+    }).join('')+'</div></div>'
+    +'<div style="margin-bottom:18px"><div class="inp-label">Votre matériel</div><div style="display:flex;flex-direction:column;gap:8px">'+equips.map(function(o){
+      return '<div class="pill'+(OB.data.equip===o.v?' on':'')+'" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px" onclick="setOBEquip(\''+o.v+'\',this)"><div><div style="font-weight:600;font-size:14px">'+o.l+'</div><div style="font-size:11px;color:var(--t2);margin-top:2px">'+o.s+'</div></div></div>';
+    }).join('')+'</div></div>'
+    +'<div style="margin-bottom:18px"><div class="inp-label">Douleurs / blessures à prendre en compte</div><div class="pills">'+injuries.map(function(o){
+      return '<div class="pill'+(OB.data.injuries.indexOf(o.v)!==-1?' on':'')+'" onclick="toggleOBInjury(\''+o.v+'\',this)">'+o.l+'</div>';
+    }).join('')+'</div></div>'
+    +'<div style="font-size:11px;color:var(--t2);line-height:1.5">FiTrack évitera ou adaptera les exercices à risque pour les zones sélectionnées.</div>';
+}
+function setOBLevel(v,el){OB.data.level=v;el.parentElement.querySelectorAll('.pill').forEach(function(p){p.classList.remove('on');});el.classList.add('on');}
+function setOBEquip(v,el){OB.data.equip=v;el.parentElement.querySelectorAll('.pill').forEach(function(p){p.classList.remove('on');});el.classList.add('on');}
+function toggleOBInjury(v,el){
+  if(!OB.data.injuries)OB.data.injuries=[];
+  var idx=OB.data.injuries.indexOf(v);
+  if(v==='aucune'){OB.data.injuries=idx!==-1?[]:['aucune'];buildOBPage4b();return;}
+  if(OB.data.injuries.indexOf('aucune')!==-1)OB.data.injuries=[];
+  if(idx!==-1)OB.data.injuries.splice(idx,1);else OB.data.injuries.push(v);
+  buildOBPage4b();
+}
+
 var obSelEx=[];
 function buildOBPage5(){
   var cats={};
-  EX_DB.forEach(function(ex){if(!cats[ex.cat])cats[ex.cat]=[];cats[ex.cat].push(ex);});
+  EX_DB.filter(exAllowed).forEach(function(ex){if(!cats[ex.cat])cats[ex.cat]=[];cats[ex.cat].push(ex);});
   var c=document.getElementById('ob-content');
   var html='<input class="ex-search" placeholder="🔍 Rechercher..." oninput="filterOBEx(this.value)" id="ob-ex-search">';
   Object.keys(cats).forEach(function(cat){
@@ -992,6 +1032,14 @@ function repsSchemeFor(obj){
   var schemes={cut:{sets:3,reps:'12-15'},bulk:{sets:4,reps:'8-10'},recomp:{sets:3,reps:'10-12'},maintain:{sets:3,reps:'10-12'},strength:{sets:5,reps:'4-6'}};
   return schemes[obj]||schemes.maintain;
 }
+// Un exercice est-il compatible avec le matériel et les douleurs/blessures du profil ?
+function exAllowed(e){
+  var equip=OB.data.equip||'gym';
+  if(e.equip&&e.equip.indexOf(equip)===-1)return false;
+  var inj=OB.data.injuries||[];
+  if(inj.length&&inj.indexOf('aucune')===-1&&e.injury&&e.injury.some(function(i){return inj.indexOf(i)!==-1;}))return false;
+  return true;
+}
 function generateProgram(){
   var trainDays=(OB.data.trainDays&&OB.data.trainDays.length)?OB.data.trainDays.slice():['Lundi','Mercredi','Vendredi'];
   trainDays.sort(function(a,b){return WEEK_ORDER.indexOf(a)-WEEK_ORDER.indexOf(b);});
@@ -999,10 +1047,13 @@ function generateProgram(){
   var split=SPLITS[freq]||SPLITS[3];
   var nbEx=Math.max(3,Math.min(6,Math.round((OB.data.sessionDur||60)/12)));
   var scheme=repsSchemeFor(OB.data.obj);
-  var pool=EX_DB.filter(function(e){return obSelEx.indexOf(e.name)!==-1;});
-  if(pool.length<6)pool=EX_DB.slice();
+  var allowed=EX_DB.filter(exAllowed);
+  if(!allowed.length)allowed=EX_DB.slice();
+  var pool=allowed.filter(function(e){return obSelEx.indexOf(e.name)!==-1;});
+  if(pool.length<6)pool=allowed.slice();
   var byGroup={push:[],pull:[],legs:[],core:[]};
   pool.forEach(function(e){byGroup[exGroup(e)].push(e);});
+  Object.keys(byGroup).forEach(function(g){if(!byGroup[g].length)byGroup[g]=allowed.filter(function(e){return exGroup(e)===g;});});
   Object.keys(byGroup).forEach(function(g){if(!byGroup[g].length)byGroup[g]=EX_DB.filter(function(e){return exGroup(e)===g;});});
   var ptr={push:0,pull:0,legs:0,core:0};
   function pick(g){var arr=byGroup[g];if(!arr.length)return null;var ex=arr[ptr[g]%arr.length];ptr[g]++;return {name:ex.name,muscle:ex.muscle,sets:scheme.sets,reps:scheme.reps};}
@@ -1018,8 +1069,8 @@ function generateProgram(){
 
 async function obNext(){
   if(OB.page===0){OB.data.age=+document.getElementById('ob-age').value;OB.data.taille=+document.getElementById('ob-t').value;OB.data.poids=+document.getElementById('ob-p').value;}
-  if(OB.page===4){OB.data.exercices=obSelEx;}
-  if(OB.page===5){
+  if(OB.page===5){OB.data.exercices=obSelEx;}
+  if(OB.page===6){
     userProfile=OB.data;
     selectedExercises=obSelEx;
     program=generateProgram();
@@ -1052,6 +1103,9 @@ async function saveProfileToSupabase(prog){
     sessions_per_week:p.freq,
     session_duration:p.sessionDur,
     goal_weeks:p.goalWeeks,
+    level:p.level||'beginner',
+    equip:p.equip||'gym',
+    injuries:p.injuries||[],
     program:(prog!==undefined?prog:program)||null,
     onboarding_done:true
   });
@@ -1348,9 +1402,11 @@ function adjustProgramAfterSession(sd){
     var allTop=range[1]&&se.sets.every(function(x){return x.reps>=range[1];});
     var anyFail=range[0]&&se.sets.some(function(x){return x.reps<range[0];});
     pe.topStreak=pe.topStreak||0;
+    var lvl=(userProfile&&userProfile.level)||OB.data.level||'intermediate';
+    var requiredStreak=lvl==='beginner'?1:2;
     if(allTop){
       pe.topStreak++;
-      if(pe.topStreak>=2){pe.targetWeight=round25((pe.targetWeight||avgW)+2.5);pe.topStreak=0;}
+      if(pe.topStreak>=requiredStreak){pe.targetWeight=round25((pe.targetWeight||avgW)+2.5);pe.topStreak=0;}
       else if(!pe.targetWeight)pe.targetWeight=round25(avgW);
     }else if(anyFail){
       pe.targetWeight=round25(Math.max(0,(pe.targetWeight||avgW)-2.5));
