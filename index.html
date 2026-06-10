@@ -1412,9 +1412,9 @@ function openProgramModal(){
     var html='<div class="modal-handle"></div>'
       +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;text-transform:uppercase;margin-bottom:4px">Votre programme</div>'
       +'<div style="font-size:11px;color:var(--t2);margin-bottom:14px">'+program.freq+' séances/semaine · ~'+program.sessionDur+' min · objectif visé pour le '+endStr+'</div>';
-    html+=program.days.map(function(d){
-      return '<div style="margin-bottom:14px">'
-        +'<div style="font-weight:700;font-size:14px;margin-bottom:6px">'+d.day+' · <span style="color:var(--acc)">'+d.label+'</span></div>'
+    html+=program.days.map(function(d,i){
+      return '<div class="prog-day" style="margin-bottom:14px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-weight:700;font-size:14px">'+d.day+' · <span style="color:var(--acc)">'+d.label+'</span></div><button class="btn-sm" onclick="moveProgramDay('+i+')">↔ Décaler</button></div>'
         +(d.exercises.length?d.exercises.map(function(e){return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)"><span>'+esc(e.name)+'</span><span style="color:var(--t2)">'+e.sets+' × '+e.reps+'</span></div>';}).join(''):'<div style="font-size:12px;color:var(--t3);padding:6px 0">Aucun exercice — repos ou libre</div>')
         +'</div>';
     }).join('');
@@ -1422,6 +1422,32 @@ function openProgramModal(){
     body.innerHTML=html;
   }
   document.getElementById('program-modal').classList.add('open');
+}
+
+// ─── Décaler une séance vers un autre jour ───
+function moveProgramDay(idx){
+  var existing=document.getElementById('move-picker-'+idx);
+  if(existing){existing.remove();return;}
+  document.querySelectorAll('[id^="move-picker-"]').forEach(function(p){p.remove();});
+  var days=document.querySelectorAll('#program-modal-body .prog-day');
+  var html='<div class="pills" id="move-picker-'+idx+'" style="margin:0 0 14px">'
+    +WEEK_ORDER.map(function(d){return '<div class="pill" onclick="confirmMoveDay('+idx+',\''+d+'\')">'+d.slice(0,3)+'</div>';}).join('')
+    +'</div>';
+  days[idx].insertAdjacentHTML('afterend',html);
+}
+function confirmMoveDay(idx,newDay){
+  var d=program.days[idx];
+  if(d.day===newDay)return;
+  var other=program.days.find(function(x,i){return i!==idx&&x.day===newDay;});
+  var oldDay=d.day;
+  d.day=newDay;
+  if(other)other.day=oldDay;
+  DB.s('program',program);
+  saveProfileToSupabase(program);
+  renderProgramCard();
+  buildDefaultSession();
+  toast('Séance déplacée au '+newDay+(other?' (échangée avec '+oldDay+')':''));
+  openProgramModal();
 }
 
 // ─── Édition manuelle du programme ───
@@ -1489,6 +1515,7 @@ async function saveProgramEdits(){
   DB.s('program',program);
   await saveProfileToSupabase(program);
   renderProgramCard();
+  buildDefaultSession();
   toast('Programme enregistré ✅');
   openProgramModal();
 }
