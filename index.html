@@ -1043,11 +1043,11 @@ function buildOBPage5(){
       var sel=obSelEx.indexOf(ex.name)!==-1;
       html+='<div class="ex-chip" data-ex="'+ex.name+'" data-sel="'+(sel?1:0)+'">'
         +'<div class="ex-chip-body">'
-        +'<button class="ex-sel" onclick="toggleOBEx(\''+ex.name.replace(/'/g,"\\'")+'\',this.closest(\'.ex-chip\'))">'
+        +'<button class="ex-sel" onclick="toggleOBEx(\''+escAttr(ex.name)+'\',this.closest(\'.ex-chip\'))">'
         +'<div class="ex-ck">'+(sel?'✓':'')+'</div>'
         +'<div><div>'+ex.name+'</div><div class="ex-muscle">'+ex.muscle+'</div></div>'
         +'</button>'
-        +'<button class="ex-eye" onclick="openExPreview(\''+ex.name.replace(/'/g,"\\'")+'\')">👁</button>'
+        +'<button class="ex-eye" onclick="openExPreview(\''+escAttr(ex.name)+'\')">👁</button>'
         +'</div></div>';
     });
     html+='</div>';
@@ -1065,7 +1065,7 @@ function toggleOBEx(name,chip){
   var cnt=document.getElementById('ob-sel-count');if(cnt)cnt.textContent=obSelEx.length;
   var tw=document.getElementById('ob-tags');if(tw)tw.innerHTML=renderOBTags();
 }
-function renderOBTags(){if(!obSelEx.length)return '<span style="font-size:11px;color:var(--t3)">Aucun sélectionné</span>';return obSelEx.map(function(e){return '<span class="ex-tag">'+esc(e)+'<button onclick="removeOBEx(\''+e.replace(/'/g,"\\'")+'\')">×</button></span>';}).join('');}
+function renderOBTags(){if(!obSelEx.length)return '<span style="font-size:11px;color:var(--t3)">Aucun sélectionné</span>';return obSelEx.map(function(e){return '<span class="ex-tag">'+esc(e)+'<button onclick="removeOBEx(\''+escAttr(e)+'\')">×</button></span>';}).join('');}
 function removeOBEx(name){var idx=obSelEx.indexOf(name);if(idx!==-1){obSelEx.splice(idx,1);}var chip=document.querySelector('.ex-chip[data-ex="'+name+'"]');if(chip){chip.dataset.sel='0';chip.querySelector('.ex-ck').textContent='';}var cnt=document.getElementById('ob-sel-count');if(cnt)cnt.textContent=obSelEx.length;var tw=document.getElementById('ob-tags');if(tw)tw.innerHTML=renderOBTags();}
 function addCustomOBEx(){var inp=document.getElementById('ob-custom-ex');var v=inp.value.trim();if(!v)return;if(obSelEx.indexOf(v)===-1)obSelEx.push(v);inp.value='';var cnt=document.getElementById('ob-sel-count');if(cnt)cnt.textContent=obSelEx.length;var tw=document.getElementById('ob-tags');if(tw)tw.innerHTML=renderOBTags();}
 function filterOBEx(q){document.querySelectorAll('.ex-chip').forEach(function(c){c.style.display=(!q||c.dataset.ex.toLowerCase().indexOf(q.toLowerCase())!==-1)?'':'none';});document.querySelectorAll('[data-cat]').forEach(function(el){if(el.tagName==='DIV'){var any=Array.from(el.querySelectorAll('.ex-chip')).some(function(c){return c.style.display!=='none';});el.style.display=any?'':'none';}});}
@@ -1216,7 +1216,7 @@ function renderLibrary(){
   Object.keys(cats).forEach(function(cat){
     html+='<div class="ex-cat-title" data-cat="'+cat+'">'+cat+'</div><div class="ex-grid" data-cat="'+cat+'">';
     cats[cat].forEach(function(ex){
-      html+='<div class="ex-chip" data-ex="'+ex.name+'" onclick="openExPreview(\''+ex.name.replace(/'/g,"\\'")+'\')">'
+      html+='<div class="ex-chip" data-ex="'+esc(ex.name)+'" onclick="openExPreview(\''+escAttr(ex.name)+'\')">'
         +'<div class="ex-chip-body">'
         +'<div class="ex-sel"><div><div>'+esc(ex.name)+' <span class="chip chip-acc" style="font-size:9px">'+(LEVEL_LBL[ex.level]||'—')+'</span></div><div class="ex-muscle">'+esc(ex.muscle)+'</div></div></div>'
         +'<div class="ex-eye">👁</div>'
@@ -1244,7 +1244,7 @@ function openExPreview(name){
     +'<div class="ex-modal-desc">'+ex.desc+'</div>'
     +'<div class="ex-modal-steps">'+ex.steps.map(function(s,i){return '<div class="ex-step"><div class="ex-step-n">'+(i+1)+'</div><div>'+s+'</div></div>';}).join('')
     +'</div>'
-    +'<button class="btn-primary" style="margin-top:12px" onclick="addExFromLibrary(\''+ex.name.replace(/'/g,"\\'")+'\',\''+ex.muscle.replace(/'/g,"\\'")+'\')">+ Ajouter à ma séance en cours</button>';
+    +'<button class="btn-primary" style="margin-top:12px" onclick="addExFromLibrary(\''+escAttr(ex.name)+'\',\''+escAttr(ex.muscle)+'\')">+ Ajouter à ma séance en cours</button>';
   document.getElementById('prev-modal').classList.add('open');
 }
 function addExFromLibrary(name,muscle){
@@ -1350,7 +1350,7 @@ function addExBlock(name,muscle,sugWeight,sugReps,nbSets){
   var block=document.createElement('div');
   block.className='ex-block';block.id=id;block.dataset.name=name;block.dataset.muscle=muscle||'—';block.dataset.est=est;
   block.innerHTML='<div class="ex-block-hdr"><div><div class="ex-block-name">'+esc(name)+'</div><div class="ex-block-muscle">'+muscleLine+'</div></div>'
-    +'<div class="ex-block-acts">'+(est?'<div class="rm-badge-btn" id="rmb-'+id+'" onclick="openRMModal(\''+name.replace(/'/g,"\\'")+'\','+est+')">1RM ~'+est+' kg</div>':'')+' <div class="ex-del" onclick="document.getElementById(\''+id+'\').remove();toast(\'Exercice retiré\')">✕</div></div></div>'
+    +'<div class="ex-block-acts">'+(est?'<div class="rm-badge-btn" id="rmb-'+id+'" onclick="openRMModal(\''+escAttr(name)+'\','+est+')">1RM ~'+est+' kg</div>':'')+' <div class="ex-del" onclick="document.getElementById(\''+id+'\').remove();toast(\'Exercice retiré\')">✕</div></div></div>'
     +'<div class="sets-wrap" id="sets-'+id+'"><div class="sets-hdr"><span>#</span><span>Poids kg</span><span>Reps</span><span>Vol.</span><span>✓</span></div></div>';
   container.appendChild(block);
   var n=nbSets||3;
@@ -1413,7 +1413,7 @@ function openRMModal(name,est){
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">1RM estimé : <span style="color:var(--blue);font-weight:600">'+est+' kg</span> · Formule d\'Epley</div>'
     +'<div style="font-size:11px;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Charges suggérées — cliquez pour appliquer</div>'
     +'<div class="rm-grid">'+sugs.map(function(s){
-      return '<div class="rm-cell" onclick="applyRM(\''+name.replace(/'/g,"\\'")+'\','+s.kg+','+s.reps.split('-')[0]+')">'
+      return '<div class="rm-cell" onclick="applyRM(\''+escAttr(name)+'\','+s.kg+','+s.reps.split('-')[0]+')">'
         +'<div class="rm-pct">'+s.pct+'%</div><div class="rm-kg">'+s.kg+' kg</div>'
         +'<div class="rm-reps">'+s.reps+' reps</div><div style="font-size:9px;color:var(--t3);margin-top:1px">'+s.label+'</div>'
         +'</div>';
@@ -1444,8 +1444,8 @@ function buildExModalList(q){
   Object.keys(cats).forEach(function(cat){
     html+='<div class="ex-cat-title">'+cat+'</div>';
     cats[cat].forEach(function(ex){
-      var nm=ex.name.replace(/'/g,"\\'");
-      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 13px;background:var(--s2);border:1px solid var(--border);border-radius:10px;margin-bottom:7px;cursor:pointer;transition:border-color .15s" onclick="selectEx(\''+nm+'\',\''+ex.muscle.replace(/'/g,"\\'")+'\')">'
+      var nm=escAttr(ex.name);
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 13px;background:var(--s2);border:1px solid var(--border);border-radius:10px;margin-bottom:7px;cursor:pointer;transition:border-color .15s" onclick="selectEx(\''+nm+'\',\''+escAttr(ex.muscle)+'\')">'
         +'<div><div style="font-weight:500;font-size:14px">'+ex.name+'</div><div style="font-size:11px;color:var(--t2);margin-top:2px">'+ex.muscle+'</div></div>'
         +'<div style="color:var(--acc);font-size:20px;font-weight:300">+</div>'
         +'</div>';
@@ -1768,7 +1768,7 @@ function renderRecords(filter){
   if(filter&&filter!=='all')keys=keys.filter(function(k){return exMap[k]===filter;});
   if(!keys.length){list.innerHTML='<div class="empty"><div class="empty-ico">🏆</div><p>Aucun record'+(filter!=='all'?' pour cette catégorie.':'. Loggez une séance !')+'</p></div>';return;}
   keys.sort(function(a,b){return(prs[b].est1RM||0)-(prs[a].est1RM||0);});
-  list.innerHTML=keys.map(function(name,i){var pr=prs[name];var cat=exMap[name]||'—';var nm=name.replace(/'/g,"\\'");return '<div class="rec-item" onclick="openProgressionModal(\''+nm+'\')"><div class="rec-rank">'+(i+1)+'</div><div class="rec-info"><div class="rec-name">'+esc(name)+'</div><div class="rec-sub"><span class="chip chip-acc" style="font-size:10px">'+esc(cat)+'</span></div></div><div class="rec-vals"><div class="rec-main">'+pr.weight+' <span class="rec-unit">kg×'+pr.reps+'</span></div>'+(pr.est1RM?'<div class="rec-est">1RM ~'+pr.est1RM+' kg</div>':'')+'<div class="rec-date">'+pr.date+'</div></div></div>';}).join('');
+  list.innerHTML=keys.map(function(name,i){var pr=prs[name];var cat=exMap[name]||'—';var nm=escAttr(name);return '<div class="rec-item" onclick="openProgressionModal(\''+nm+'\')"><div class="rec-rank">'+(i+1)+'</div><div class="rec-info"><div class="rec-name">'+esc(name)+'</div><div class="rec-sub"><span class="chip chip-acc" style="font-size:10px">'+esc(cat)+'</span></div></div><div class="rec-vals"><div class="rec-main">'+pr.weight+' <span class="rec-unit">kg×'+pr.reps+'</span></div>'+(pr.est1RM?'<div class="rec-est">1RM ~'+pr.est1RM+' kg</div>':'')+'<div class="rec-date">'+pr.date+'</div></div></div>';}).join('');
 }
 function filterRec(el,cat){document.querySelectorAll('.rec-chip').forEach(function(c){c.classList.remove('on');});el.classList.add('on');renderRecords(cat);}
 
@@ -2140,7 +2140,7 @@ async function renderPhotos(){
     var signed=await sb.storage.from('progress-photos').createSignedUrl(path,3600);
     var url=signed.data?signed.data.signedUrl:'';
     if(!url)continue;
-    html+='<img src="'+url+'" loading="lazy" onclick="openPhotoModal(\''+path.replace(/'/g,"\\'")+'\',\''+url.replace(/'/g,"\\'")+'\',\''+esc(f.name)+'\')">';
+    html+='<img src="'+url+'" loading="lazy" onclick="openPhotoModal(\''+escAttr(path)+'\',\''+escAttr(url)+'\',\''+esc(f.name)+'\')">';
   }
   grid.innerHTML=html||'<div class="empty" style="grid-column:1/-1"><div class="empty-ico">📷</div><p>Aucune photo. Ajoute ta première photo de progression !</p></div>';
 }
@@ -2222,6 +2222,12 @@ function aiKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAI();}
 // HELPERS
 // ═══════════════════════════════════
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+// Échappe une valeur destinée à être insérée dans un attribut onclick="fn('...')" :
+// échappe d'abord les antislashs et apostrophes (limites de la chaîne JS),
+// puis les guillemets doubles en entité HTML (limite de l'attribut HTML).
+// Empêche toute évasion HTML/JS si la valeur contient des caractères
+// fournis par l'utilisateur (ex : nom d'exercice personnalisé).
+function escAttr(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
 function todayStr(){return new Date().toISOString().slice(0,10);}
 function yesterdayStr(){var d=new Date();d.setDate(d.getDate()-1);return d.toISOString().slice(0,10);}
 function getMonShort(m){return['','jan','fév','mar','avr','mai','juin','juil','août','sep','oct','nov','déc'][parseInt(m)]||'—';}
