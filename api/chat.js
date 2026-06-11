@@ -2,32 +2,37 @@
  * FiTrack - Fonction serverless Vercel pour FitAI
  *
  * Rôle : recevoir les messages du chat depuis l'app, ajouter la clé API
- * Anthropic (stockée comme variable d'environnement Vercel, jamais
- * envoyée au navigateur) et relayer la requête vers Anthropic.
+ * Google Gemini (stockée comme variable d'environnement Vercel, jamais
+ * envoyée au navigateur) et relayer la requête vers Gemini.
+ *
+ * Pourquoi Gemini : l'API "Gemini 2.0 Flash" de Google a un niveau
+ * gratuit généreux (largement suffisant pour une appli en test avec
+ * quelques utilisateurs), contrairement à l'API Anthropic qui est
+ * payante dès le premier appel.
  *
  * URL une fois déployé : https://<ton-projet>.vercel.app/api/chat
  *
  * La clé API est configurée dans Vercel : Project Settings > Environment
- * Variables > ANTHROPIC_API_KEY (jamais écrite dans le code).
+ * Variables > GEMINI_API_KEY (jamais écrite dans le code).
+ * Pour obtenir une clé gratuite : https://aistudio.google.com/apikey
  *
  * Sécurité : seul un utilisateur connecté (jeton Supabase valide) peut
  * appeler cette fonction, et chaque utilisateur est limité à un nombre
  * de messages par jour (table "ai_usage" dans Supabase) — ça évite
- * qu'une personne non autorisée ou un script consomme tout le crédit
- * de la clé Anthropic (payante).
+ * qu'une personne non autorisée ou un script consomme tout le quota
+ * gratuit de la clé Gemini.
  */
 
 export const config = { runtime: "edge" };
 
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const ANTHROPIC_VERSION = "2023-06-01";
-const MODEL = "claude-sonnet-4-5";
+const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const MAX_TOKENS = 1024;
 
 // Limite de messages par requête (anti-abus simple)
 const MAX_MESSAGES = 30;
 // Limite de taille par message (caractères) — évite l'envoi de payloads
-// énormes qui consommeraient inutilement le crédit API
+// énormes qui consommeraient inutilement le quota gratuit
 const MAX_MESSAGE_LENGTH = 4000;
 // Origine autorisée à appeler cette API (ton site déployé)
 const ALLOWED_ORIGIN = "https://fitrack-v4.vercel.app";
@@ -55,7 +60,7 @@ export default async function handler(request) {
   }
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey) {
-    return jsonError("Configuration serveur manquante", 500);
+    return jsonError("Configuration serveur manquante (SUPABASE_SERVICE_ROLE_KEY)", 500);
   }
   const userResp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     headers: { authorization: `Bearer ${token}`, apikey: serviceKey },
@@ -114,36 +119,55 @@ export default async function handler(request) {
     return jsonError("Limite quotidienne de messages FitAI atteinte", 429);
   }
 
-  // --- 6. Appeler l'API Anthropic avec la clé secrète (env var Vercel) ---
-  const anthropicResponse = await fetch(ANTHROPIC_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
-      "anthropic-version": ANTHROPIC_VERSION,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: typeof system === "string" ? system.slice(0, 4000) : undefined,
-      messages,
-    }),
-  });
-
-  const data = await anthropicResponse.text();
-
-  // --- 7. Met à jour le compteur (best effort, n'échoue pas la requête) ---
-  if (anthropicResponse.ok) {
-    fetch(`${SUPABASE_URL}/rest/v1/ai_usage`, {
-      method: "POST",
-      headers: { ...usageHeaders, prefer: "resolution=merge-duplicates" },
-      body: JSON.stringify({ user_id: userId, date: today, count: currentCount + 1 }),
-    }).catch(() => {});
+  // --- 6. Appeler l'API Gemini avec la clé secrète (env var Vercel) ---
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey) {
+    return jsonError("Configuration serveur manquante (GEMINI_API_KEY)", 500);
   }
 
-  // --- 8. Renvoyer la réponse à l'app ---
-  return new Response(data, {
-    status: anthropicResponse.status,
+  const contents = messages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+
+  const geminiBody = {
+    contents,
+    generationConfig: { maxOutputTokens: MAX_TOKENS },
+  };
+  if (typeof system === "string" && system.trim()) {
+    geminiBody.systemInstruction = { parts: [{ text: system.slice(0, 4000) }] };
+  }
+
+  const geminiResponse = await fetch(`${GEMINI_URL}?key=${geminiKey}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(geminiBody),
+  });
+
+  const raw = await geminiResponse.json().catch(() => null);
+
+  if (!geminiResponse.ok || !raw) {
+    const msg = raw?.error?.message || "Erreur lors de l'appel à l'IA";
+    return jsonError(msg, geminiResponse.status || 502);
+  }
+
+  const text =
+    raw.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
+
+  if (!text) {
+    return jsonError("Réponse vide de l'IA (peut-être bloquée par les filtres de sécurité)", 502);
+  }
+
+  // --- 7. Met à jour le compteur (best effort, n'échoue pas la requête) ---
+  fetch(`${SUPABASE_URL}/rest/v1/ai_usage`, {
+    method: "POST",
+    headers: { ...usageHeaders, prefer: "resolution=merge-duplicates" },
+    body: JSON.stringify({ user_id: userId, date: today, count: currentCount + 1 }),
+  }).catch(() => {});
+
+  // --- 8. Renvoyer la réponse à l'app, au format attendu côté client ---
+  return new Response(JSON.stringify({ content: [{ type: "text", text }] }), {
+    status: 200,
     headers: {
       "content-type": "application/json",
       ...corsHeaders(),
