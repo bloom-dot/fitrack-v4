@@ -89,6 +89,13 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .pill.on{background:var(--acc-d);border-color:rgba(212,255,0,.35);color:var(--acc)}
 
 /* ═══ INPUT ═══ */
+/* iOS Safari zoome automatiquement la page quand on tape dans un champ
+   dont le font-size est < 16px, et ne dézoome pas toujours après. On
+   force donc 16px sur tous les champs de saisie sur mobile pour éviter
+   ce zoom intempestif. */
+@media (max-width:768px){
+  input,textarea,select{font-size:16px!important}
+}
 .inp{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 13px;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s}
 .inp:focus{border-color:var(--acc)}
 .inp::placeholder{color:var(--t3)}
@@ -628,6 +635,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
       <div class="setting-row" onclick="goTo('badges')"><div class="setting-lbl">Mes badges 🏅</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="editProfile()"><div class="setting-lbl">Modifier mon profil</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="clearData()"><div class="setting-lbl" style="color:var(--red)">Se déconnecter</div><div class="setting-val">—</div></div>
+      <div class="setting-row" onclick="openDeleteAccountModal()"><div class="setting-lbl" style="color:var(--red)">Supprimer mon compte</div><div class="setting-val">—</div></div>
     </div>
   </div>
 
@@ -706,6 +714,24 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
     <img id="photo-modal-img" style="width:100%;border-radius:10px;margin-bottom:10px">
     <div id="photo-modal-date" style="font-size:12px;color:var(--t2);margin-bottom:10px"></div>
     <button class="btn-outline" style="color:var(--red)" onclick="deleteProgressPhoto()">🗑 Supprimer cette photo</button>
+  </div>
+</div>
+
+<!-- DELETE ACCOUNT MODAL -->
+<div class="modal-bg" id="del-acc-modal" onclick="closeMBg(event,'del-acc-modal')">
+  <div class="modal" style="text-align:center">
+    <div class="modal-handle"></div>
+    <div style="font-size:42px;margin-bottom:8px">⚠️</div>
+    <div class="D" style="font-size:20px;font-weight:900;text-transform:uppercase;margin-bottom:8px;color:var(--red)">Supprimer mon compte</div>
+    <div style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:14px">
+      Cette action est <b>définitive et irréversible</b>. Toutes tes données seront supprimées : profil, séances, records, mensurations, photos, badges et série.
+    </div>
+    <div class="field" style="text-align:left;margin-bottom:14px">
+      <div class="inp-label">Pour confirmer, écris <b>SUPPRIMER</b> ci-dessous :</div>
+      <input class="inp" id="del-acc-confirm" placeholder="SUPPRIMER" autocapitalize="characters">
+    </div>
+    <button class="btn-primary" style="background:var(--red);color:#fff;margin-bottom:8px" onclick="deleteAccount()">🗑 Supprimer définitivement</button>
+    <button class="btn-outline" onclick="document.getElementById('del-acc-modal').classList.remove('open')">Annuler</button>
   </div>
 </div>
 
@@ -2313,6 +2339,36 @@ function getMonShort(m){return['','jan','fév','mar','avr','mai','juin','juil','
 function fmtDur(s){if(!s)return '—';return Math.floor(s/60)+' min';}
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2800);}
 function clearData(){if(confirm('Te déconnecter de FiTrack ?')){logout();}}
+
+// ═══════════════════════════════════
+// SUPPRESSION DE COMPTE
+// ═══════════════════════════════════
+function openDeleteAccountModal(){
+  document.getElementById('del-acc-confirm').value='';
+  document.getElementById('del-acc-modal').classList.add('open');
+}
+async function deleteAccount(){
+  if(document.getElementById('del-acc-confirm').value.trim().toUpperCase()!=='SUPPRIMER'){
+    toast('Écris SUPPRIMER pour confirmer');return;
+  }
+  var session=(await sb.auth.getSession()).data.session;
+  if(!session){toast('Session expirée');return;}
+  try{
+    var res=await fetch('/api/delete-account',{
+      method:'POST',
+      headers:{'content-type':'application/json','authorization':'Bearer '+session.access_token}
+    });
+    if(!res.ok){var err=await res.json().catch(function(){return{};});toast('Erreur : '+(err.error||'suppression impossible'));return;}
+  }catch(e){toast('Erreur réseau, réessaie');return;}
+  // Nettoyage local complet
+  localStorage.clear();
+  document.getElementById('del-acc-modal').classList.remove('open');
+  await sb.auth.signOut();
+  document.getElementById('app').style.display='none';
+  document.getElementById('ob-screen').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+  toast('Compte supprimé');
+}
 
 // ═══════════════════════════════════
 // INIT
