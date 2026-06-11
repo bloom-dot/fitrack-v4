@@ -198,7 +198,7 @@ var sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 var data={};
 
-document.querySelectorAll('.choices').forEach(function(group){
+document.querySelectorAll('.choices, .scale').forEach(function(group){
   var field=group.dataset.field;
   group.querySelectorAll('.choice').forEach(function(c){
     c.addEventListener('click',function(){
