@@ -59,7 +59,7 @@ export default async function handler(request) {
   if (!token) {
     return jsonError("Authentification requise", 401);
   }
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   if (!serviceKey) {
     return jsonError("Configuration serveur manquante (SUPABASE_SERVICE_ROLE_KEY)", 500);
   }
@@ -121,7 +121,7 @@ export default async function handler(request) {
   }
 
   // --- 6. Appeler l'API Gemini avec la clé secrète (env var Vercel) ---
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const geminiKey = (process.env.GEMINI_API_KEY || "").trim();
   if (!geminiKey) {
     return jsonError("Configuration serveur manquante (GEMINI_API_KEY)", 500);
   }

@@ -33,7 +33,7 @@ export default async function handler(request) {
     return jsonError("Authentification requise", 401);
   }
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   if (!serviceKey) {
     return jsonError("Configuration serveur manquante", 500);
   }
