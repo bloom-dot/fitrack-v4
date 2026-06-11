@@ -709,6 +709,18 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
   </div>
 </div>
 
+<!-- PWA INSTALL MODAL -->
+<div class="modal-bg" id="pwa-modal" onclick="closeMBg(event,'pwa-modal')">
+  <div class="modal" style="text-align:center">
+    <div class="modal-handle"></div>
+    <div style="font-size:42px;margin-bottom:8px">⚡</div>
+    <div class="D" style="font-size:20px;font-weight:900;text-transform:uppercase;margin-bottom:8px">Installer FiTrack</div>
+    <div id="pwa-modal-text" style="font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:18px">Ajoute FiTrack à ton écran d'accueil pour y accéder en un tap, comme une vraie application.</div>
+    <button class="btn-primary" id="pwa-install-btn" onclick="doPwaInstall()" style="margin-bottom:8px">📲 Installer l'application</button>
+    <button class="btn-outline" onclick="dismissPwaModal()">Plus tard</button>
+  </div>
+</div>
+
 <!-- PROGRESSION MODAL -->
 <div class="modal-bg" id="progression-modal" onclick="closeMBg(event,'progression-modal')">
   <div class="modal">
@@ -2322,7 +2334,64 @@ function clearData(){if(confirm('Te déconnecter de FiTrack ?')){logout();}}
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('./sw.js').catch(function(){});
   }
+
+  initPwaInstallPrompt();
 })();
+
+// ═══════════════════════════════════
+// INSTALLATION PWA (popup automatique)
+// ═══════════════════════════════════
+var deferredPwaPrompt=null;
+function isStandalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;}
+function isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream;}
+
+// Chrome/Android : intercepte l'invite native pour pouvoir la déclencher
+// nous-mêmes depuis notre popup (sinon Chrome la propose seulement via
+// son propre mini-bandeau, à un moment qu'on ne contrôle pas).
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();
+  deferredPwaPrompt=e;
+  maybeShowPwaModal();
+});
+
+// iOS Safari : pas d'API d'installation -> on affiche des instructions.
+// On affiche aussi un message si l'app est déjà "installable" mais que
+// l'événement beforeinstallprompt n'a pas (encore) été reçu.
+function initPwaInstallPrompt(){
+  if(isStandalone())return; // déjà installée / ouverte depuis l'écran d'accueil
+  var dismissed=DB.g('pwaPromptDismissed',0);
+  var weekMs=7*24*60*60*1000;
+  if(Date.now()-dismissed<weekMs)return;
+  if(isIOS()){
+    setTimeout(function(){
+      document.getElementById('pwa-modal-text').textContent="Pour installer FiTrack : appuie sur le bouton Partager (carré avec une flèche) en bas de Safari, puis choisis \"Sur l'écran d'accueil\".";
+      document.getElementById('pwa-install-btn').style.display='none';
+      document.getElementById('pwa-modal').classList.add('open');
+    },2500);
+  }
+  // Pour Android/Chrome, on attend l'event beforeinstallprompt (cf. ci-dessus)
+}
+function maybeShowPwaModal(){
+  var dismissed=DB.g('pwaPromptDismissed',0);
+  var weekMs=7*24*60*60*1000;
+  if(Date.now()-dismissed<weekMs)return;
+  setTimeout(function(){
+    document.getElementById('pwa-install-btn').style.display='block';
+    document.getElementById('pwa-modal').classList.add('open');
+  },2500);
+}
+async function doPwaInstall(){
+  if(!deferredPwaPrompt){document.getElementById('pwa-modal').classList.remove('open');return;}
+  deferredPwaPrompt.prompt();
+  await deferredPwaPrompt.userChoice;
+  deferredPwaPrompt=null;
+  document.getElementById('pwa-modal').classList.remove('open');
+  DB.s('pwaPromptDismissed',Date.now());
+}
+function dismissPwaModal(){
+  document.getElementById('pwa-modal').classList.remove('open');
+  DB.s('pwaPromptDismissed',Date.now());
+}
 </script>
 </body>
 </html>
