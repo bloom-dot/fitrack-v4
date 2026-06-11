@@ -63,9 +63,14 @@ export default async function handler(request) {
   if (!serviceKey) {
     return jsonError("Configuration serveur manquante (SUPABASE_SERVICE_ROLE_KEY)", 500);
   }
-  const userResp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    headers: { authorization: `Bearer ${token}`, apikey: serviceKey },
-  });
+  let userResp;
+  try {
+    userResp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { authorization: `Bearer ${token}`, apikey: serviceKey },
+    });
+  } catch (e) {
+    return jsonError("Erreur étape 3 (vérif session) : " + (e && e.message ? e.message : String(e)), 500);
+  }
   if (!userResp.ok) {
     return jsonError("Session invalide", 401);
   }
@@ -107,10 +112,15 @@ export default async function handler(request) {
     apikey: serviceKey,
     "content-type": "application/json",
   };
-  const usageResp = await fetch(
-    `${SUPABASE_URL}/rest/v1/ai_usage?user_id=eq.${userId}&date=eq.${today}&select=count`,
-    { headers: usageHeaders }
-  );
+  let usageResp;
+  try {
+    usageResp = await fetch(
+      `${SUPABASE_URL}/rest/v1/ai_usage?user_id=eq.${userId}&date=eq.${today}&select=count`,
+      { headers: usageHeaders }
+    );
+  } catch (e) {
+    return jsonError("Erreur étape 5 (quota) : " + (e && e.message ? e.message : String(e)), 500);
+  }
   let currentCount = 0;
   if (usageResp.ok) {
     const rows = await usageResp.json();
@@ -139,11 +149,16 @@ export default async function handler(request) {
     geminiBody.systemInstruction = { parts: [{ text: system.slice(0, 4000) }] };
   }
 
-  const geminiResponse = await fetch(`${GEMINI_URL}?key=${geminiKey}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(geminiBody),
-  });
+  let geminiResponse;
+  try {
+    geminiResponse = await fetch(`${GEMINI_URL}?key=${geminiKey}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(geminiBody),
+    });
+  } catch (e) {
+    return jsonError("Erreur étape 6 (appel Gemini) : " + (e && e.message ? e.message : String(e)), 500);
+  }
 
   const raw = await geminiResponse.json().catch(() => null);
 
