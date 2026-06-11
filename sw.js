@@ -37,6 +37,10 @@ self.addEventListener('fetch', function(event) {
   var url = new URL(event.request.url);
   // On ne touche pas aux appels vers Supabase / API externes
   if (url.origin !== self.location.origin) return;
+  // On ne met pas en cache les URLs avec paramètres (ex: redirection
+  // OAuth contenant un code/jeton dans l'URL) pour éviter de stocker
+  // des informations sensibles dans le Cache Storage de l'appareil.
+  if (url.search) { event.respondWith(fetch(event.request)); return; }
 
   event.respondWith(
     fetch(event.request).then(function(res) {
