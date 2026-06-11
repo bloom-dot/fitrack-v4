@@ -176,3 +176,11 @@ create policy "Users can manage their own progress photos"
 on storage.objects for all
 using (bucket_id = 'progress-photos' and auth.uid()::text = (storage.foldername(name))[1])
 with check (bucket_id = 'progress-photos' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- ─────────────────────────────────────────────
+-- MIGRATION : synchronisation séances / records / série
+-- (jusqu'ici stockés uniquement en local sur l'appareil)
+-- ─────────────────────────────────────────────
+alter table personal_records add column if not exists volume numeric;
+alter table personal_records add column if not exists est_1rm numeric;
+alter table personal_records add constraint personal_records_user_exercise_unique unique (user_id, exercise);

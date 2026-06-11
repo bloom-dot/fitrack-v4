@@ -756,7 +756,7 @@ var DB={
 };
 var sessions=DB.g('sessions',[]);
 var prs=DB.g('prs',{});
-var streak=DB.g('streak',{count:0,last:null});
+var streak=DB.g('streak',{count:0,best:0,last:null});
 var userProfile=DB.g('profile',null);
 var selectedExercises=DB.g('selected_exercises',[]);
 var program=DB.g('program',null);
@@ -899,10 +899,44 @@ async function routeAfterAuth(){
     if(bm.data&&bm.data.length){measurements=bm.data;DB.s('measurements',measurements);}
     var bg=await sb.from('badges').select('badge_key').eq('user_id',session.user.id);
     if(bg.data&&bg.data.length){unlockedBadges=bg.data.map(function(b){return b.badge_key;});DB.s('badges',unlockedBadges);}
+    await syncSessionsPRsStreak(session);
     showApp();
   }else{
     showOnboarding();
   }
+}
+
+// Synchronise séances / records / série entre l'appareil et Supabase :
+// - si Supabase a déjà des données -> on les charge (source de vérité)
+// - sinon, si l'appareil a des données locales -> on les pousse vers
+//   Supabase (migration unique pour les anciens utilisateurs)
+async function syncSessionsPRsStreak(session){
+  try{
+    var ss=await sb.from('sessions').select('*').eq('user_id',session.user.id).order('date',{ascending:false});
+    if(ss.data&&ss.data.length){
+      sessions=ss.data.map(function(r){return r.exercises;});DB.s('sessions',sessions);
+    }else if(sessions.length){
+      for(var i=0;i<sessions.length;i++){
+        var sd=sessions[i];
+        await sb.from('sessions').insert({user_id:session.user.id,date:sd.date,duration_seconds:sd.duration,exercises:sd});
+      }
+    }
+    var pr=await sb.from('personal_records').select('*').eq('user_id',session.user.id);
+    if(pr.data&&pr.data.length){
+      var newPrs={};
+      pr.data.forEach(function(r){newPrs[r.exercise]={weight:r.weight,reps:r.reps,volume:r.volume,est1RM:r.est_1rm,date:r.date};});
+      prs=newPrs;DB.s('prs',prs);
+    }else{
+      var keys=Object.keys(prs);
+      for(var j=0;j<keys.length;j++){await syncPRToSupabase(keys[j]);}
+    }
+    var st=await sb.from('streaks').select('*').eq('user_id',session.user.id).maybeSingle();
+    if(st.data){
+      streak={count:st.data.current_count,best:st.data.best_count,last:st.data.last_active_date};DB.s('streak',streak);
+    }else if(streak.count){
+      await syncStreakToSupabase();
+    }
+  }catch(e){}
 }
 
 // Convertit une ligne Supabase "profiles" vers le format utilisé par l'app
@@ -1311,7 +1345,7 @@ function getRmSuggestions(rm){if(!rm)return[];return [{pct:50,reps:'12-15',label
 // ═══════════════════════════════════
 // PR ENGINE
 // ═══════════════════════════════════
-function checkPR(name,w,r){
+function checkPR(name,w,r,muscle){
   var wf=parseFloat(w);var ri=parseInt(r);
   if(!wf||!ri||wf<=0||ri<=0)return false;
   var vol=Math.round(wf*ri);var est=calc1RM(wf,ri);
@@ -1321,8 +1355,16 @@ function checkPR(name,w,r){
     if(est>(ex.est1RM||0)){prs[name].est1RM=est;prs[name].weight=wf;prs[name].reps=ri;prs[name].date=todayStr();isPR=true;type='1RM estimé';}
     if(vol>(ex.volume||0)){prs[name].volume=vol;if(!isPR)prs[name].date=todayStr();isPR=true;if(!type)type='Volume max';}
   }
-  if(isPR)DB.s('prs',prs);
+  if(isPR){DB.s('prs',prs);syncPRToSupabase(name,muscle);}
   return isPR?{type:type,weight:wf,reps:ri,est1RM:est}:false;
+}
+async function syncPRToSupabase(name,muscle){
+  try{
+    var session=(await sb.auth.getSession()).data.session;
+    if(!session)return;
+    var pr=prs[name];
+    await sb.from('personal_records').upsert({user_id:session.user.id,exercise:name,muscle_group:muscle||null,weight:pr.weight,reps:pr.reps,volume:pr.volume,est_1rm:pr.est1RM,date:pr.date},{onConflict:'user_id,exercise'});
+  }catch(e){}
 }
 
 // ═══════════════════════════════════
@@ -1473,11 +1515,12 @@ function finishSession(){
     var exName=block.dataset.name;var sets=[];var exVol=0;
     block.querySelectorAll('.set-row').forEach(function(row){
       var ins=row.querySelectorAll('.set-inp');var kg=parseFloat(ins[0].value);var reps=parseInt(ins[1].value);
-      if(kg&&reps){var vol=Math.round(kg*reps);sets.push({kg:kg,reps:reps,volume:vol});exVol+=vol;var pr=checkPR(exName,kg,reps);if(pr)newPRs.push({exercise:exName,result:pr});}
+      if(kg&&reps){var vol=Math.round(kg*reps);sets.push({kg:kg,reps:reps,volume:vol});exVol+=vol;var pr=checkPR(exName,kg,reps,block.dataset.muscle);if(pr)newPRs.push({exercise:exName,result:pr});}
     });
     sd.exercises.push({name:exName,muscle:block.dataset.muscle,sets:sets,volume:exVol});sd.totalVolume+=exVol;
   });
   sd.newPRs=newPRs;sessions.unshift(sd);DB.s('sessions',sessions);
+  syncSessionToSupabase(sd);
   updateStreak();
   adjustProgramAfterSession(sd);
   checkBadges();
@@ -1485,6 +1528,13 @@ function finishSession(){
   stopSessionTimer();sStart=null;document.getElementById('ex-list').innerHTML='';document.getElementById('session-name').value='Push Day';exCtr=0;
   if(newPRs.length){prQueue=newPRs.slice();pendingPRs=[];showNextPR();}
   else{toast('Séance enregistrée 🎉 — '+sd.totalVolume.toLocaleString('fr-FR')+' kg');goTo('home');buildDefaultSession();}
+}
+async function syncSessionToSupabase(sd){
+  try{
+    var session=(await sb.auth.getSession()).data.session;
+    if(!session)return;
+    await sb.from('sessions').insert({user_id:session.user.id,date:sd.date,duration_seconds:sd.duration,exercises:sd});
+  }catch(e){}
 }
 function showNextPR(){
   if(!prQueue.length){goTo('records');if(pendingPRs.length)toast(pendingPRs.length+' nouveau(x) record(s) ! 🏆');pendingPRs=[];buildDefaultSession();return;}
@@ -1581,7 +1631,21 @@ function buildDefaultSession(){
 // ═══════════════════════════════════
 // STREAK
 // ═══════════════════════════════════
-function updateStreak(){var t=todayStr();if(streak.last===t)return;if(streak.last===yesterdayStr())streak.count++;else streak.count=1;streak.last=t;DB.s('streak',streak);}
+function updateStreak(){
+  var t=todayStr();if(streak.last===t)return;
+  if(streak.last===yesterdayStr())streak.count++;else streak.count=1;
+  streak.last=t;
+  if(!streak.best||streak.count>streak.best)streak.best=streak.count;
+  DB.s('streak',streak);
+  syncStreakToSupabase();
+}
+async function syncStreakToSupabase(){
+  try{
+    var session=(await sb.auth.getSession()).data.session;
+    if(!session)return;
+    await sb.from('streaks').upsert({user_id:session.user.id,current_count:streak.count,best_count:streak.best,last_active_date:streak.last},{onConflict:'user_id'});
+  }catch(e){}
+}
 
 // ═══════════════════════════════════
 // RENDER HOME
