@@ -335,6 +335,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .ms-row{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);margin-bottom:7px}
 .ms-row .ms-date{font-size:12px;color:var(--t2)}
 .ms-row .ms-vals{font-size:13px;font-weight:600}
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.photo-grid img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;cursor:pointer;background:var(--s2)}
 .badge-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .badge-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px 12px;text-align:center;opacity:.4}
 .badge-card.unlocked{opacity:1;border-color:rgba(212,255,0,.3);background:var(--acc-d)}
@@ -645,6 +647,13 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
       </div>
       <div class="week-chart"><div class="wc-title D">Évolution du poids</div><div class="wc-sub">Kg au fil du temps</div><div style="position:relative;height:140px"><canvas id="weight-chart"></canvas></div></div>
       <div id="ms-list"></div>
+      <div class="card">
+        <div class="sh" style="margin-top:0;margin-bottom:4px"><h2 class="D" style="font-size:15px">Photos de progression</h2></div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:10px">Compressées automatiquement avant envoi pour économiser ton espace de stockage.</div>
+        <input type="file" accept="image/*" id="photo-input" style="display:none" onchange="uploadProgressPhoto(this.files[0]);this.value='';">
+        <button class="btn-outline" onclick="document.getElementById('photo-input').click()">📷 Ajouter une photo</button>
+        <div class="photo-grid" id="photo-grid" style="margin-top:12px"></div>
+      </div>
     </div>
   </div>
 
@@ -684,6 +693,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
   <div class="modal">
     <div class="modal-handle"></div>
     <div id="prev-modal-body"></div>
+  </div>
+</div>
+
+<!-- PHOTO MODAL -->
+<div class="modal-bg" id="photo-modal" onclick="closeMBg(event,'photo-modal')">
+  <div class="modal" style="text-align:center">
+    <div class="modal-handle"></div>
+    <img id="photo-modal-img" style="width:100%;border-radius:10px;margin-bottom:10px">
+    <div id="photo-modal-date" style="font-size:12px;color:var(--t2);margin-bottom:10px"></div>
+    <button class="btn-outline" style="color:var(--red)" onclick="deleteProgressPhoto()">🗑 Supprimer cette photo</button>
   </div>
 </div>
 
@@ -2065,6 +2084,79 @@ function renderMeasurements(){
       return '<div class="ms-row"><div class="ms-date">'+d[2]+'/'+d[1]+'/'+d[0]+(extras.length?'<br>'+extras.join(' · '):'')+'</div><div class="ms-vals">'+m.weight+' kg</div></div>';
     }).join('');
   }
+  renderPhotos();
+}
+
+// ═══════════════════════════════════
+// PHOTOS DE PROGRESSION (Supabase Storage)
+// ═══════════════════════════════════
+var currentPhotoPath=null;
+function compressImage(file,maxDim,quality){
+  return new Promise(function(resolve,reject){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var img=new Image();
+      img.onload=function(){
+        var w=img.width,h=img.height;
+        if(w>h&&w>maxDim){h=Math.round(h*maxDim/w);w=maxDim;}
+        else if(h>=w&&h>maxDim){w=Math.round(w*maxDim/h);h=maxDim;}
+        var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        canvas.toBlob(function(blob){blob?resolve(blob):reject(new Error('compression échouée'));},'image/jpeg',quality);
+      };
+      img.onerror=reject;
+      img.src=e.target.result;
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function uploadProgressPhoto(file){
+  if(!file)return;
+  var session=(await sb.auth.getSession()).data.session;
+  if(!session){toast('Connecte-toi pour ajouter une photo');return;}
+  toast('Compression et envoi...');
+  try{
+    var blob=await compressImage(file,1280,0.7);
+    var path=session.user.id+'/'+todayStr()+'-'+Date.now()+'.jpg';
+    var res=await sb.storage.from('progress-photos').upload(path,blob,{contentType:'image/jpeg',upsert:false});
+    if(res.error){toast('Erreur upload : '+res.error.message);return;}
+    toast('Photo ajoutée ✓');
+    DB.s('hasPhoto',true);
+    checkBadges();
+    renderPhotos();
+  }catch(e){toast('Erreur lors du traitement de la photo');}
+}
+async function renderPhotos(){
+  var grid=document.getElementById('photo-grid');if(!grid)return;
+  var session=(await sb.auth.getSession()).data.session;
+  if(!session){grid.innerHTML='';return;}
+  var res=await sb.storage.from('progress-photos').list(session.user.id,{sortBy:{column:'name',order:'desc'}});
+  if(res.error||!res.data||!res.data.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="empty-ico">📷</div><p>Aucune photo. Ajoute ta première photo de progression !</p></div>';return;}
+  var html='';
+  for(var i=0;i<res.data.length;i++){
+    var f=res.data[i];if(!f.name)continue;
+    var path=session.user.id+'/'+f.name;
+    var signed=await sb.storage.from('progress-photos').createSignedUrl(path,3600);
+    var url=signed.data?signed.data.signedUrl:'';
+    if(!url)continue;
+    html+='<img src="'+url+'" loading="lazy" onclick="openPhotoModal(\''+path.replace(/'/g,"\\'")+'\',\''+url.replace(/'/g,"\\'")+'\',\''+esc(f.name)+'\')">';
+  }
+  grid.innerHTML=html||'<div class="empty" style="grid-column:1/-1"><div class="empty-ico">📷</div><p>Aucune photo. Ajoute ta première photo de progression !</p></div>';
+}
+function openPhotoModal(path,url,name){
+  currentPhotoPath=path;
+  document.getElementById('photo-modal-img').src=url;
+  var m=name.match(/^(\d{4}-\d{2}-\d{2})/);
+  document.getElementById('photo-modal-date').textContent=m?m[1]:'';
+  document.getElementById('photo-modal').classList.add('open');
+}
+async function deleteProgressPhoto(){
+  if(!currentPhotoPath)return;
+  await sb.storage.from('progress-photos').remove([currentPhotoPath]);
+  document.getElementById('photo-modal').classList.remove('open');
+  toast('Photo supprimée');
+  renderPhotos();
 }
 
 // ═══════════════════════════════════
@@ -2078,7 +2170,8 @@ var BADGES=[
   {key:'streak_7',ico:'⚡',name:'Une semaine de feu',desc:'7 jours de série',check:function(){return streak.count>=7;}},
   {key:'streak_30',ico:'🌟',name:'Un mois de feu',desc:'30 jours de série',check:function(){return streak.count>=30;}},
   {key:'volume_10k',ico:'🏋️',name:'Grosse séance',desc:'10 000 kg de volume en une séance',check:function(){return sessions.some(function(s){return (s.totalVolume||0)>=10000;});}},
-  {key:'first_measure',ico:'📏',name:'Suivi lancé',desc:'Enregistre ta première mesure',check:function(){return measurements.length>=1;}}
+  {key:'first_measure',ico:'📏',name:'Suivi lancé',desc:'Enregistre ta première mesure',check:function(){return measurements.length>=1;}},
+  {key:'first_photo',ico:'📷',name:'Avant / après',desc:'Ajoute ta première photo de progression',check:function(){return DB.g('hasPhoto',false)===true;}}
 ];
 async function checkBadges(){
   var newly=[];

@@ -162,3 +162,17 @@ alter table profiles add column if not exists injuries jsonb;
 -- MIGRATION : ajustement calorique adaptatif
 -- ─────────────────────────────────────────────
 alter table profiles add column if not exists cal_adjustment numeric default 0;
+
+-- ─────────────────────────────────────────────
+-- MIGRATION : photos de progression (Supabase Storage)
+-- Crée un bucket privé "progress-photos" : chaque utilisateur ne peut
+-- accéder qu'à son propre dossier (chemin = userId/nomfichier.jpg)
+-- ─────────────────────────────────────────────
+insert into storage.buckets (id, name, public)
+values ('progress-photos','progress-photos', false)
+on conflict (id) do nothing;
+
+create policy "Users can manage their own progress photos"
+on storage.objects for all
+using (bucket_id = 'progress-photos' and auth.uid()::text = (storage.foldername(name))[1])
+with check (bucket_id = 'progress-photos' and auth.uid()::text = (storage.foldername(name))[1]);
