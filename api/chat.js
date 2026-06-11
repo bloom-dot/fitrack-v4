@@ -63,6 +63,26 @@ export default async function handler(request) {
   if (!serviceKey) {
     return jsonError("Configuration serveur manquante (SUPABASE_SERVICE_ROLE_KEY)", 500);
   }
+  // Diagnostic : vérifie que la clé et le jeton ne contiennent que des
+  // caractères valides pour un header HTTP (souvent un copier-coller
+  // ajoute un caractère invisible qui casse fetch())
+  const badServiceKeyChars = findInvalidHeaderChars(serviceKey);
+  if (badServiceKeyChars.length) {
+    return jsonError(
+      "SUPABASE_SERVICE_ROLE_KEY contient un caractère invalide (longueur=" +
+        serviceKey.length + ", positions=" + JSON.stringify(badServiceKeyChars) + ")",
+      500
+    );
+  }
+  const badTokenChars = findInvalidHeaderChars(token);
+  if (badTokenChars.length) {
+    return jsonError(
+      "Le jeton de session contient un caractère invalide (longueur=" +
+        token.length + ", positions=" + JSON.stringify(badTokenChars) + ")",
+      500
+    );
+  }
+
   let userResp;
   try {
     userResp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -192,6 +212,17 @@ export default async function handler(request) {
   } catch (e) {
     return jsonError("Erreur serveur : " + (e && e.message ? e.message : String(e)), 500);
   }
+}
+
+// Renvoie la liste des positions où le caractère n'est pas un ASCII
+// imprimable valide pour un header HTTP (en-têtes : 0x20-0x7E uniquement)
+function findInvalidHeaderChars(str) {
+  const bad = [];
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    if (c < 0x20 || c > 0x7e) bad.push({ pos: i, code: c });
+  }
+  return bad;
 }
 
 function corsHeaders() {
