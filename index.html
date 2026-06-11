@@ -2377,7 +2377,9 @@ async function sendAI(){
   }catch(e){ld.remove();appendMsg('bot','Connexion impossible : '+(e&&e.message?e.message:e));}
 }
 function sendQP(txt){goTo('ai');document.getElementById('ai-inp').value=txt;sendAI();}
-function appendMsg(role,txt){var chat=document.getElementById('ai-chat');var div=document.createElement('div');div.className='ai-msg '+role;if(role==='bot')div.innerHTML='<div class="ai-bot-lbl">🤖 FitAI</div>'+esc(txt).replace(/\n/g,'<br>');else div.textContent=txt;chat.appendChild(div);div.scrollIntoView({behavior:'smooth',block:'nearest'});return div;}
+function appendMsg(role,txt){var chat=document.getElementById('ai-chat');var div=document.createElement('div');div.className='ai-msg '+role;if(role==='bot')div.innerHTML='<div class="ai-bot-lbl">🤖 FitAI</div>'+mdLite(txt);else div.textContent=txt;chat.appendChild(div);div.scrollIntoView({behavior:'smooth',block:'nearest'});return div;}
+// Convertit un Markdown très simple (gras **texte**, italique *texte*) en HTML, en échappant le reste
+function mdLite(txt){return esc(txt).replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|[\s>])\*([^*\s][^*]*?)\*(?=[\s.,!?<]|$)/g,'$1<i>$2</i>');}
 function appendLoading(){var chat=document.getElementById('ai-chat');var div=document.createElement('div');div.className='ai-msg bot';div.innerHTML='<div class="ai-bot-lbl">🤖 FitAI</div><div class="ai-dots"><span></span><span></span><span></span></div>';chat.appendChild(div);div.scrollIntoView({behavior:'smooth',block:'nearest'});return div;}
 function autoResize(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 function aiKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAI();}}
