@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>FiTrack — Questionnaire de test</title>
+<link rel="icon" href="assets/icons/icon-192.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0a;--s1:#141414;--s2:#1c1c1c;--border:#2a2a2a;--text:#fff;--t2:#9a9a9a;--t3:#666;--acc:#d4ff00;--acc-d:rgba(212,255,0,.1);--red:#ff4d4d}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;padding:24px 18px 60px;max-width:560px;margin:0 auto}
+h1{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;text-transform:uppercase;color:var(--acc);letter-spacing:-1px;margin-bottom:6px}
+.intro{font-size:13px;color:var(--t2);line-height:1.6;margin-bottom:28px}
+.intro b{color:var(--text)}
+.q{margin-bottom:22px}
+.q-label{font-size:14px;font-weight:600;margin-bottom:8px;line-height:1.4}
+.q-num{color:var(--acc);margin-right:4px}
+.q-hint{font-size:11px;color:var(--t3);margin-bottom:8px}
+textarea,input[type=text]{width:100%;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-family:'Inter',sans-serif;font-size:14px;resize:vertical}
+textarea{min-height:64px}
+textarea:focus,input:focus{outline:none;border-color:var(--acc)}
+.choices{display:flex;flex-wrap:wrap;gap:8px}
+.choice{flex:1;min-width:80px;text-align:center;padding:10px 8px;border:1px solid var(--border);border-radius:10px;background:var(--s1);font-size:13px;cursor:pointer;transition:all .15s;user-select:none}
+.choice.on{border-color:var(--acc);background:var(--acc-d);color:var(--acc);font-weight:600}
+.scale{display:flex;gap:6px}
+.scale .choice{min-width:0;padding:10px 0}
+.section-title{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;text-transform:uppercase;color:var(--text);margin:32px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.section-title:first-of-type{margin-top:0}
+.submit-btn{width:100%;padding:16px;border:none;border-radius:12px;background:var(--acc);color:#0a0a0a;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;margin-top:24px}
+.submit-btn:disabled{opacity:.5}
+.msg{margin-top:14px;font-size:13px;text-align:center;display:none}
+.msg.show{display:block}
+.msg.ok{color:var(--acc)}
+.msg.err{color:var(--red)}
+.done{display:none;text-align:center;padding:60px 0}
+.done.show{display:block}
+.done .big{font-size:48px;margin-bottom:14px}
+</style>
+</head>
+<body>
+
+<div id="form-wrap">
+  <h1>FiTrack — Test</h1>
+  <div class="intro">
+    Merci de prendre quelques minutes pour tester <b>FiTrack</b> et donner ton avis !<br><br>
+    🎯 <b>Le but de FiTrack</b> : générer automatiquement un programme d'entraînement personnalisé selon ton profil et ton objectif, suivre tes séances et tes records, et te conseiller via une IA — un coach perso gratuit dans ta poche.<br><br>
+    Tes retours (même critiques !) m'aident énormément à améliorer l'app avant de la partager plus largement. Toutes les questions ne sont pas obligatoires, réponds à ce que tu peux 🙏
+  </div>
+
+  <form id="fb-form">
+    <div class="section-title">Première impression</div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">1.</span>As-tu réussi à créer ton compte et remplir le questionnaire de profil sans problème ?</div>
+      <div class="choices" data-field="account_ok">
+        <div class="choice" data-val="Oui">Oui</div>
+        <div class="choice" data-val="Non">Non</div>
+      </div>
+    </div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">2.</span>As-tu réussi à installer l'app sur l'écran d'accueil de ton téléphone ?</div>
+      <div class="choices" data-field="pwa_install">
+        <div class="choice" data-val="Oui">Oui</div>
+        <div class="choice" data-val="Non">Non</div>
+        <div class="choice" data-val="Pas vu la proposition">Pas vu la proposition</div>
+      </div>
+    </div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">3.</span>Sur 5, comment trouves-tu le design et l'ambiance générale de l'app ?</div>
+      <div class="scale" data-field="design_rating">
+        <div class="choice" data-val="1">1</div>
+        <div class="choice" data-val="2">2</div>
+        <div class="choice" data-val="3">3</div>
+        <div class="choice" data-val="4">4</div>
+        <div class="choice" data-val="5">5</div>
+      </div>
+    </div>
+
+    <div class="section-title">Programme &amp; séances</div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">4.</span>Le programme généré te semble-t-il adapté à ton objectif et ton niveau ? Pourquoi ?</div>
+      <textarea data-field="program_relevant" placeholder="Ton avis..."></textarea>
+    </div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">5.</span>As-tu réussi à faire une séance complète (cocher les séries, enregistrer) sans difficulté ?</div>
+      <div class="choices" data-field="session_ok">
+        <div class="choice" data-val="Oui">Oui</div>
+        <div class="choice" data-val="Non">Non</div>
+      </div>
+    </div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">6.</span>Les répétitions/poids pré-remplis t'ont-ils semblé pertinents ?</div>
+      <textarea data-field="reps_relevant" placeholder="Ton avis..."></textarea>
+    </div>
+
+    <div class="section-title">Fonctionnalités</div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">7.</span>As-tu testé "Records personnels" ? Qu'en penses-tu ?</div>
+      <textarea data-field="records_feedback" placeholder="Ton avis..."></textarea>
+    </div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">8.</span>As-tu testé "Mensurations / Poids" ? Qu'en penses-tu ?</div>
+      <textarea data-field="measurements_feedback" placeholder="Ton avis..."></textarea>
+    </div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">9.</span>As-tu testé l'assistant IA (FitAI) ? Tes retours ?</div>
+      <textarea data-field="ai_feedback" placeholder="Ton avis..."></textarea>
+    </div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">10.</span>As-tu vu/testé les badges ou la série de jours (streak) ?</div>
+      <textarea data-field="badges_feedback" placeholder="Ton avis..."></textarea>
+    </div>
+
+    <div class="section-title">Ergonomie mobile</div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">11.</span>As-tu rencontré des soucis d'affichage (boutons cachés, zoom bloqué, texte coupé...) ? Si oui, sur quelle page, et quel téléphone ?</div>
+      <textarea data-field="display_issues" placeholder="Ex : iPhone 13, page Profil, le bouton..."></textarea>
+    </div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">12.</span>La navigation (menu du bas) était-elle claire et facile à utiliser ?</div>
+      <div class="choices" data-field="nav_clear">
+        <div class="choice" data-val="Oui">Oui</div>
+        <div class="choice" data-val="Non">Non</div>
+      </div>
+    </div>
+
+    <div class="section-title">Avis général</div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">13.</span>Qu'as-tu le plus aimé ?</div>
+      <textarea data-field="liked_most"></textarea>
+    </div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">14.</span>Qu'est-ce qui t'a le plus dérangé ou semblé inutile ?</div>
+      <textarea data-field="disliked"></textarea>
+    </div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">15.</span>Y a-t-il une fonctionnalité qui te manque ?</div>
+      <textarea data-field="missing_feature"></textarea>
+    </div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">16.</span>Sur 10, recommanderais-tu cette app à un ami qui fait du sport ?</div>
+      <div class="scale" data-field="recommend_score">
+        <div class="choice" data-val="1">1</div>
+        <div class="choice" data-val="2">2</div>
+        <div class="choice" data-val="3">3</div>
+        <div class="choice" data-val="4">4</div>
+        <div class="choice" data-val="5">5</div>
+        <div class="choice" data-val="6">6</div>
+        <div class="choice" data-val="7">7</div>
+        <div class="choice" data-val="8">8</div>
+        <div class="choice" data-val="9">9</div>
+        <div class="choice" data-val="10">10</div>
+      </div>
+    </div>
+
+    <div class="q">
+      <div class="q-label"><span class="q-num">17.</span>Remarques libres / bugs rencontrés</div>
+      <textarea data-field="free_comments" placeholder="Tout ce que tu veux ajouter..."></textarea>
+    </div>
+
+    <div class="q">
+      <div class="q-label">Ton téléphone (modèle + iOS/Android), pour m'aider à reproduire les bugs</div>
+      <input type="text" data-field="device" placeholder="Ex : iPhone 13, iOS 17">
+    </div>
+
+    <button type="submit" class="submit-btn" id="submit-btn">Envoyer mes réponses</button>
+    <div class="msg" id="fb-msg"></div>
+  </form>
+</div>
+
+<div class="done" id="done-screen">
+  <div class="big">🎉</div>
+  <h1>Merci !</h1>
+  <div class="intro">Ta réponse a bien été envoyée. Merci beaucoup pour ton aide !</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+var SUPABASE_URL='https://wszhbpsuujcgjnvvtgfv.supabase.co';
+var SUPABASE_KEY='sb_publishable_T_-8kbP_q7_pGK4SCXJcyQ_0iBfmbmP';
+var sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+var data={};
+
+document.querySelectorAll('.choices').forEach(function(group){
+  var field=group.dataset.field;
+  group.querySelectorAll('.choice').forEach(function(c){
+    c.addEventListener('click',function(){
+      group.querySelectorAll('.choice').forEach(function(x){x.classList.remove('on');});
+      c.classList.add('on');
+      data[field]=c.dataset.val;
+    });
+  });
+});
+
+document.querySelectorAll('textarea[data-field],input[data-field]').forEach(function(el){
+  el.addEventListener('input',function(){
+    data[el.dataset.field]=el.value;
+  });
+});
+
+document.getElementById('fb-form').addEventListener('submit',async function(e){
+  e.preventDefault();
+  var btn=document.getElementById('submit-btn');
+  var msg=document.getElementById('fb-msg');
+  btn.disabled=true;btn.textContent='Envoi...';
+  if(data.design_rating)data.design_rating=+data.design_rating;
+  if(data.recommend_score)data.recommend_score=+data.recommend_score;
+  try{
+    var res=await sb.from('feedback').insert(data);
+    if(res.error)throw res.error;
+    document.getElementById('form-wrap').style.display='none';
+    document.getElementById('done-screen').classList.add('show');
+  }catch(err){
+    msg.textContent='Erreur lors de l\'envoi, réessaie dans un instant.';
+    msg.className='msg show err';
+    btn.disabled=false;btn.textContent='Envoyer mes réponses';
+  }
+});
+</script>
+</body>
+</html>

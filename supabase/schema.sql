@@ -184,3 +184,38 @@ with check (bucket_id = 'progress-photos' and auth.uid()::text = (storage.folder
 alter table personal_records add column if not exists volume numeric;
 alter table personal_records add column if not exists est_1rm numeric;
 alter table personal_records add constraint personal_records_user_exercise_unique unique (user_id, exercise);
+
+-- ─────────────────────────────────────────────
+-- MIGRATION : retours des testeurs (page feedback.html)
+-- Formulaire accessible sans connexion : on autorise l'insertion
+-- anonyme, mais PAS la lecture (toi seul peux lire via le Table
+-- Editor de Supabase, qui utilise une clé admin).
+-- ─────────────────────────────────────────────
+create table if not exists feedback (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  account_ok text,
+  pwa_install text,
+  design_rating int,
+  program_relevant text,
+  session_ok text,
+  reps_relevant text,
+  records_feedback text,
+  measurements_feedback text,
+  ai_feedback text,
+  badges_feedback text,
+  display_issues text,
+  nav_clear text,
+  liked_most text,
+  disliked text,
+  missing_feature text,
+  recommend_score int,
+  free_comments text,
+  device text
+);
+
+alter table feedback enable row level security;
+
+create policy "Anyone can submit feedback"
+  on feedback for insert
+  with check (true);
