@@ -219,3 +219,20 @@ alter table feedback enable row level security;
 create policy "Anyone can submit feedback"
   on feedback for insert
   with check (true);
+
+-- ─────────────────────────────────────────────
+-- MIGRATION : quota quotidien FitAI (api/chat.js)
+-- Limite le nombre de messages IA par utilisateur et par jour pour
+-- éviter qu'un compte ne consomme tout le crédit de la clé Anthropic
+-- (payante). Géré uniquement côté serveur via la clé service_role.
+-- ─────────────────────────────────────────────
+create table if not exists ai_usage (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  date date not null,
+  count int not null default 0,
+  primary key (user_id, date)
+);
+
+alter table ai_usage enable row level security;
+-- Aucune policy : seule la clé service_role (utilisée côté serveur)
+-- peut lire/écrire cette table.

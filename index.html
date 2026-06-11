@@ -2362,7 +2362,11 @@ async function sendAI(){
     if(userProfile)sysCtx+='Profil client : '+userProfile.poids+'kg, objectif '+userProfile.obj+', niveau activité '+userProfile.act+'. ';
     if(Object.keys(prs).length)sysCtx+='Records : '+Object.keys(prs).slice(0,5).map(function(k){return k+' '+prs[k].weight+'kg';}).join(', ')+'. ';
     sysCtx+='Réponds en français, de façon directe, motivante et actionnable.';
-    var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sysCtx,messages:[{role:'user',content:msg}]})});
+    var session=(await sb.auth.getSession()).data.session;
+    if(!session){ld.remove();appendMsg('bot','Session expirée, reconnecte-toi pour utiliser FitAI.');return;}
+    var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','authorization':'Bearer '+session.access_token},body:JSON.stringify({system:sysCtx,messages:[{role:'user',content:msg}]})});
+    if(res.status===401){ld.remove();appendMsg('bot','Session expirée, reconnecte-toi pour utiliser FitAI.');return;}
+    if(res.status===429){ld.remove();appendMsg('bot','Tu as atteint la limite de messages pour aujourd\'hui. Réessaie demain !');return;}
     var data=await res.json();ld.remove();
     appendMsg('bot',data.content?.[0]?.text||'Désolé, une erreur est survenue.');
   }catch(e){ld.remove();appendMsg('bot','Connexion impossible. Vérifie ta connexion internet.');}
