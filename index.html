@@ -2369,7 +2369,7 @@ async function sendAI(){
     var data=await res.json().catch(function(){return null;});ld.remove();
     if(res.status===429){
       if(data&&typeof data.error==='string'&&data.error.indexOf('QUOTA_INTERNAL')===0){appendMsg('bot','Tu as atteint la limite de messages pour aujourd\'hui. Réessaie demain ! ('+data.error+')');}
-      else{appendMsg('bot','FitAI est très sollicité en ce moment, réessaie dans une minute.');}
+      else{appendMsg('bot','FitAI est très sollicité en ce moment (429) : '+(data&&data.error?(data.error.message||data.error):'raison inconnue'));}
       return;
     }
     if(!res.ok){appendMsg('bot','Désolé, une erreur est survenue (code '+res.status+(data&&(data.error&&(data.error.message||data.error))?(' : '+(data.error.message||data.error)):'')+').');return;}
