@@ -2368,7 +2368,7 @@ async function sendAI(){
     if(res.status===401){ld.remove();appendMsg('bot','Session expirée, reconnecte-toi pour utiliser FitAI.');return;}
     var data=await res.json().catch(function(){return null;});ld.remove();
     if(res.status===429){
-      if(data&&data.error==='QUOTA_INTERNAL'){appendMsg('bot','Tu as atteint la limite de messages pour aujourd\'hui. Réessaie demain !');}
+      if(data&&typeof data.error==='string'&&data.error.indexOf('QUOTA_INTERNAL')===0){appendMsg('bot','Tu as atteint la limite de messages pour aujourd\'hui. Réessaie demain ! ('+data.error+')');}
       else{appendMsg('bot','FitAI est très sollicité en ce moment, réessaie dans une minute.');}
       return;
     }

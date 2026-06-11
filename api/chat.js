@@ -147,7 +147,10 @@ export default async function handler(request) {
     if (rows.length) currentCount = rows[0].count;
   }
   if (currentCount >= DAILY_LIMIT) {
-    return jsonError("QUOTA_INTERNAL", 429);
+    return jsonError(
+      "QUOTA_INTERNAL (debug: count=" + currentCount + ", usageStatus=" + usageResp.status + ", userId=" + userId + ")",
+      429
+    );
   }
 
   // --- 6. Appeler l'API Gemini avec la clé secrète (env var Vercel) ---
