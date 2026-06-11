@@ -52,6 +52,7 @@ export default async function handler(request) {
     return jsonError("Méthode non autorisée", 405);
   }
 
+  try {
   // --- 3. Vérifie que l'utilisateur est connecté (jeton Supabase) ---
   const auth = request.headers.get("authorization") || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
@@ -173,6 +174,9 @@ export default async function handler(request) {
       ...corsHeaders(),
     },
   });
+  } catch (e) {
+    return jsonError("Erreur serveur : " + (e && e.message ? e.message : String(e)), 500);
+  }
 }
 
 function corsHeaders() {
