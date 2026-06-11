@@ -147,7 +147,7 @@ export default async function handler(request) {
     if (rows.length) currentCount = rows[0].count;
   }
   if (currentCount >= DAILY_LIMIT) {
-    return jsonError("Limite quotidienne de messages FitAI atteinte", 429);
+    return jsonError("QUOTA_INTERNAL", 429);
   }
 
   // --- 6. Appeler l'API Gemini avec la clé secrète (env var Vercel) ---
