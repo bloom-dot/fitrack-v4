@@ -145,8 +145,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .err-msg.show{display:block}
 
 /* ═══ ONBOARDING ═══ */
-.ob-wrap{display:flex;flex-direction:column;height:100dvh;overflow:hidden;padding:24px 20px calc(24px + var(--safe));background:var(--bg)}
-.ob-progress{display:flex;gap:4px;margin-bottom:28px;flex-shrink:0}
+/* Plein écran fixe : sinon, lorsque l'onboarding est ouvert par-dessus
+   l'app (modification du profil), il se retrouve placé dans le flux de
+   la page et son haut/bas peuvent sortir de l'écran. Le z-index est
+   supérieur à .nav (100) pour bien recouvrir la barre de navigation du
+   bas pendant la modification du profil. */
+#ob-screen{position:fixed;inset:0;z-index:200;background:var(--bg)}
+.ob-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden;padding:24px 20px calc(24px + var(--safe));background:var(--bg)}
+.ob-progress{display:flex;align-items:center;gap:4px;margin-bottom:28px;flex-shrink:0}
+.ob-close{flex-shrink:0;width:28px;height:28px;border:none;border-radius:50%;background:var(--s2);color:var(--t2);font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-left:8px}
 .ob-bar{flex:1;height:3px;border-radius:2px;background:var(--s3);transition:background .3s}
 .ob-bar.done{background:var(--acc)}
 #ob-pages{display:flex;flex-direction:column;flex:1;min-height:0}
@@ -1040,7 +1047,7 @@ function buildOB(){
     {title:'Votre disponibilité',sub:'Ces infos servent à générer une programmation hebdomadaire adaptée pour atteindre votre objectif.',content:buildOBPage6},
   ];
   var prog=document.getElementById('ob-prog');
-  prog.innerHTML=pages.map(function(_,i){return '<div class="ob-bar'+(i<=OB.page?' done':'')+'"></div>';}).join('');
+  prog.innerHTML=pages.map(function(_,i){return '<div class="ob-bar'+(i<=OB.page?' done':'')+'"></div>';}).join('')+(OB.editing?'<button class="ob-close" onclick="cancelEditProfile()" aria-label="Fermer">✕</button>':'');
   var cont=document.getElementById('ob-pages');
   cont.innerHTML='';
   var page=document.createElement('div');
@@ -1270,6 +1277,7 @@ async function obNext(){
     DB.s('program',program);
     DB.s('user_name',DB.g('user_name','FiTrack User'));
     await saveProfileToSupabase(program);
+    OB.editing=false;
     showApp();return;
   }
   OB.page++;buildOB();
@@ -2089,7 +2097,15 @@ function editProfile(){
   OB.data.exercices=selectedExercises.slice();
   obSelEx=selectedExercises.slice();
   OB.page=0;
+  OB.editing=true;
   showOnboarding();
+}
+
+// ─── Annule la modification du profil et revient à l'app ───
+function cancelEditProfile(){
+  OB.editing=false;
+  document.getElementById('ob-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
 }
 
 // ═══════════════════════════════════
