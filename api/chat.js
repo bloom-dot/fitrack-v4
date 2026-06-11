@@ -2,31 +2,31 @@
  * FiTrack - Fonction serverless Vercel pour FitAI
  *
  * Rôle : recevoir les messages du chat depuis l'app, ajouter la clé API
- * Google Gemini (stockée comme variable d'environnement Vercel, jamais
- * envoyée au navigateur) et relayer la requête vers Gemini.
+ * Mistral AI (stockée comme variable d'environnement Vercel, jamais
+ * envoyée au navigateur) et relayer la requête vers Mistral.
  *
- * Pourquoi Gemini : l'API "Gemini 2.0 Flash" de Google a un niveau
- * gratuit généreux (largement suffisant pour une appli en test avec
- * quelques utilisateurs), contrairement à l'API Anthropic qui est
- * payante dès le premier appel.
+ * Pourquoi Mistral : entreprise française, offre gratuite ("La
+ * Plateforme", plan Experiment) sans restriction géographique pour
+ * les utilisateurs européens (contrairement à l'API gratuite de
+ * Google Gemini, indisponible en UE/Suisse/UK).
  *
  * URL une fois déployé : https://<ton-projet>.vercel.app/api/chat
  *
  * La clé API est configurée dans Vercel : Project Settings > Environment
- * Variables > GEMINI_API_KEY (jamais écrite dans le code).
- * Pour obtenir une clé gratuite : https://aistudio.google.com/apikey
+ * Variables > MISTRAL_API_KEY (jamais écrite dans le code).
+ * Pour obtenir une clé gratuite : https://console.mistral.ai
  *
  * Sécurité : seul un utilisateur connecté (jeton Supabase valide) peut
  * appeler cette fonction, et chaque utilisateur est limité à un nombre
  * de messages par jour (table "ai_usage" dans Supabase) — ça évite
  * qu'une personne non autorisée ou un script consomme tout le quota
- * gratuit de la clé Gemini.
+ * gratuit de la clé Mistral.
  */
 
 export const config = { runtime: "edge" };
 
-const GEMINI_MODEL = "gemini-2.0-flash";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const MISTRAL_MODEL = "mistral-small-latest";
+const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
 const MAX_TOKENS = 1024;
 
 // Limite de messages par requête (anti-abus simple)
@@ -147,51 +147,51 @@ export default async function handler(request) {
     if (rows.length) currentCount = rows[0].count;
   }
   if (currentCount >= DAILY_LIMIT) {
-    return jsonError(
-      "QUOTA_INTERNAL (debug: count=" + currentCount + ", usageStatus=" + usageResp.status + ", userId=" + userId + ")",
-      429
-    );
+    return jsonError("QUOTA_INTERNAL", 429);
   }
 
-  // --- 6. Appeler l'API Gemini avec la clé secrète (env var Vercel) ---
-  const geminiKey = (process.env.GEMINI_API_KEY || "").trim();
-  if (!geminiKey) {
-    return jsonError("Configuration serveur manquante (GEMINI_API_KEY)", 500);
+  // --- 6. Appeler l'API Mistral avec la clé secrète (env var Vercel) ---
+  const mistralKey = (process.env.MISTRAL_API_KEY || "").trim();
+  if (!mistralKey) {
+    return jsonError("Configuration serveur manquante (MISTRAL_API_KEY)", 500);
   }
 
-  const contents = messages.map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }],
-  }));
-
-  const geminiBody = {
-    contents,
-    generationConfig: { maxOutputTokens: MAX_TOKENS },
-  };
+  const mistralMessages = [];
   if (typeof system === "string" && system.trim()) {
-    geminiBody.systemInstruction = { parts: [{ text: system.slice(0, 4000) }] };
+    mistralMessages.push({ role: "system", content: system.slice(0, 4000) });
+  }
+  for (const m of messages) {
+    mistralMessages.push({ role: m.role, content: m.content });
   }
 
-  let geminiResponse;
+  const mistralBody = {
+    model: MISTRAL_MODEL,
+    messages: mistralMessages,
+    max_tokens: MAX_TOKENS,
+  };
+
+  let mistralResponse;
   try {
-    geminiResponse = await fetch(`${GEMINI_URL}?key=${geminiKey}`, {
+    mistralResponse = await fetch(MISTRAL_URL, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(geminiBody),
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${mistralKey}`,
+      },
+      body: JSON.stringify(mistralBody),
     });
   } catch (e) {
-    return jsonError("Erreur étape 6 (appel Gemini) : " + (e && e.message ? e.message : String(e)), 500);
+    return jsonError("Erreur étape 6 (appel Mistral) : " + (e && e.message ? e.message : String(e)), 500);
   }
 
-  const raw = await geminiResponse.json().catch(() => null);
+  const raw = await mistralResponse.json().catch(() => null);
 
-  if (!geminiResponse.ok || !raw) {
-    const msg = raw?.error?.message || "Erreur lors de l'appel à l'IA";
-    return jsonError(msg, geminiResponse.status || 502);
+  if (!mistralResponse.ok || !raw) {
+    const msg = raw?.message || raw?.error?.message || "Erreur lors de l'appel à l'IA";
+    return jsonError(msg, mistralResponse.status || 502);
   }
 
-  const text =
-    raw.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
+  const text = raw.choices?.[0]?.message?.content || "";
 
   if (!text) {
     return jsonError("Réponse vide de l'IA (peut-être bloquée par les filtres de sécurité)", 502);
