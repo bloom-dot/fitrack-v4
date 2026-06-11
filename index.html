@@ -2370,7 +2370,7 @@ async function sendAI(){
     var data=await res.json();ld.remove();
     if(!res.ok){appendMsg('bot','Désolé, une erreur est survenue (code '+res.status+(data&&(data.error&&(data.error.message||data.error))?(' : '+(data.error.message||data.error)):'')+').');return;}
     appendMsg('bot',data.content?.[0]?.text||'Désolé, une erreur est survenue.');
-  }catch(e){ld.remove();appendMsg('bot','Connexion impossible. Vérifie ta connexion internet.');}
+  }catch(e){ld.remove();appendMsg('bot','Connexion impossible : '+(e&&e.message?e.message:e));}
 }
 function sendQP(txt){goTo('ai');document.getElementById('ai-inp').value=txt;sendAI();}
 function appendMsg(role,txt){var chat=document.getElementById('ai-chat');var div=document.createElement('div');div.className='ai-msg '+role;if(role==='bot')div.innerHTML='<div class="ai-bot-lbl">🤖 FitAI</div>'+esc(txt).replace(/\n/g,'<br>');else div.textContent=txt;chat.appendChild(div);div.scrollIntoView({behavior:'smooth',block:'nearest'});return div;}
