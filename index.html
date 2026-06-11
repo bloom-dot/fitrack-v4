@@ -495,6 +495,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
           <button class="btn-outline" onclick="openProgramModal()">📅 Programme</button>
         </div>
       </div>
+      <div class="card" id="weight-reminder" style="display:none;border:1px solid rgba(212,255,0,.3);background:var(--acc-d)">
+        <div style="font-size:13px;color:var(--t2)">📏 <span style="color:var(--acc);font-weight:600">Pesée hebdomadaire</span><br>Pense à enregistrer ton poids cette semaine pour garder un suivi précis et adapter ta nutrition.</div>
+        <button class="btn-primary" style="margin-top:10px" onclick="goTo('measurements')">Enregistrer mon poids</button>
+      </div>
       <div class="stat-grid">
         <div class="stat-card"><div class="stat-val acc" id="h-seances">0</div><div class="stat-lbl">Séances ce mois</div></div>
         <div class="stat-card"><div class="stat-val gold" id="h-prs">0</div><div class="stat-lbl">Records battus</div></div>
@@ -739,6 +743,8 @@ var selectedExercises=DB.g('selected_exercises',[]);
 var program=DB.g('program',null);
 var measurements=DB.g('measurements',[]);
 var unlockedBadges=DB.g('badges',[]);
+var calAdjust=DB.g('calAdjust',0);
+var lastCalAdjustWeek=DB.g('lastCalAdjustWeek',null);
 
 // ═══════════════════════════════════
 // EXERCISE DATABASE
@@ -869,6 +875,7 @@ async function routeAfterAuth(){
     OB.data=Object.assign({},OB.data,userProfile);
     if(res.data.preferred_exercises){selectedExercises=res.data.preferred_exercises;DB.s('selected_exercises',selectedExercises);}
     if(res.data.program){program=res.data.program;DB.s('program',program);}
+    if(res.data.cal_adjustment!=null){calAdjust=res.data.cal_adjustment;DB.s('calAdjust',calAdjust);}
     var bm=await sb.from('body_measurements').select('*').eq('user_id',session.user.id).order('date',{ascending:true});
     if(bm.data&&bm.data.length){measurements=bm.data;DB.s('measurements',measurements);}
     var bg=await sb.from('badges').select('badge_key').eq('user_id',session.user.id);
@@ -1162,6 +1169,7 @@ async function saveProfileToSupabase(prog){
     level:p.level||'beginner',
     equip:p.equip||'gym',
     injuries:p.injuries||[],
+    cal_adjustment:calAdjust||0,
     program:(prog!==undefined?prog:program)||null,
     onboarding_done:true
   });
@@ -1578,6 +1586,7 @@ function renderHome(){
     if(!pk.length){hpr.innerHTML='<div class="empty"><div class="empty-ico">🏆</div><p>Loggez des séances pour voir vos records ici.</p></div>';}
     else{hpr.innerHTML=pk.slice(0,4).map(function(n){var pr=prs[n];return '<div class="pr-row" onclick="goTo(\'records\')"><div class="pr-ico">🏆</div><div class="pr-info"><div class="pr-name">'+esc(n)+'</div><div class="pr-det">'+pr.reps+' reps · '+pr.date+'</div></div><div><div class="pr-val">'+pr.weight+'</div><div class="pr-unit">kg</div></div></div>';}).join('');}
   }
+  checkWeightReminder();
   renderProgramCard();
   var hh=document.getElementById('home-hist');
   if(hh){
@@ -1789,6 +1798,7 @@ function renderNutrition(){
   else if(p.obj==='bulk'){surplus=Math.round(tdee*1.10);tagTxt='Surplus +10%';pP=.30;pC=.45;pF=.25;}
   else if(p.obj==='strength'){surplus=Math.round(tdee*1.05);tagTxt='Surplus +5%';pP=.35;pC=.40;pF=.25;}
   else{surplus=tdee;tagTxt='Maintien';pP=.25;pC=.50;pF=.25;}
+  if(calAdjust){surplus=Math.max(1200,surplus+calAdjust);tagTxt+=' '+(calAdjust>0?'+':'')+calAdjust+' kcal ajustés';}
   var protG=Math.round(surplus*pP/4),carbG=Math.round(surplus*pC/4),fatG=Math.round(surplus*pF/9);
   var protK=Math.round(protG*4),carbK=Math.round(carbG*4),fatK=Math.round(fatG*9);
   var protPct=Math.round(protK/surplus*100),carbPct=Math.round(carbK/surplus*100),fatPct=100-protPct-carbPct;
@@ -1801,6 +1811,7 @@ function renderNutrition(){
     +'<div class="nm"><div class="nm-val" style="color:var(--blue)">'+surplus.toLocaleString('fr-FR')+'</div><div class="nm-unit">kcal/jour</div><div class="nm-lbl">Votre cible <span class="chip chip-acc" style="font-size:10px;display:inline-flex;margin-top:4px">'+tagTxt+'</span></div></div>'
     +'<div class="nm"><div class="nm-val" style="color:var(--gold)">'+lbm+'</div><div class="nm-unit">kg</div><div class="nm-lbl">Masse maigre</div></div>'
     +'</div>'
+    +(calAdjust?('<div class="card" style="border:1px solid rgba(212,255,0,.3);background:var(--acc-d)"><div style="font-size:12px;color:var(--t2)">⚙️ <span style="color:var(--acc);font-weight:600">Ajustement automatique : '+(calAdjust>0?'+':'')+calAdjust+' kcal/jour</span><br>Calculé à partir de l\'évolution réelle de ton poids semaine après semaine, pour rester aligné avec ton objectif "'+({cut:'Perte de poids',bulk:'Prise de masse',recomp:'Recomposition',maintain:'Maintien',strength:'Force pure'}[p.obj]||p.obj)+'".</div></div>'):'')
     +'<div class="card">'
     +'<div class="sh" style="margin-top:0;margin-bottom:12px"><h2 class="D" style="font-size:15px">Macronutriments</h2></div>'
     +[{nm:'Protéines',g:protG,k:protK,pct:protPct,col:'#5b9cf6'},{nm:'Glucides',g:carbG,k:carbK,pct:carbPct,col:'#ffc340'},{nm:'Lipides',g:fatG,k:fatK,pct:fatPct,col:'#52e87a'}].map(function(m){
@@ -1927,6 +1938,73 @@ function editProfile(){
 // POIDS & MENSURATIONS
 // ═══════════════════════════════════
 var weightChart=null;
+// ─── Rappel de pesée hebdomadaire ───
+function checkWeightReminder(){
+  var b=document.getElementById('weight-reminder');if(!b)return;
+  if(!measurements.length){b.style.display='block';return;}
+  var last=measurements[measurements.length-1];
+  var diffDays=Math.floor((new Date(todayStr())-new Date(last.date))/86400000);
+  b.style.display=diffDays>=7?'block':'none';
+}
+// ─── Moyenne de poids par semaine (lisse les fluctuations) ───
+function isoWeekKey(dateStr){
+  var d=new Date(dateStr+'T00:00:00');
+  var day=(d.getDay()+6)%7;
+  d.setDate(d.getDate()-day+3);
+  var firstThu=new Date(d.getFullYear(),0,4);
+  var fDay=(firstThu.getDay()+6)%7;
+  firstThu.setDate(firstThu.getDate()-fDay+3);
+  var diff=(d-firstThu)/86400000;
+  var week=1+Math.round(diff/7);
+  return d.getFullYear()+'-W'+(week<10?'0':'')+week;
+}
+function weeklyAvgWeights(){
+  var weeks={};
+  measurements.forEach(function(m){
+    if(!m.weight)return;
+    var wk=isoWeekKey(m.date);
+    if(!weeks[wk])weeks[wk]=[];
+    weeks[wk].push(m.weight);
+  });
+  return Object.keys(weeks).sort().map(function(k){
+    var arr=weeks[k];
+    return {week:k,avg:Math.round(arr.reduce(function(a,b){return a+b;},0)/arr.length*10)/10};
+  });
+}
+// ─── Ajustement adaptatif de l'apport calorique selon la tendance de poids ───
+function adjustCaloriesFromWeightTrend(){
+  var weeks=weeklyAvgWeights();
+  if(weeks.length<2)return;
+  var curWeek=isoWeekKey(todayStr());
+  if(lastCalAdjustWeek===curWeek)return; // déjà ajusté cette semaine
+  var last=weeks[weeks.length-1],prev=weeks[weeks.length-2];
+  var deltaKg=Math.round((last.avg-prev.avg)*100)/100;
+  var p=userProfile||OB.data;
+  var obj=p.obj||'maintain';
+  var expected; // variation hebdo attendue (kg)
+  if(obj==='cut')expected=-Math.abs(p.poids*0.005);
+  else if(obj==='bulk')expected=Math.abs(p.poids*0.0025);
+  else if(obj==='strength')expected=Math.abs(p.poids*0.0015);
+  else expected=0;
+  var tol=0.15; // marge de tolérance en kg
+  var step=100; // ajustement en kcal
+  var maxAdjust=300;
+  var changed=false;
+  if(obj==='maintain'||obj==='recomp'){
+    if(deltaKg>tol){calAdjust=Math.max(-maxAdjust,calAdjust-step);changed=true;}
+    else if(deltaKg<-tol){calAdjust=Math.min(maxAdjust,calAdjust+step);changed=true;}
+  }else{
+    if(deltaKg>expected+tol){calAdjust=Math.max(-maxAdjust,calAdjust-step);changed=true;}
+    else if(deltaKg<expected-tol){calAdjust=Math.min(maxAdjust,calAdjust+step);changed=true;}
+  }
+  lastCalAdjustWeek=curWeek;
+  DB.s('lastCalAdjustWeek',lastCalAdjustWeek);
+  if(changed){
+    DB.s('calAdjust',calAdjust);
+    toast(calAdjust>0?'🍽️ Apport calorique ajusté à la hausse selon ton évolution de poids':'🍽️ Apport calorique ajusté à la baisse selon ton évolution de poids');
+    saveProfileToSupabase();
+  }
+}
 async function saveMeasurement(){
   var w=parseFloat(document.getElementById('ms-weight').value);
   if(!w){toast('Indique au moins ton poids');return;}
@@ -1949,10 +2027,12 @@ async function saveMeasurement(){
       await sb.from('profiles').update({weight:w}).eq('id',session.user.id);
     }
   }catch(e){}
+  adjustCaloriesFromWeightTrend();
   toast('Mesure enregistrée ✓');
   checkBadges();
   renderMeasurements();
   renderNutrition();
+  checkWeightReminder();
 }
 function renderMeasurements(){
   var last=measurements.length?measurements[measurements.length-1]:null;

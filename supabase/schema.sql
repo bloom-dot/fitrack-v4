@@ -157,3 +157,8 @@ alter table profiles add column if not exists program jsonb;
 alter table profiles add column if not exists level text;
 alter table profiles add column if not exists equip text;
 alter table profiles add column if not exists injuries jsonb;
+
+-- ─────────────────────────────────────────────
+-- MIGRATION : ajustement calorique adaptatif
+-- ─────────────────────────────────────────────
+alter table profiles add column if not exists cal_adjustment numeric default 0;
