@@ -634,6 +634,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
       <div class="setting-row" onclick="goTo('measurements')"><div class="setting-lbl">Poids &amp; mensurations</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="goTo('badges')"><div class="setting-lbl">Mes badges 🏅</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="editProfile()"><div class="setting-lbl">Modifier mon profil</div><div class="setting-val">→</div></div>
+      <div class="setting-row" onclick="regenerateProgram()"><div class="setting-lbl">🔄 Régénérer mon programme</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="clearData()"><div class="setting-lbl" style="color:var(--red)">Se déconnecter</div><div class="setting-val">—</div></div>
       <div class="setting-row" onclick="openDeleteAccountModal()"><div class="setting-lbl" style="color:var(--red)">Supprimer mon compte</div><div class="setting-val">—</div></div>
     </div>
@@ -1232,6 +1233,22 @@ function generateProgram(){
   var end=new Date();end.setDate(end.getDate()+(OB.data.goalWeeks||8)*7);
   OB.data.freq=freq;
   return {freq:freq,sessionDur:OB.data.sessionDur||60,goalWeeks:OB.data.goalWeeks||8,startDate:todayStr(),endDate:end.toISOString().slice(0,10),days:days};
+}
+
+// Régénère le programme à partir du profil et des exercices préférés
+// actuels (par ex. après une mise à jour de l'algo de génération, ou
+// si le programme actuel ne convient plus). Remplace le programme en
+// cours — les poids cibles déjà enregistrés (targetWeight) sont perdus.
+async function regenerateProgram(){
+  if(!confirm("Régénérer ton programme ? Le programme actuel sera remplacé par un nouveau (les poids cibles déjà enregistrés seront perdus)."))return;
+  if(userProfile)OB.data=Object.assign({},OB.data,userProfile);
+  obSelEx=(selectedExercises&&selectedExercises.length)?selectedExercises.slice():obSelEx;
+  program=generateProgram();
+  DB.s('program',program);
+  await saveProfileToSupabase(program);
+  renderProfile();
+  renderHome();
+  toast('Programme régénéré 🎉');
 }
 
 async function obNext(){
