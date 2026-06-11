@@ -1479,7 +1479,7 @@ function addExBlock(name,muscle,sugWeight,sugReps,nbSets){
     +'<div class="sets-wrap" id="sets-'+id+'"><div class="sets-hdr"><span>#</span><span>Poids kg</span><span>Reps</span><span>Vol.</span><span>✓</span></div></div>';
   container.appendChild(block);
   var n=nbSets||3;
-  for(var i=0;i<n;i++)addSetRow(id,sug,sugWeight&&sugReps?sugReps:'');
+  for(var i=0;i<n;i++)addSetRow(id,sug,sugReps||'');
   addSetBtn(id);
 }
 
