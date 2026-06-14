@@ -103,7 +103,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 
 /* ═══ SLIDER ═══ */
 .slider-row{display:flex;align-items:center;gap:10px}
-.slider-row input[type=range]{flex:1}
+.slider-row input[type=range]{flex:1;touch-action:pan-y}
 .slider-val{font-size:13px;font-weight:600;color:var(--text);min-width:56px;text-align:right}
 
 /* ═══ TOAST ═══ */
@@ -254,6 +254,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .rest-ctrl{display:flex;align-items:center;gap:6px;flex:1;justify-content:flex-end}
 .rest-disp{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;min-width:42px;text-align:center;transition:color .15s}
 .rest-disp.run{color:var(--acc)}
+
+/* ═══ MINUTEUR DE REPOS FLOTTANT ═══ */
+.rest-float{position:fixed;left:12px;right:12px;bottom:calc(var(--nav) + var(--safe) + 10px);z-index:90;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;display:none;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.rest-float.show{display:flex}
+.rest-float-time{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:var(--acc);min-width:54px}
+.rest-float-lbl{font-size:11px;color:var(--t2);flex:1}
+.rest-float-acts{display:flex;gap:6px}
+.rest-float.alarm{animation:restAlarm .5s ease-in-out infinite;border-color:var(--acc)}
+.rest-float.alarm .rest-float-time{color:var(--bg)}
+@keyframes restAlarm{0%,100%{background:var(--s1)}50%{background:var(--acc)}}
 .ex-block{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);margin-bottom:11px;overflow:hidden}
 .ex-block-hdr{padding:13px 14px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border)}
 .ex-block-name{font-weight:600;font-size:14px}
@@ -549,8 +559,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
           <div class="rest-ctrl">
             <span style="font-size:11px;color:var(--t2)">Repos</span>
             <div class="rest-disp" id="rest-disp">2:00</div>
-            <button class="btn-sm" onclick="setRest(90)">90s</button>
+            <button class="btn-sm" onclick="setRest(60)">1m</button>
             <button class="btn-sm" onclick="setRest(120)">2m</button>
+            <button class="btn-sm" onclick="setRest(180)">3m</button>
             <button class="btn-sm acc" id="rest-btn" onclick="toggleRest()">▶ Go</button>
           </div>
         </div>
@@ -687,6 +698,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
   <div class="screen" id="screen-badges">
     <div class="topbar"><div><button onclick="goTo('profile')" style="background:none;border:none;color:var(--t2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;margin-bottom:4px">← Retour</button><h1 class="D">Mes badges</h1><div class="sub">Débloque des récompenses en progressant</div></div></div>
     <div class="scroll"><div class="badge-grid" id="badge-grid"></div></div>
+  </div>
+
+  <!-- MINUTEUR DE REPOS FLOTTANT (visible sur toutes les pages) -->
+  <div class="rest-float" id="rest-float" onclick="toggleRest()">
+    <div class="rest-float-time" id="rest-float-time">2:00</div>
+    <div class="rest-float-lbl" id="rest-float-lbl">Repos en cours · touche pour mettre en pause</div>
+    <div class="rest-float-acts">
+      <button class="btn-sm" id="rest-float-btn" onclick="event.stopPropagation();toggleRest()">⏸</button>
+      <button class="btn-sm" onclick="event.stopPropagation();resetRest()">✕</button>
+    </div>
   </div>
 
   <!-- NAV -->
@@ -1409,13 +1430,84 @@ function startSessionTimer(){sStart=Date.now();sInt=setInterval(function(){var s
 function stopSessionTimer(){clearInterval(sInt);return sStart?Math.floor((Date.now()-sStart)/1000):0;}
 
 // REST TIMER
-var rDur=120,rLeft=120,rRun=false,rInt=null;
-function setRest(s){rDur=s;rLeft=s;updRest();}
-function updRest(){var m=Math.floor(rLeft/60);var s=rLeft%60;var el=document.getElementById('rest-disp');if(el){el.textContent=m+':'+s.toString().padStart(2,'0');el.className='rest-disp'+(rRun?' run':'');}}
+var rDur=120,rLeft=120,rRun=false,rInt=null,rEndTime=null,rAlarm=false,rAlarmInt=null,alarmAudioCtx=null;
+function setRest(s){
+  if(rRun)return;
+  rDur=s;rLeft=s;updRest();
+}
+function updRest(){
+  var m=Math.floor(rLeft/60);var s=rLeft%60;var txt=m+':'+s.toString().padStart(2,'0');
+  var el=document.getElementById('rest-disp');
+  if(el){el.textContent=txt;el.className='rest-disp'+(rRun?' run':'');}
+  var fl=document.getElementById('rest-float'),ft=document.getElementById('rest-float-time'),flb=document.getElementById('rest-float-lbl'),fb=document.getElementById('rest-float-btn');
+  if(ft)ft.textContent=txt;
+  if(fl)fl.classList.toggle('show',rRun||rAlarm||rLeft!==rDur);
+  if(fl)fl.classList.toggle('alarm',rAlarm);
+  if(flb)flb.textContent=rAlarm?'⏰ Repos terminé ! Touche pour arrêter':(rRun?'Repos en cours · touche pour mettre en pause':'Repos en pause · touche pour reprendre');
+  if(fb)fb.textContent=rAlarm?'⏰':(rRun?'⏸':'▶');
+}
 function toggleRest(){
-  if(rRun){clearInterval(rInt);rRun=false;rLeft=rDur;var b=document.getElementById('rest-btn');if(b)b.textContent='▶ Go';updRest();return;}
-  rRun=true;var b=document.getElementById('rest-btn');if(b)b.textContent='■ Stop';
-  rInt=setInterval(function(){rLeft--;if(rLeft<=0){clearInterval(rInt);rRun=false;rLeft=rDur;var b=document.getElementById('rest-btn');if(b)b.textContent='▶ Go';toast('⏰ Repos terminé !');}updRest();},1000);
+  if(rAlarm){stopRestAlarm();resetRest();return;}
+  if(typeof Notification!=='undefined'&&Notification.permission==='default')Notification.requestPermission();
+  var b=document.getElementById('rest-btn');
+  if(rRun){
+    clearInterval(rInt);rRun=false;
+    rLeft=Math.max(0,Math.round((rEndTime-Date.now())/1000));
+    if(b)b.textContent='▶ Go';
+    updRest();return;
+  }
+  rRun=true;rEndTime=Date.now()+rLeft*1000;
+  if(b)b.textContent='■ Stop';
+  rInt=setInterval(restTick,250);
+  updRest();
+}
+function restTick(){
+  rLeft=Math.max(0,Math.round((rEndTime-Date.now())/1000));
+  if(rLeft<=0){
+    clearInterval(rInt);rRun=false;rLeft=0;
+    var b=document.getElementById('rest-btn');if(b)b.textContent='▶ Go';
+    fireRestAlarm();
+  }
+  updRest();
+}
+function resetRest(){
+  clearInterval(rInt);stopRestAlarm();
+  rRun=false;rAlarm=false;rLeft=rDur;rEndTime=null;
+  var b=document.getElementById('rest-btn');if(b)b.textContent='▶ Go';
+  updRest();
+}
+// Déclenche l'alarme : son répété, vibration, animation flash du minuteur
+// flottant, et notification système si l'app est en arrière-plan.
+function fireRestAlarm(){
+  rAlarm=true;
+  toast('⏰ Repos terminé !');
+  if(navigator.vibrate)navigator.vibrate([400,200,400,200,400]);
+  playAlarmSound();
+  rAlarmInt=setInterval(function(){if(navigator.vibrate)navigator.vibrate(400);playAlarmSound();},2000);
+  if(document.hidden&&typeof Notification!=='undefined'&&Notification.permission==='granted'&&navigator.serviceWorker){
+    navigator.serviceWorker.ready.then(function(reg){
+      reg.showNotification('FiTrack',{body:'⏰ Repos terminé !',icon:'assets/icons/icon-192.png',vibrate:[400,200,400,200,400],tag:'rest-timer'});
+    }).catch(function(){});
+  }
+  updRest();
+}
+function stopRestAlarm(){clearInterval(rAlarmInt);rAlarmInt=null;}
+// Génère un bip d'alarme via Web Audio (pas besoin de fichier audio externe)
+function playAlarmSound(){
+  try{
+    if(!alarmAudioCtx)alarmAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    var ctx=alarmAudioCtx;
+    if(ctx.state==='suspended')ctx.resume();
+    [0,0.18,0.36].forEach(function(t){
+      var o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='sine';o.frequency.value=880;
+      g.gain.setValueAtTime(0.0001,ctx.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(0.3,ctx.currentTime+t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+t+0.15);
+      o.connect(g);g.connect(ctx.destination);
+      o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.16);
+    });
+  }catch(e){}
 }
 
 // ═══════════════════════════════════
@@ -1677,11 +1769,20 @@ function programWeekNum(){
 }
 // Une semaine sur 6 est une semaine de décharge (deload) : -1 série, charges allégées
 function isDeloadWeek(){return programWeekNum()%6===0;}
-function buildDefaultSession(){
+function buildDefaultSession(force){
   var list=document.getElementById('ex-list');if(!list)return;list.innerHTML='';exCtr=0;
   var nameInp=document.getElementById('session-name');
   var deloadEl=document.getElementById('deload-banner');
   if(deloadEl)deloadEl.remove();
+  var doneEl=document.getElementById('session-done-banner');
+  if(doneEl)doneEl.remove();
+  if(!force&&sessions.length&&sessions[0].date===todayStr()){
+    if(nameInp)nameInp.value=sessions[0].name;
+    var done=document.createElement('div');done.id='session-done-banner';done.className='card';done.style.cssText='text-align:center';
+    done.innerHTML='<div style="font-size:32px;margin-bottom:8px">✅</div><div style="font-weight:700;margin-bottom:4px">Séance déjà enregistrée aujourd\'hui</div><div style="font-size:12px;color:var(--t2);margin-bottom:14px">'+esc(sessions[0].name)+' · '+(sessions[0].totalVolume||0).toLocaleString('fr-FR')+' kg</div><button class="btn-outline" onclick="buildDefaultSession(true)">+ Logger une autre séance</button>';
+    list.parentNode.insertBefore(done,list);
+    return;
+  }
   if(program){
     var today=DAYS_FR[new Date().getDay()];
     var d=program.days.find(function(x){return x.day===today;});
@@ -2353,6 +2454,31 @@ function renderBadges(){
 // ═══════════════════════════════════
 // AI CHAT
 // ═══════════════════════════════════
+// Construit un résumé de la séance en cours + de l'historique récent,
+// pour que FitAI puisse répondre en tenant compte de ce que fait/a fait l'utilisateur.
+function buildSessionContext(){
+  var parts=[];
+  var blocks=document.querySelectorAll('#ex-list .ex-block');
+  if(blocks.length){
+    var cur=Array.from(blocks).map(function(b){
+      var name=b.dataset.name||'?';
+      var sets=Array.from(b.querySelectorAll('.set-row')).map(function(row){
+        var ins=row.querySelectorAll('.set-inp');var kg=ins[0].value;var reps=ins[1].value;
+        return kg&&reps?(kg+'kg x '+reps):null;
+      }).filter(Boolean);
+      return name+(sets.length?' ('+sets.join(', ')+')':' (pas encore de série renseignée)');
+    });
+    parts.push('Séance en cours aujourd\'hui : '+cur.join(' ; ')+'.');
+  }
+  if(sessions.length){
+    var hist=sessions.slice(0,3).map(function(s){
+      var exs=(s.exercises||[]).map(function(e){return e.name;}).join(', ');
+      return s.date+' "'+s.name+'" ('+exs+')';
+    });
+    parts.push('Séances précédentes récentes : '+hist.join(' | ')+'.');
+  }
+  return parts.length?(' '+parts.join(' ')+' '):' ';
+}
 async function sendAI(){
   var inp=document.getElementById('ai-inp');var msg=inp.value.trim();if(!msg)return;
   inp.value='';inp.style.height='auto';
@@ -2361,6 +2487,7 @@ async function sendAI(){
     var sysCtx='Tu es FitAI, coach sportif IA expert en musculation, force et nutrition. ';
     if(userProfile)sysCtx+='Profil client : '+userProfile.poids+'kg, objectif '+userProfile.obj+', niveau activité '+userProfile.act+'. ';
     if(Object.keys(prs).length)sysCtx+='Records : '+Object.keys(prs).slice(0,5).map(function(k){return k+' '+prs[k].weight+'kg';}).join(', ')+'. ';
+    sysCtx+=buildSessionContext();
     sysCtx+='Réponds en français, de façon directe, motivante et actionnable.';
     var session=(await sb.auth.getSession()).data.session;
     if(!session){ld.remove();appendMsg('bot','Session expirée, reconnecte-toi pour utiliser FitAI.');return;}
