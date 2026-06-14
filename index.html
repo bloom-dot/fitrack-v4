@@ -253,9 +253,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .session-hdr{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px}
 .session-name{background:transparent;border:none;outline:none;font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--text);width:100%;text-transform:uppercase;margin-bottom:10px}
 .session-name::placeholder{color:var(--t3)}
-.session-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.s-timer{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--acc)}
-.rest-ctrl{display:flex;align-items:center;gap:6px;flex:1 0 100%;justify-content:flex-end;flex-wrap:wrap}
+.s-timer{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:var(--acc);text-align:center;letter-spacing:1px;padding:6px 0}
+.rest-row{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap}
+.rest-lbl{font-size:11px;color:var(--t2);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.rest-opts{display:flex;gap:6px;margin-left:auto}
 .rest-disp{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;min-width:42px;text-align:center;transition:color .15s}
 .rest-disp.run{color:var(--acc)}
 
@@ -559,17 +560,17 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
     <div class="scroll">
       <div class="session-hdr">
         <input class="session-name" id="session-name" placeholder="Nom de la séance..." value="Push Day">
-        <div class="session-meta">
-          <button class="btn-sm acc" id="s-timer-start" onclick="startSessionTimer()">▶ Démarrer la séance</button>
-          <div class="s-timer" id="s-timer" style="display:none">⏱ 00:00</div>
-          <div class="rest-ctrl">
-            <span style="font-size:11px;color:var(--t2)">Repos</span>
-            <div class="rest-disp" id="rest-disp">2:00</div>
+        <button class="btn-primary" id="s-timer-start" onclick="startSessionTimer()">▶ Démarrer la séance</button>
+        <div class="s-timer" id="s-timer" style="display:none">⏱ 00:00</div>
+        <div class="rest-row">
+          <span class="rest-lbl">Repos</span>
+          <div class="rest-disp" id="rest-disp">2:00</div>
+          <div class="rest-opts">
             <button class="btn-sm" onclick="setRest(60)">1m</button>
             <button class="btn-sm" onclick="setRest(120)">2m</button>
             <button class="btn-sm" onclick="setRest(180)">3m</button>
-            <button class="btn-sm acc" id="rest-btn" onclick="toggleRest()">▶ Go</button>
           </div>
+          <button class="btn-sm acc" id="rest-btn" onclick="toggleRest()">▶ Go</button>
         </div>
       </div>
       <div id="ex-list"></div>
