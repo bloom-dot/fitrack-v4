@@ -1494,13 +1494,32 @@ function toggleRest(){
     clearInterval(rInt);rRun=false;
     rLeft=Math.max(0,Math.round((rEndTime-Date.now())/1000));
     if(b)b.textContent='▶ Go';
+    closeRestNotification();
     updRest();return;
   }
   rRun=true;rEndTime=Date.now()+rLeft*1000;
   if(b)b.textContent='■ Stop';
   rInt=setInterval(restTick,250);
   unlockAlarmAudio();
+  showRestNotification();
   updRest();
+}
+// Affiche une notification système avec l'heure de fin du repos, pour que le
+// minuteur reste visible (écran de verrouillage / notifications) même quand
+// l'écran du téléphone est verrouillé ou l'app en arrière-plan.
+function showRestNotification(){
+  if(typeof Notification==='undefined'||Notification.permission!=='granted'||!navigator.serviceWorker)return;
+  var end=new Date(rEndTime);
+  var hh=end.getHours().toString().padStart(2,'0'),mm=end.getMinutes().toString().padStart(2,'0'),ss=end.getSeconds().toString().padStart(2,'0');
+  navigator.serviceWorker.ready.then(function(reg){
+    reg.showNotification('⏱ Repos en cours',{body:'Fin du repos à '+hh+':'+mm+':'+ss,icon:'assets/icons/icon-192.png',tag:'rest-timer',silent:true});
+  }).catch(function(){});
+}
+function closeRestNotification(){
+  if(!navigator.serviceWorker)return;
+  navigator.serviceWorker.ready.then(function(reg){
+    reg.getNotifications({tag:'rest-timer'}).then(function(ns){ns.forEach(function(n){n.close();});});
+  }).catch(function(){});
 }
 // Débloque la lecture audio pendant le tap utilisateur (geste requis par les
 // navigateurs mobiles) pour que le bip d'alarme puisse jouer plus tard,
@@ -1530,6 +1549,7 @@ function resetRest(){
   clearInterval(rInt);stopRestAlarm();
   rRun=false;rAlarm=false;rLeft=rDur;rEndTime=null;
   var b=document.getElementById('rest-btn');if(b)b.textContent='▶ Go';
+  closeRestNotification();
   updRest();
 }
 // Déclenche l'alarme : son répété, vibration, animation flash du minuteur
@@ -1539,7 +1559,7 @@ function fireRestAlarm(){
   if(navigator.vibrate)navigator.vibrate([400,200,400,200,400]);
   playAlarmSound();
   rAlarmInt=setInterval(function(){if(navigator.vibrate)navigator.vibrate(400);playAlarmSound();},2000);
-  if(document.hidden&&typeof Notification!=='undefined'&&Notification.permission==='granted'&&navigator.serviceWorker){
+  if(typeof Notification!=='undefined'&&Notification.permission==='granted'&&navigator.serviceWorker){
     navigator.serviceWorker.ready.then(function(reg){
       reg.showNotification('FiTrack',{body:'⏰ Repos terminé !',icon:'assets/icons/icon-192.png',vibrate:[400,200,400,200,400],tag:'rest-timer'});
     }).catch(function(){});
