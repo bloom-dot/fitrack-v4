@@ -573,8 +573,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
         </div>
       </div>
       <div id="ex-list"></div>
-      <button class="add-ex-btn" onclick="openExModal()">+ Ajouter un exercice</button>
-      <button class="btn-primary" onclick="finishSession()">⚡ Terminer &amp; enregistrer</button>
+      <button class="add-ex-btn" id="add-ex-btn" onclick="openExModal()" style="display:none">+ Ajouter un exercice</button>
+      <button class="btn-primary" id="finish-session-btn" onclick="finishSession()" style="display:none">⚡ Terminer &amp; enregistrer</button>
       <div style="height:6px"></div>
     </div>
   </div>
@@ -1436,13 +1436,18 @@ function startSessionTimer(){
   sStart=Date.now();
   var btn=document.getElementById('s-timer-start');if(btn)btn.style.display='none';
   var el=document.getElementById('s-timer');if(el)el.style.display='';
+  var addBtn=document.getElementById('add-ex-btn');if(addBtn)addBtn.style.display='';
+  var finBtn=document.getElementById('finish-session-btn');if(finBtn)finBtn.style.display='';
   sInt=setInterval(function(){var s=Math.floor((Date.now()-sStart)/1000);var m=Math.floor(s/60).toString().padStart(2,'0');var sc=(s%60).toString().padStart(2,'0');var el=document.getElementById('s-timer');if(el)el.textContent='⏱ '+m+':'+sc;},1000);
 }
 function stopSessionTimer(){clearInterval(sInt);sInt=null;var d=sStart?Math.floor((Date.now()-sStart)/1000):0;sStart=null;return d;}
-// Réinitialise l'affichage du chrono de séance (bouton "Démarrer" visible, chrono caché)
+// Réinitialise l'affichage du chrono de séance (bouton "Démarrer" visible, chrono caché,
+// et les boutons "Ajouter un exercice"/"Terminer" masqués jusqu'au démarrage)
 function resetSessionTimerUI(){
   var btn=document.getElementById('s-timer-start');if(btn)btn.style.display='';
   var el=document.getElementById('s-timer');if(el){el.style.display='none';el.textContent='⏱ 00:00';}
+  var addBtn=document.getElementById('add-ex-btn');if(addBtn)addBtn.style.display='none';
+  var finBtn=document.getElementById('finish-session-btn');if(finBtn)finBtn.style.display='none';
 }
 
 // REST TIMER
