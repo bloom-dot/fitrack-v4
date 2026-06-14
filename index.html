@@ -711,7 +711,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
     <div class="rest-float-time" id="rest-float-time">2:00</div>
     <div class="rest-float-lbl" id="rest-float-lbl">Repos en cours · touche pour mettre en pause</div>
     <div class="rest-float-acts">
-      <button class="btn-sm" id="rest-float-btn" onclick="event.stopPropagation();toggleRest()">⏸</button>
       <button class="btn-sm" onclick="event.stopPropagation();resetRest()">✕</button>
     </div>
   </div>
@@ -1460,12 +1459,11 @@ function updRest(){
   var m=Math.floor(rLeft/60);var s=rLeft%60;var txt=m+':'+s.toString().padStart(2,'0');
   var el=document.getElementById('rest-disp');
   if(el){el.textContent=txt;el.className='rest-disp'+(rRun?' run':'');}
-  var fl=document.getElementById('rest-float'),ft=document.getElementById('rest-float-time'),flb=document.getElementById('rest-float-lbl'),fb=document.getElementById('rest-float-btn');
+  var fl=document.getElementById('rest-float'),ft=document.getElementById('rest-float-time'),flb=document.getElementById('rest-float-lbl');
   if(ft)ft.textContent=txt;
   if(fl)fl.classList.toggle('show',rRun||rAlarm||rLeft!==rDur);
   if(fl)fl.classList.toggle('alarm',rAlarm);
   if(flb)flb.textContent=rAlarm?'⏰ Repos terminé ! Touche pour arrêter':(rRun?'Repos en cours · touche pour mettre en pause':'Repos en pause · touche pour reprendre');
-  if(fb)fb.textContent=rAlarm?'⏰':(rRun?'⏸':'▶');
 }
 function toggleRest(){
   if(rAlarm){stopRestAlarm();resetRest();return;}
@@ -1511,7 +1509,6 @@ function resetRest(){
 // flottant, et notification système si l'app est en arrière-plan.
 function fireRestAlarm(){
   rAlarm=true;
-  toast('⏰ Repos terminé !');
   if(navigator.vibrate)navigator.vibrate([400,200,400,200,400]);
   playAlarmSound();
   rAlarmInt=setInterval(function(){if(navigator.vibrate)navigator.vibrate(400);playAlarmSound();},2000);
