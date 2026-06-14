@@ -218,6 +218,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .banner-date{font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
 .banner-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;text-transform:uppercase;margin-bottom:4px}
 .banner-meta{font-size:12px;color:var(--t2)}
+.day-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:5px 10px;border-radius:20px;margin-bottom:10px}
+.day-status.rest{background:var(--s2);color:var(--t2)}
+.day-status.pending{background:var(--acc-d);color:var(--acc)}
+.day-status.done{background:rgba(80,220,120,.12);color:#4ade80}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .stat-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:15px}
 .stat-val{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;line-height:1}
@@ -523,6 +527,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
     <div class="topbar"><div><h1 class="D">FiTrack</h1><div class="sub" id="home-date"></div></div><div class="tbr"><div class="ib" onclick="goTo('library')">📖</div><div class="ib">🔔</div><div class="ib" onclick="goTo('profile')">👤</div></div></div>
     <div class="scroll">
       <div class="banner">
+        <div class="day-status" id="day-status"></div>
         <div class="banner-date" id="next-label">Séance du jour</div>
         <div class="banner-title D" id="next-name">Push Day</div>
         <div class="banner-meta" id="next-meta">4 exercices · ~55 min</div>
@@ -1892,15 +1897,23 @@ var DAYS_FR=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
 function renderProgramCard(){
   var lbl=document.getElementById('next-label'),name=document.getElementById('next-name'),meta=document.getElementById('next-meta');
   if(!lbl||!name||!meta)return;
-  if(!program){lbl.textContent='Séance du jour';name.textContent='Push Day';meta.textContent='4 exercices · ~55 min';return;}
+  var doneToday=sessions.length&&sessions[0].date===todayStr();
+  var status=document.getElementById('day-status');
+  if(!program){
+    lbl.textContent='Séance du jour';name.textContent='Push Day';meta.textContent='4 exercices · ~55 min';
+    if(status){status.className='day-status '+(doneToday?'done':'pending');status.textContent=doneToday?'✅ Séance terminée':'● Séance prévue aujourd\'hui';}
+    return;
+  }
   var today=DAYS_FR[new Date().getDay()];
   var d=program.days.find(function(x){return x.day===today;});
-  if(!d){
+  if(!d||!d.exercises.length){
     lbl.textContent='Aujourd\'hui';name.textContent='Repos';
     var nextIdx=program.days.findIndex(function(x){return DAYS_FR.indexOf(x.day)>new Date().getDay();});
     var next=nextIdx!==-1?program.days[nextIdx]:program.days[0];
     meta.textContent='Prochaine séance : '+next.day+' · '+next.label;
+    if(status){status.className='day-status rest';status.textContent='💤 Repos aujourd\'hui';}
   }else{
+    if(status){status.className='day-status '+(doneToday?'done':'pending');status.textContent=doneToday?'✅ Séance terminée':'● Séance prévue aujourd\'hui';}
     lbl.textContent='Séance du jour · '+d.day;
     name.textContent=d.label;
     meta.textContent=d.exercises.length+' exercices · ~'+program.sessionDur+' min';
