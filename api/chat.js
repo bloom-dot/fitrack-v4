@@ -27,7 +27,7 @@ export const config = { runtime: "edge" };
 
 const MISTRAL_MODEL = "mistral-small-latest";
 const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
-const MAX_TOKENS = 1024;
+const MAX_TOKENS = 3000;
 
 // Limite de messages par requête (anti-abus simple)
 const MAX_MESSAGES = 30;
