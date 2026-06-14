@@ -1673,8 +1673,11 @@ function openSessionDetail(idx){
   var s=sessions[idx];if(!s)return;
   var d=s.date?s.date.split('-'):['','',''];
   var html='<div class="modal-handle"></div>'
-    +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;text-transform:uppercase;margin-bottom:2px">'+esc(s.name)+'</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">'+(d[2]||'—')+'/'+(d[1]||'—')+'/'+(d[0]||'—')+' · '+fmtDur(s.duration)+' · <span style="color:var(--acc);font-weight:600">'+(s.totalVolume||0).toLocaleString('fr-FR')+' kg</span>'+(s.newPRs&&s.newPRs.length?' · 🏆 '+s.newPRs.length+' PR':'')+'</div>';
+    +'<div style="position:sticky;top:0;background:var(--s1);display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding-bottom:8px;z-index:1">'
+    +'<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;text-transform:uppercase;margin-bottom:2px">'+esc(s.name)+'</div>'
+    +'<div style="font-size:12px;color:var(--t2)">'+(d[2]||'—')+'/'+(d[1]||'—')+'/'+(d[0]||'—')+' · '+fmtDur(s.duration)+' · <span style="color:var(--acc);font-weight:600">'+(s.totalVolume||0).toLocaleString('fr-FR')+' kg</span>'+(s.newPRs&&s.newPRs.length?' · 🏆 '+s.newPRs.length+' PR':'')+'</div></div>'
+    +'<button class="btn-sm" onclick="closeMBg(null,\'session-detail-modal\')">✕</button>'
+    +'</div>';
   if(!s.exercises||!s.exercises.length){
     html+='<div class="empty"><div class="empty-ico">📋</div><p>Aucun exercice enregistré pour cette séance.</p></div>';
   }else{
