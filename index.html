@@ -236,7 +236,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .pr-det{font-size:11px;color:var(--t2);margin-top:2px}
 .pr-val{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:var(--gold)}
 .pr-unit{font-size:10px;color:var(--t2)}
-.hist-row{display:flex;align-items:center;gap:12px;padding:14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);margin-bottom:9px}
+.hist-row{display:flex;align-items:center;gap:12px;padding:14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);margin-bottom:9px;cursor:pointer}
 .hist-date{text-align:center;flex-shrink:0;min-width:38px}
 .hist-day{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:var(--acc);line-height:1}
 .hist-mon{font-size:9px;color:var(--t2);text-transform:uppercase}
@@ -734,6 +734,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
     <input class="ex-search" placeholder="🔍 Rechercher..." oninput="filterExModal(this.value)">
     <div id="ex-modal-list"></div>
   </div>
+</div>
+
+<!-- SESSION DETAIL MODAL -->
+<div class="modal-bg" id="session-detail-modal" onclick="closeMBg(event,'session-detail-modal')">
+  <div class="modal" id="session-detail-body" style="max-height:80vh;overflow-y:auto"></div>
 </div>
 
 <!-- 1RM MODAL -->
@@ -1432,11 +1437,17 @@ function goTo(name){
 // ═══════════════════════════════════
 var sStart=null,sInt=null;
 // Depuis l'accueil, "Démarrer la séance" ouvre le Logger et lance directement
-// le chrono (sauf si une séance a déjà été enregistrée aujourd'hui, dans ce
-// cas on affiche juste l'écran avec le bandeau "déjà enregistrée").
+// le chrono. Si une séance a déjà été enregistrée aujourd'hui, le bouton
+// devient "Voir ma séance" : on va sur l'Historique et on ouvre le détail
+// complet de cette séance.
 function startSessionFromHome(){
+  if(sessions.length&&sessions[0].date===todayStr()){
+    goTo('history');
+    openSessionDetail(0);
+    return;
+  }
   goTo('log');
-  if(!(sessions.length&&sessions[0].date===todayStr()))startSessionTimer();
+  startSessionTimer();
 }
 function startSessionTimer(){
   if(sStart)return;
@@ -1653,6 +1664,31 @@ function onSetInp(inp){
     block.querySelectorAll('.set-row').forEach(function(r){var is=r.querySelectorAll('.set-inp');var k=parseFloat(is[0].value);var rp=parseInt(is[1].value);if(k&&rp){allK.push(k);allR.push(rp);}});
     if(allK.length){var best=0;for(var i=0;i<allK.length;i++)best=Math.max(best,calc1RM(allK[i],allR[i]));block.dataset.est=best;var badge=document.getElementById('rmb-'+block.id);if(badge){badge.textContent='1RM ~'+best+' kg';var nm2=block.dataset.name.replace(/'/g,"\\'");badge.onclick=function(){openRMModal(nm2,best);};}else if(best){var acts=block.querySelector('.ex-block-acts');var nb=document.createElement('div');nb.className='rm-badge-btn';nb.id='rmb-'+block.id;nb.textContent='1RM ~'+best+' kg';var nm3=block.dataset.name.replace(/'/g,"\\'");nb.onclick=function(){openRMModal(nm3,best);};acts.insertBefore(nb,acts.firstChild);}}
   }
+}
+
+// ═══════════════════════════════════
+// DÉTAIL D'UNE SÉANCE
+// ═══════════════════════════════════
+function openSessionDetail(idx){
+  var s=sessions[idx];if(!s)return;
+  var d=s.date?s.date.split('-'):['','',''];
+  var html='<div class="modal-handle"></div>'
+    +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;text-transform:uppercase;margin-bottom:2px">'+esc(s.name)+'</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">'+(d[2]||'—')+'/'+(d[1]||'—')+'/'+(d[0]||'—')+' · '+fmtDur(s.duration)+' · <span style="color:var(--acc);font-weight:600">'+(s.totalVolume||0).toLocaleString('fr-FR')+' kg</span>'+(s.newPRs&&s.newPRs.length?' · 🏆 '+s.newPRs.length+' PR':'')+'</div>';
+  if(!s.exercises||!s.exercises.length){
+    html+='<div class="empty"><div class="empty-ico">📋</div><p>Aucun exercice enregistré pour cette séance.</p></div>';
+  }else{
+    html+=s.exercises.map(function(e){
+      return '<div style="margin-bottom:14px">'
+        +'<div style="font-weight:700;font-size:13px;margin-bottom:6px">'+esc(e.name)+'</div>'
+        +(e.sets&&e.sets.length?e.sets.map(function(set,i){
+          return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--t2);padding:6px 0;border-bottom:1px solid var(--border)"><span>Série '+(i+1)+'</span><span style="color:var(--text);font-weight:600">'+set.kg+' kg × '+set.reps+'</span></div>';
+        }).join(''):'<div style="font-size:12px;color:var(--t3)">Aucune série renseignée</div>')
+        +'</div>';
+    }).join('');
+  }
+  document.getElementById('session-detail-body').innerHTML=html;
+  document.getElementById('session-detail-modal').classList.add('open');
 }
 
 // ═══════════════════════════════════
@@ -1903,7 +1939,7 @@ function renderHome(){
   var hh=document.getElementById('home-hist');
   if(hh){
     if(!sessions.length){hh.innerHTML='<div class="empty"><div class="empty-ico">📋</div><p>Aucune séance. Lancez votre premier entraînement !</p></div>';}
-    else{hh.innerHTML=sessions.slice(0,3).map(function(s){var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+esc(s.name)+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+'</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';}).join('');}
+    else{hh.innerHTML=sessions.slice(0,3).map(function(s,i){var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row" onclick="openSessionDetail('+i+')"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+esc(s.name)+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+'</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';}).join('');}
   }
   renderProfile();
 }
@@ -2200,7 +2236,7 @@ function renderHistory(){
   }
   var list=document.getElementById('hist-list');if(!list)return;
   if(!sessions.length){list.innerHTML='<div class="empty"><div class="empty-ico">📋</div><p>Aucune séance enregistrée.</p></div>';return;}
-  list.innerHTML=sessions.map(function(s){var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+esc(s.name)+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+' · '+(s.exercises?s.exercises.reduce(function(a,e){return a+e.sets.length;},0):0)+' séries</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';}).join('');
+  list.innerHTML=sessions.map(function(s,i){var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row" onclick="openSessionDetail('+i+')"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+esc(s.name)+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+' · '+(s.exercises?s.exercises.reduce(function(a,e){return a+e.sets.length;},0):0)+' séries</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';}).join('');
 }
 
 // ─── Export CSV de l'historique ───
