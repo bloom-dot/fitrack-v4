@@ -533,8 +533,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
         <div class="banner-title D" id="next-name">Push Day</div>
         <div class="banner-meta" id="next-meta">4 exercices · ~55 min</div>
         <div style="display:flex;gap:10px;margin-top:14px">
-          <button class="btn-primary" style="flex:1" onclick="goTo('log')">▶ Démarrer la séance</button>
-          <button class="btn-outline" onclick="openProgramModal()">📅 Programme</button>
+          <button class="btn-primary" style="flex:1" onclick="startSessionFromHome()">▶ Démarrer la séance</button>
+          <button class="btn-outline" style="width:auto;flex:none;padding:13px 16px" onclick="openProgramModal()">📅 Programme</button>
         </div>
       </div>
       <div class="card" id="weight-reminder" style="display:none;border:1px solid rgba(212,255,0,.3);background:var(--acc-d)">
@@ -1431,6 +1431,13 @@ function goTo(name){
 // SESSION TIMER
 // ═══════════════════════════════════
 var sStart=null,sInt=null;
+// Depuis l'accueil, "Démarrer la séance" ouvre le Logger et lance directement
+// le chrono (sauf si une séance a déjà été enregistrée aujourd'hui, dans ce
+// cas on affiche juste l'écran avec le bandeau "déjà enregistrée").
+function startSessionFromHome(){
+  goTo('log');
+  if(!(sessions.length&&sessions[0].date===todayStr()))startSessionTimer();
+}
 function startSessionTimer(){
   if(sStart)return;
   sStart=Date.now();
