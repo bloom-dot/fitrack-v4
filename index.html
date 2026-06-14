@@ -555,7 +555,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
       <div class="session-hdr">
         <input class="session-name" id="session-name" placeholder="Nom de la séance..." value="Push Day">
         <div class="session-meta">
-          <div class="s-timer" id="s-timer">⏱ 00:00</div>
+          <button class="btn-sm acc" id="s-timer-start" onclick="startSessionTimer()">▶ Démarrer la séance</button>
+          <div class="s-timer" id="s-timer" style="display:none">⏱ 00:00</div>
           <div class="rest-ctrl">
             <span style="font-size:11px;color:var(--t2)">Repos</span>
             <div class="rest-disp" id="rest-disp">2:00</div>
@@ -1400,7 +1401,6 @@ function showApp(){
   document.getElementById('ob-screen').style.display='none';
   document.getElementById('app').style.display='flex';
   renderHome();
-  startSessionTimer();
   buildDefaultSession();
 }
 
@@ -1426,8 +1426,19 @@ function goTo(name){
 // SESSION TIMER
 // ═══════════════════════════════════
 var sStart=null,sInt=null;
-function startSessionTimer(){sStart=Date.now();sInt=setInterval(function(){var s=Math.floor((Date.now()-sStart)/1000);var m=Math.floor(s/60).toString().padStart(2,'0');var sc=(s%60).toString().padStart(2,'0');var el=document.getElementById('s-timer');if(el)el.textContent='⏱ '+m+':'+sc;},1000);}
-function stopSessionTimer(){clearInterval(sInt);return sStart?Math.floor((Date.now()-sStart)/1000):0;}
+function startSessionTimer(){
+  if(sStart)return;
+  sStart=Date.now();
+  var btn=document.getElementById('s-timer-start');if(btn)btn.style.display='none';
+  var el=document.getElementById('s-timer');if(el)el.style.display='';
+  sInt=setInterval(function(){var s=Math.floor((Date.now()-sStart)/1000);var m=Math.floor(s/60).toString().padStart(2,'0');var sc=(s%60).toString().padStart(2,'0');var el=document.getElementById('s-timer');if(el)el.textContent='⏱ '+m+':'+sc;},1000);
+}
+function stopSessionTimer(){clearInterval(sInt);sInt=null;var d=sStart?Math.floor((Date.now()-sStart)/1000):0;sStart=null;return d;}
+// Réinitialise l'affichage du chrono de séance (bouton "Démarrer" visible, chrono caché)
+function resetSessionTimerUI(){
+  var btn=document.getElementById('s-timer-start');if(btn)btn.style.display='';
+  var el=document.getElementById('s-timer');if(el){el.style.display='none';el.textContent='⏱ 00:00';}
+}
 
 // REST TIMER
 var rDur=120,rLeft=120,rRun=false,rInt=null,rEndTime=null,rAlarm=false,rAlarmInt=null,alarmAudioCtx=null;
@@ -1459,7 +1470,17 @@ function toggleRest(){
   rRun=true;rEndTime=Date.now()+rLeft*1000;
   if(b)b.textContent='■ Stop';
   rInt=setInterval(restTick,250);
+  unlockAlarmAudio();
   updRest();
+}
+// Crée/débloque l'AudioContext pendant le tap utilisateur (geste requis par
+// les navigateurs) pour que le bip d'alarme puisse jouer plus tard, déclenché
+// par un setInterval qui n'est pas considéré comme un geste utilisateur.
+function unlockAlarmAudio(){
+  try{
+    if(!alarmAudioCtx)alarmAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(alarmAudioCtx.state==='suspended')alarmAudioCtx.resume();
+  }catch(e){}
 }
 function restTick(){
   rLeft=Math.max(0,Math.round((rEndTime-Date.now())/1000));
@@ -1700,7 +1721,7 @@ function finishSession(){
   adjustProgramAfterSession(sd);
   checkBadges();
   // Reset
-  stopSessionTimer();sStart=null;document.getElementById('ex-list').innerHTML='';document.getElementById('session-name').value='Push Day';exCtr=0;
+  document.getElementById('ex-list').innerHTML='';document.getElementById('session-name').value='Push Day';exCtr=0;
   if(newPRs.length){prQueue=newPRs.slice();pendingPRs=[];showNextPR();}
   else{toast('Séance enregistrée 🎉 — '+sd.totalVolume.toLocaleString('fr-FR')+' kg');goTo('home');buildDefaultSession();}
 }
@@ -1771,6 +1792,7 @@ function programWeekNum(){
 function isDeloadWeek(){return programWeekNum()%6===0;}
 function buildDefaultSession(force){
   var list=document.getElementById('ex-list');if(!list)return;list.innerHTML='';exCtr=0;
+  resetSessionTimerUI();
   var nameInp=document.getElementById('session-name');
   var deloadEl=document.getElementById('deload-banner');
   if(deloadEl)deloadEl.remove();
