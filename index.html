@@ -406,6 +406,26 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .badge-name{font-size:13px;font-weight:700}
 .badge-desc{font-size:10px;color:var(--t2);margin-top:3px}
 
+/* ═══ COACH MOUVEMENT (analyse caméra) ═══ */
+.coach-promo{background:linear-gradient(135deg,var(--acc-d),var(--s1));border-color:var(--acc-d2);cursor:pointer;display:flex;align-items:center;gap:12px}
+.coach-promo .cp-ico{font-size:28px;flex-shrink:0}
+.coach-promo .cp-title{font-weight:800;font-size:14px}
+.coach-promo .cp-sub{font-size:11px;color:var(--t2);margin-top:2px}
+.coach-cam-wrap{position:relative;width:100%;aspect-ratio:3/4;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+.coach-cam-wrap video,.coach-cam-wrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.coach-cam-wrap video{transform:scaleX(-1)}
+.coach-cam-wrap canvas{transform:scaleX(-1)}
+.coach-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:0 30px;color:var(--t2);font-size:12px}
+.coach-placeholder .cph-ico{font-size:36px}
+.coach-feedback{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(10,10,10,.7);backdrop-filter:blur(6px);border-radius:var(--r-sm);padding:10px 12px;font-size:13px;font-weight:700;text-align:center;color:var(--acc);display:none;border:1px solid var(--border2)}
+.coach-feedback.show{display:block}
+.coach-feedback.warn{color:var(--gold)}
+.coach-stats{display:flex;gap:10px;margin-bottom:12px}
+.coach-stat{flex:1;background:var(--s1);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;text-align:center}
+.coach-stat .cs-val{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:var(--acc)}
+.coach-stat .cs-lbl{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+.coach-tip{font-size:11px;color:var(--t2);text-align:center;line-height:1.5;margin-top:4px}
+
 /* ═══ AI SCREEN ═══ */
 .ai-orb{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--acc),#6a7800);box-shadow:0 0 24px rgba(212,255,0,.3);animation:orb-pulse 2s ease-in-out infinite;flex-shrink:0}
 @keyframes orb-pulse{0%,100%{box-shadow:0 0 20px rgba(212,255,0,.25)}50%{box-shadow:0 0 36px rgba(212,255,0,.45)}}
@@ -670,8 +690,42 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
   <div class="screen" id="screen-library">
     <div class="topbar"><div><h1 class="D">Exercices</h1><div class="sub">Muscles ciblés &amp; technique d'exécution</div></div></div>
     <div class="scroll">
+      <div class="card coach-promo" onclick="goTo('coach')">
+        <div class="cp-ico">🎥</div>
+        <div><div class="cp-title">Coach Mouvement IA</div><div class="cp-sub">Analyse ta technique en direct via la caméra</div></div>
+      </div>
       <input class="ex-search" placeholder="🔍 Rechercher un exercice..." oninput="filterLibEx(this.value)">
       <div id="lib-list"></div>
+    </div>
+  </div>
+
+  <!-- COACH MOUVEMENT -->
+  <div class="screen" id="screen-coach">
+    <div class="topbar"><div><button onclick="goTo('library')" style="background:none;border:none;color:var(--t2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;margin-bottom:4px">← Retour</button><h1 class="D">Coach Mouvement</h1><div class="sub">Analyse ta technique en direct par caméra</div></div></div>
+    <div class="scroll">
+      <div class="card">
+        <div class="inp-label">Exercice</div>
+        <select class="inp" id="coach-exercise" onchange="coachSetExercise(this.value)">
+          <option value="squat">Squat</option>
+          <option value="deadlift">Soulevé de terre</option>
+          <option value="pullup">Tractions</option>
+        </select>
+      </div>
+      <div class="coach-cam-wrap">
+        <video id="coach-video" playsinline muted></video>
+        <canvas id="coach-canvas"></canvas>
+        <div class="coach-placeholder" id="coach-placeholder">
+          <div class="cph-ico">🎥</div>
+          <div>Lance la caméra pour que le coach analyse ta posture en direct.</div>
+        </div>
+        <div class="coach-feedback" id="coach-feedback"></div>
+      </div>
+      <button class="btn-primary" id="coach-toggle-btn" onclick="toggleCoachCamera()">📷 Démarrer la caméra</button>
+      <div class="coach-stats" id="coach-stats" style="margin-top:12px;display:none">
+        <div class="coach-stat"><div class="cs-val" id="coach-angle-1">--°</div><div class="cs-lbl" id="coach-angle-1-lbl">Angle</div></div>
+        <div class="coach-stat"><div class="cs-val" id="coach-angle-2">--°</div><div class="cs-lbl" id="coach-angle-2-lbl">Angle</div></div>
+      </div>
+      <div class="coach-tip" id="coach-tip">Place ton téléphone de profil (vue de côté), à environ 2 mètres, pour que la caméra voie tout ton corps. Cette analyse tourne entièrement sur ton téléphone — rien n'est envoyé sur internet.</div>
     </div>
   </div>
 
@@ -1446,8 +1500,9 @@ function showApp(){
   buildDefaultSession();
 }
 
-var SCREENS=['home','log','records','nutrition','history','ai','profile','library','measurements','badges'];
+var SCREENS=['home','log','records','nutrition','history','ai','profile','library','measurements','badges','coach'];
 function goTo(name){
+  if(name!=='coach')stopCoachCamera();
   SCREENS.forEach(function(s){
     var sc=document.getElementById('screen-'+s);if(sc)sc.classList.remove('on');
     var n=document.getElementById('nav-'+s);if(n)n.classList.remove('on');
@@ -2800,6 +2855,168 @@ async function doPwaInstall(){
 function dismissPwaModal(){
   document.getElementById('pwa-modal').classList.remove('open');
   DB.s('pwaPromptDismissed',Date.now());
+}
+
+// ═══════════════════════════════════
+// COACH MOUVEMENT (analyse de posture en direct par caméra)
+// Tout tourne dans le navigateur via MediaPipe Pose (WASM) : aucune vidéo
+// n'est envoyée sur internet. La librairie n'est chargée que si l'utilisateur
+// ouvre cet écran, pour ne pas alourdir le chargement du reste de l'app.
+// ═══════════════════════════════════
+var coachExercise='squat',coachStream=null,coachPose=null,coachRunning=false,coachLastFeedback=0;
+var COACH_CONNECTIONS=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
+
+function coachSetExercise(v){
+  coachExercise=v;
+  var labels={squat:['Genou','Buste'],deadlift:['Hanche','Jambe'],pullup:['Coude','Amplitude']};
+  var l=labels[v]||['Angle','Angle'];
+  document.getElementById('coach-angle-1-lbl').textContent=l[0];
+  document.getElementById('coach-angle-2-lbl').textContent=l[1];
+}
+
+function loadCoachScript(src){
+  return new Promise(function(resolve,reject){
+    if(document.querySelector('script[src="'+src+'"]')){resolve();return;}
+    var s=document.createElement('script');
+    s.src=src;s.crossOrigin='anonymous';
+    s.onload=function(){resolve();};
+    s.onerror=function(){reject(new Error('Échec du chargement de '+src));};
+    document.head.appendChild(s);
+  });
+}
+
+async function toggleCoachCamera(){
+  if(coachRunning){stopCoachCamera();return;}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    alert('La caméra n\'est pas disponible sur cet appareil/navigateur.');
+    return;
+  }
+  var btn=document.getElementById('coach-toggle-btn');
+  btn.disabled=true;btn.textContent='⏳ Chargement...';
+  try{
+    await loadCoachScript('https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js');
+    coachStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    var video=document.getElementById('coach-video');
+    video.srcObject=coachStream;
+    await video.play();
+    if(!coachPose){
+      coachPose=new Pose({locateFile:function(file){return 'https://cdn.jsdelivr.net/npm/@mediapipe/pose/'+file;}});
+      coachPose.setOptions({modelComplexity:1,smoothLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
+      coachPose.onResults(onCoachResults);
+    }
+    document.getElementById('coach-placeholder').style.display='none';
+    document.getElementById('coach-stats').style.display='flex';
+    coachSetExercise(coachExercise);
+    coachRunning=true;
+    btn.textContent='⏹ Arrêter la caméra';
+    coachLoop();
+  }catch(e){
+    alert('Impossible d\'accéder à la caméra : '+(e&&e.message?e.message:e));
+  }
+  btn.disabled=false;
+}
+
+async function coachLoop(){
+  if(!coachRunning)return;
+  var video=document.getElementById('coach-video');
+  if(video.readyState>=2)await coachPose.send({image:video});
+  if(coachRunning)requestAnimationFrame(coachLoop);
+}
+
+function stopCoachCamera(){
+  if(!coachRunning&&!coachStream)return;
+  coachRunning=false;
+  if(coachStream){coachStream.getTracks().forEach(function(t){t.stop();});coachStream=null;}
+  var video=document.getElementById('coach-video');if(video)video.srcObject=null;
+  var canvas=document.getElementById('coach-canvas');
+  if(canvas){var ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);}
+  var ph=document.getElementById('coach-placeholder');if(ph)ph.style.display='flex';
+  var stats=document.getElementById('coach-stats');if(stats)stats.style.display='none';
+  var fb=document.getElementById('coach-feedback');if(fb)fb.classList.remove('show');
+  var btn=document.getElementById('coach-toggle-btn');if(btn){btn.textContent='📷 Démarrer la caméra';btn.disabled=false;}
+}
+
+// Angle (en degrés) au point b, formé par les points a-b-c
+function coachAngle(a,b,c){
+  var ab={x:a.x-b.x,y:a.y-b.y},cb={x:c.x-b.x,y:c.y-b.y};
+  var dot=ab.x*cb.x+ab.y*cb.y;
+  var mag=Math.hypot(ab.x,ab.y)*Math.hypot(cb.x,cb.y);
+  if(!mag)return 0;
+  var cos=Math.max(-1,Math.min(1,dot/mag));
+  return Math.acos(cos)*180/Math.PI;
+}
+
+function onCoachResults(results){
+  var canvas=document.getElementById('coach-canvas'),video=document.getElementById('coach-video');
+  canvas.width=video.videoWidth||canvas.clientWidth;
+  canvas.height=video.videoHeight||canvas.clientHeight;
+  var ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(!results.poseLandmarks)return;
+  var lm=results.poseLandmarks;
+  ctx.strokeStyle='#d4ff00';ctx.lineWidth=3;
+  COACH_CONNECTIONS.forEach(function(c){
+    var p1=lm[c[0]],p2=lm[c[1]];
+    if(!p1||!p2)return;
+    ctx.beginPath();ctx.moveTo(p1.x*canvas.width,p1.y*canvas.height);ctx.lineTo(p2.x*canvas.width,p2.y*canvas.height);ctx.stroke();
+  });
+  ctx.fillStyle='#fff';
+  lm.forEach(function(p){if(p.visibility>0.5){ctx.beginPath();ctx.arc(p.x*canvas.width,p.y*canvas.height,4,0,2*Math.PI);ctx.fill();}});
+  computeCoachFeedback(lm);
+}
+
+// Choisit le côté (gauche/droit) le mieux visible par la caméra
+function pickCoachSide(lm){
+  var lv=(lm[23].visibility+lm[25].visibility+lm[27].visibility+lm[11].visibility)/4;
+  var rv=(lm[24].visibility+lm[26].visibility+lm[28].visibility+lm[12].visibility)/4;
+  return rv>=lv?{sh:12,hip:24,knee:26,ankle:28,elb:14,wr:16}:{sh:11,hip:23,knee:25,ankle:27,elb:13,wr:15};
+}
+
+function showCoachFeedback(msg,warn){
+  var fb=document.getElementById('coach-feedback');
+  fb.textContent=msg;
+  fb.classList.add('show');
+  fb.classList.toggle('warn',!!warn);
+}
+
+function computeCoachFeedback(lm){
+  var s=pickCoachSide(lm);
+  var sh=lm[s.sh],hip=lm[s.hip],knee=lm[s.knee],ankle=lm[s.ankle],elb=lm[s.elb],wr=lm[s.wr];
+  if(!sh||!hip||!knee||!ankle)return;
+  var now=Date.now();
+  if(coachExercise==='squat'){
+    var kneeAngle=coachAngle(hip,knee,ankle);
+    var backAngle=coachAngle(sh,hip,knee);
+    document.getElementById('coach-angle-1').textContent=Math.round(kneeAngle)+'°';
+    document.getElementById('coach-angle-2').textContent=Math.round(backAngle)+'°';
+    if(now-coachLastFeedback<1200)return;
+    if(kneeAngle>150)showCoachFeedback('Position de départ : descends en pliant genoux et hanches');
+    else if(kneeAngle>100)showCoachFeedback('Continue de descendre pour atteindre la profondeur');
+    else if(backAngle<35)showCoachFeedback('Garde le buste plus droit, évite de trop te pencher en avant',true);
+    else showCoachFeedback('Bonne profondeur, garde le dos droit !');
+    coachLastFeedback=now;
+  }else if(coachExercise==='deadlift'){
+    var hipAngle=coachAngle(sh,hip,knee);
+    var legAngle=coachAngle(hip,knee,ankle);
+    document.getElementById('coach-angle-1').textContent=Math.round(hipAngle)+'°';
+    document.getElementById('coach-angle-2').textContent=Math.round(legAngle)+'°';
+    if(now-coachLastFeedback<1200)return;
+    if(hipAngle<70)showCoachFeedback('Vérifie que ton dos reste droit, ne l\'arrondis pas en descendant',true);
+    else if(hipAngle>160)showCoachFeedback('Position haute : verrouille les hanches sans cambrer le bas du dos');
+    else showCoachFeedback('Bon mouvement de hanches, pousse le sol avec les pieds');
+    coachLastFeedback=now;
+  }else if(coachExercise==='pullup'){
+    if(!elb||!wr)return;
+    var elbowAngle=coachAngle(sh,elb,wr);
+    var amplitude=Math.abs(wr.y-sh.y);
+    document.getElementById('coach-angle-1').textContent=Math.round(elbowAngle)+'°';
+    document.getElementById('coach-angle-2').textContent=(amplitude*100).toFixed(0)+'%';
+    if(now-coachLastFeedback<1200)return;
+    if(elbowAngle>150)showCoachFeedback('Bras tendus : position basse correcte, tire vers le haut');
+    else if(elbowAngle>80)showCoachFeedback('Continue de tirer, monte le menton au-dessus des mains');
+    else showCoachFeedback('Bonne amplitude ! Redescends en contrôlant le mouvement');
+    coachLastFeedback=now;
+  }
 }
 </script>
 </body>
