@@ -147,7 +147,10 @@ export default async function handler(request) {
     if (rows.length) currentCount = rows[0].count;
   }
   if (currentCount >= DAILY_LIMIT) {
-    return jsonError("QUOTA_INTERNAL", 429);
+    return new Response(JSON.stringify({ error: "QUOTA_INTERNAL", remaining: 0 }), {
+      status: 429,
+      headers: { "content-type": "application/json", ...corsHeaders() },
+    });
   }
 
   // --- 6. Appeler l'API Mistral avec la clé secrète (env var Vercel) ---
@@ -205,7 +208,7 @@ export default async function handler(request) {
   }).catch(() => {});
 
   // --- 8. Renvoyer la réponse à l'app, au format attendu côté client ---
-  return new Response(JSON.stringify({ content: [{ type: "text", text }] }), {
+  return new Response(JSON.stringify({ content: [{ type: "text", text }], remaining: Math.max(0, DAILY_LIMIT - (currentCount + 1)) }), {
     status: 200,
     headers: {
       "content-type": "application/json",

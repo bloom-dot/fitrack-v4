@@ -282,6 +282,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .s-timer-row.show{display:flex}
 .s-timer{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:var(--acc);text-align:center;letter-spacing:1px;padding:6px 0}
 .s-cancel-btn{background:none;border:1px solid var(--border2);color:var(--t2);font-size:11px;font-weight:600;border-radius:6px;padding:6px 10px;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap}
+.s-progress{display:none;margin-top:10px}
+.s-progress.show{display:block}
+.s-progress-lbl{font-size:11px;color:var(--t2);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:flex;justify-content:space-between}
+.s-progress-bar{height:6px;border-radius:3px;background:var(--border);overflow:hidden}
+.s-progress-fill{height:100%;background:var(--acc);border-radius:3px;width:0%;transition:width .3s}
 .rest-row{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap}
 .rest-lbl{font-size:11px;color:var(--t2);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 .rest-opts{display:flex;gap:6px;margin-left:auto}
@@ -585,7 +590,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 
   <!-- HOME -->
   <div class="screen on" id="screen-home">
-    <div class="topbar"><div><h1 class="D">FiTrack</h1><div class="sub" id="home-date"></div></div><div class="tbr"><div class="ib" onclick="goTo('library')">📖</div><div class="ib" onclick="goTo('profile')">👤</div></div></div>
+    <div class="topbar"><div><h1 class="D">FiTrack</h1><div class="sub" id="home-date"></div></div><div class="tbr"><div class="ib" onclick="goTo('library')" role="button" aria-label="Bibliothèque d'exercices" title="Bibliothèque d'exercices"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><div class="ib" onclick="goTo('profile')" role="button" aria-label="Profil" title="Profil"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-3.9 3.6-7 8-7s8 3.1 8 7"/></svg></div></div></div>
     <div class="scroll">
       <div class="banner">
         <div class="day-status" id="day-status"></div>
@@ -599,7 +604,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
       </div>
       <div class="card" id="weight-reminder" style="display:none;border:1px solid rgba(212,255,0,.3);background:var(--acc-d)">
         <div style="font-size:13px;color:var(--t2)">📏 <span style="color:var(--acc);font-weight:600">Pesée hebdomadaire</span><br>Pense à enregistrer ton poids cette semaine pour garder un suivi précis et adapter ta nutrition.</div>
-        <button class="btn-primary" style="margin-top:10px" onclick="goTo('measurements')">Enregistrer mon poids</button>
+        <div style="display:flex;gap:10px;margin-top:10px">
+          <button class="btn-primary" style="flex:1" onclick="goTo('measurements')">Enregistrer mon poids</button>
+          <button class="btn-outline" style="width:auto;flex:none;padding:13px 16px" onclick="snoozeWeightReminder()">Plus tard</button>
+        </div>
       </div>
       <div class="stat-grid">
         <div class="stat-card"><div class="stat-val acc" id="h-seances">0</div><div class="stat-lbl">Séances ce mois</div></div>
@@ -616,7 +624,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 
   <!-- LOG -->
   <div class="screen" id="screen-log">
-    <div class="topbar" style="padding-bottom:12px"><div><h1 class="D" style="font-size:22px">Séance en cours</h1></div><div class="tbr"><div class="ib" onclick="toast('Brouillon sauvegardé 💾')">💾</div></div></div>
+    <div class="topbar" style="padding-bottom:12px"><div><h1 class="D" style="font-size:22px">Séance en cours</h1></div><div class="tbr"><div class="ib" onclick="toast('Brouillon sauvegardé 💾')" role="button" aria-label="Sauvegarder le brouillon" title="Sauvegarder le brouillon">💾</div></div></div>
     <div class="scroll">
       <div class="session-hdr">
         <input class="session-name" id="session-name" placeholder="Nom de la séance..." value="Push Day">
@@ -624,6 +632,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
         <div class="s-timer-row" id="s-timer-row">
           <div class="s-timer" id="s-timer">⏱ 00:00</div>
           <button class="s-cancel-btn" onclick="cancelSession()">✕ Annuler</button>
+        </div>
+        <div class="s-progress" id="s-progress">
+          <div class="s-progress-lbl"><span>Progression</span><span id="s-progress-txt">0/0 séries</span></div>
+          <div class="s-progress-bar"><div class="s-progress-fill" id="s-progress-fill"></div></div>
         </div>
         <div class="rest-row">
           <span class="rest-lbl">Repos</span>
@@ -670,13 +682,19 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
     <div class="topbar"><div><h1 class="D">Historique</h1><div class="sub" id="hist-count">0 séances</div></div><button class="btn-outline" style="width:auto;padding:8px 14px;font-size:11px" onclick="exportHistoryCSV()">⬇ Export CSV</button></div>
     <div class="scroll">
       <div class="week-chart"><div class="wc-title D">Volume hebdo</div><div class="wc-sub">Kg soulevés par jour</div><div style="position:relative;height:90px"><canvas id="vol-chart" role="img" aria-label="Graphique volume hebdomadaire"></canvas></div><div id="hist-compare" style="margin-top:10px;font-size:12px;color:var(--t2)"></div></div>
+      <div class="rec-filter" id="hist-filter">
+        <div class="rec-chip on" onclick="filterHist(this,'all')">Tout</div>
+        <div class="rec-chip" onclick="filterHist(this,'7')">7 jours</div>
+        <div class="rec-chip" onclick="filterHist(this,'30')">30 jours</div>
+        <div class="rec-chip" onclick="filterHist(this,'365')">Cette année</div>
+      </div>
       <div id="hist-list"></div>
     </div>
   </div>
 
   <!-- AI -->
   <div class="screen" id="screen-ai">
-    <div class="topbar"><div><h1 class="D">FitAI</h1><div class="sub">Coach personnel IA</div></div></div>
+    <div class="topbar"><div><h1 class="D">FitAI</h1><div class="sub">Coach personnel IA</div></div><div class="sub" id="ai-quota" style="text-align:right"></div></div>
     <div class="scroll">
       <div class="card" style="display:flex;align-items:center;gap:13px;margin-bottom:12px">
         <div class="ai-orb"></div>
@@ -731,7 +749,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
           <div class="cph-ico">🎥</div>
           <div>Lance la caméra pour que le coach analyse ta posture en direct.</div>
         </div>
-        <button class="coach-switch-btn" id="coach-switch-btn" onclick="coachSwitchCamera()" style="display:none" title="Changer de caméra">
+        <button class="coach-switch-btn" id="coach-switch-btn" onclick="coachSwitchCamera()" style="display:none" title="Changer de caméra" aria-label="Changer de caméra">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg>
         </button>
         <div class="coach-feedback" id="coach-feedback"></div>
@@ -769,8 +787,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
       <div class="setting-row" onclick="goTo('badges')"><div class="setting-lbl">Mes badges 🏅</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="editProfile()"><div class="setting-lbl">Modifier mon profil</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="regenerateProgram()"><div class="setting-lbl">🔄 Régénérer mon programme</div><div class="setting-val">→</div></div>
-      <div class="setting-row" onclick="clearData()"><div class="setting-lbl" style="color:var(--red)">Se déconnecter</div><div class="setting-val">—</div></div>
-      <div class="setting-row" onclick="openDeleteAccountModal()"><div class="setting-lbl" style="color:var(--red)">Supprimer mon compte</div><div class="setting-val">—</div></div>
+      <div class="setting-row" onclick="clearData()"><div class="setting-lbl">Se déconnecter</div><div class="setting-val">—</div></div>
+      <div class="sh" style="margin-top:24px"><h2 class="D" style="color:var(--red)">Zone de danger</h2></div>
+      <div class="setting-row" onclick="openDeleteAccountModal()" style="border-color:rgba(255,82,82,.25)"><div class="setting-lbl" style="color:var(--red)">Supprimer mon compte</div><div class="setting-val">—</div></div>
+      <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">Action définitive et irréversible : profil, séances, records, mensurations, photos et badges seront supprimés.</div>
     </div>
   </div>
 
@@ -1561,7 +1581,17 @@ function startSessionTimer(){
   var row=document.getElementById('s-timer-row');if(row)row.classList.add('show');
   var addBtn=document.getElementById('add-ex-btn');if(addBtn)addBtn.style.display='';
   var finBtn=document.getElementById('finish-session-btn');if(finBtn)finBtn.style.display='';
+  var prog=document.getElementById('s-progress');if(prog)prog.classList.add('show');
+  updateSessionProgress();
   sInt=setInterval(function(){var s=Math.floor((Date.now()-sStart)/1000);var m=Math.floor(s/60).toString().padStart(2,'0');var sc=(s%60).toString().padStart(2,'0');var el=document.getElementById('s-timer');if(el)el.textContent='⏱ '+m+':'+sc;},1000);
+}
+// Met à jour la barre de progression (séries cochées / total) pendant la séance
+function updateSessionProgress(){
+  var prog=document.getElementById('s-progress');if(!prog||!prog.classList.contains('show'))return;
+  var all=document.querySelectorAll('#ex-list .set-ck');
+  var done=document.querySelectorAll('#ex-list .set-ck.done');
+  var txt=document.getElementById('s-progress-txt');if(txt)txt.textContent=done.length+'/'+all.length+' séries';
+  var fill=document.getElementById('s-progress-fill');if(fill)fill.style.width=(all.length?Math.round(done.length/all.length*100):0)+'%';
 }
 function stopSessionTimer(){clearInterval(sInt);sInt=null;var d=sStart?Math.floor((Date.now()-sStart)/1000):0;sStart=null;return d;}
 // Réinitialise l'affichage du chrono de séance (bouton "Démarrer" visible, chrono caché,
@@ -1572,6 +1602,7 @@ function resetSessionTimerUI(){
   var el=document.getElementById('s-timer');if(el)el.textContent='⏱ 00:00';
   var addBtn=document.getElementById('add-ex-btn');if(addBtn)addBtn.style.display='none';
   var finBtn=document.getElementById('finish-session-btn');if(finBtn)finBtn.style.display='none';
+  var prog=document.getElementById('s-progress');if(prog)prog.classList.remove('show');
 }
 // Annule la séance en cours (démarrée par erreur) : arrête le chrono et
 // réinitialise la liste d'exercices sans rien enregistrer.
@@ -1763,12 +1794,13 @@ function addExBlock(name,muscle,sugWeight,sugReps,nbSets){
   var block=document.createElement('div');
   block.className='ex-block';block.id=id;block.dataset.name=name;block.dataset.muscle=muscle||'—';block.dataset.est=est;
   block.innerHTML='<div class="ex-block-hdr"><div><div class="ex-block-name">'+esc(name)+'</div><div class="ex-block-muscle">'+muscleLine+'</div></div>'
-    +'<div class="ex-block-acts">'+(est?'<div class="rm-badge-btn" id="rmb-'+id+'" onclick="openRMModal(\''+escAttr(name)+'\','+est+')">1RM ~'+est+' kg</div>':'')+' <div class="ex-del" onclick="document.getElementById(\''+id+'\').remove();toast(\'Exercice retiré\')">✕</div></div></div>'
+    +'<div class="ex-block-acts">'+(est?'<div class="rm-badge-btn" id="rmb-'+id+'" onclick="openRMModal(\''+escAttr(name)+'\','+est+')">1RM ~'+est+' kg</div>':'')+' <div class="ex-del" onclick="document.getElementById(\''+id+'\').remove();toast(\'Exercice retiré\');updateSessionProgress()">✕</div></div></div>'
     +'<div class="sets-wrap" id="sets-'+id+'"><div class="sets-hdr"><span>#</span><span>Poids kg</span><span>Reps</span><span>Vol.</span><span>✓</span></div></div>';
   container.appendChild(block);
   var n=nbSets||3;
   for(var i=0;i<n;i++)addSetRow(id,sug,sugReps||'');
   addSetBtn(id);
+  updateSessionProgress();
 }
 
 function addSetRow(bid,sug,r){
@@ -1780,7 +1812,7 @@ function addSetRow(bid,sug,r){
     +'<input class="set-inp'+(sug?' sug':'')+'" type="number" min="0" step="0.5" placeholder="kg" value="'+(sug||'')+'" onfocus="this.classList.remove(\'sug\')" oninput="onSetInp(this)">'
     +'<input class="set-inp" type="number" min="0" step="1" placeholder="reps" value="'+(r||'')+'" oninput="onSetInp(this)">'
     +'<div class="set-vol">—</div>'
-    +'<div class="set-ck" onclick="this.classList.toggle(\'done\');this.textContent=this.classList.contains(\'done\')?\'✓\':\'\'">'+'</div>';
+    +'<div class="set-ck" onclick="this.classList.toggle(\'done\');this.textContent=this.classList.contains(\'done\')?\'✓\':\'\';updateSessionProgress()">'+'</div>';
   if(btn)wrap.insertBefore(row,btn);else wrap.appendChild(row);
 }
 
@@ -1790,8 +1822,9 @@ function addSetBtn(bid){
   btn.onclick=function(){
     var n=wrap.querySelectorAll('.set-row').length+1;
     var row=document.createElement('div');row.className='set-row';
-    row.innerHTML='<div class="set-n">'+n+'</div><input class="set-inp" type="number" step="0.5" placeholder="kg" oninput="onSetInp(this)"><input class="set-inp" type="number" step="1" placeholder="reps" oninput="onSetInp(this)"><div class="set-vol">—</div><div class="set-ck" onclick="this.classList.toggle(\'done\');this.textContent=this.classList.contains(\'done\')?\'✓\':\'\'">'+'</div>';
+    row.innerHTML='<div class="set-n">'+n+'</div><input class="set-inp" type="number" step="0.5" placeholder="kg" oninput="onSetInp(this)"><input class="set-inp" type="number" step="1" placeholder="reps" oninput="onSetInp(this)"><div class="set-vol">—</div><div class="set-ck" onclick="this.classList.toggle(\'done\');this.textContent=this.classList.contains(\'done\')?\'✓\':\'\';updateSessionProgress()">'+'</div>';
     wrap.insertBefore(row,btn);
+    updateSessionProgress();
   };
   wrap.appendChild(btn);
 }
@@ -2360,6 +2393,14 @@ function renderNutrition(){
 // RENDER HISTORY
 // ═══════════════════════════════════
 var wChart=null;
+var histFilter='all';
+// Change le filtre de période de l'historique et redessine la liste
+function filterHist(chip,val){
+  histFilter=val;
+  document.querySelectorAll('#hist-filter .rec-chip').forEach(function(c){c.classList.remove('on');});
+  chip.classList.add('on');
+  renderHistory();
+}
 function renderHistory(){
   var hc=document.getElementById('hist-count');if(hc)hc.textContent=sessions.length+' séance'+(sessions.length>1?'s':'');
   var canvas=document.getElementById('vol-chart');
@@ -2388,7 +2429,14 @@ function renderHistory(){
   }
   var list=document.getElementById('hist-list');if(!list)return;
   if(!sessions.length){list.innerHTML='<div class="empty"><div class="empty-ico">📋</div><p>Aucune séance enregistrée.</p></div>';return;}
-  list.innerHTML=sessions.map(function(s,i){var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row" onclick="openSessionDetail('+i+')"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+esc(s.name)+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+' · '+(s.exercises?s.exercises.reduce(function(a,e){return a+e.sets.length;},0):0)+' séries</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';}).join('');
+  var filtered=sessions;var idxMap=sessions.map(function(_,i){return i;});
+  if(histFilter!=='all'){
+    var cutoff=Date.now()-Number(histFilter)*86400000;
+    var pairs=sessions.map(function(s,i){return {s:s,i:i};}).filter(function(p){return new Date(p.s.date).getTime()>=cutoff;});
+    filtered=pairs.map(function(p){return p.s;});idxMap=pairs.map(function(p){return p.i;});
+  }
+  if(!filtered.length){list.innerHTML='<div class="empty"><div class="empty-ico">📋</div><p>Aucune séance sur cette période.</p></div>';return;}
+  list.innerHTML=filtered.map(function(s,fi){var i=idxMap[fi];var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row" onclick="openSessionDetail('+i+')"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+esc(s.name)+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+' · '+(s.exercises?s.exercises.reduce(function(a,e){return a+e.sets.length;},0):0)+' séries</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';}).join('');
 }
 
 // ─── Export CSV de l'historique ───
@@ -2459,10 +2507,17 @@ var weightChart=null;
 // ─── Rappel de pesée hebdomadaire ───
 function checkWeightReminder(){
   var b=document.getElementById('weight-reminder');if(!b)return;
+  var snooze=localStorage.getItem('fitrack_weight_reminder_snooze');
+  if(snooze===todayStr()){b.style.display='none';return;}
   if(!measurements.length){b.style.display='block';return;}
   var last=measurements[measurements.length-1];
   var diffDays=Math.floor((new Date(todayStr())-new Date(last.date))/86400000);
   b.style.display=diffDays>=7?'block':'none';
+}
+// Masque le rappel de pesée jusqu'au lendemain
+function snoozeWeightReminder(){
+  localStorage.setItem('fitrack_weight_reminder_snooze',todayStr());
+  var b=document.getElementById('weight-reminder');if(b)b.style.display='none';
 }
 // ─── Moyenne de poids par semaine (lisse les fluctuations) ───
 function isoWeekKey(dateStr){
@@ -2737,6 +2792,7 @@ async function sendAI(){
     var res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','authorization':'Bearer '+session.access_token},body:JSON.stringify({system:sysCtx,messages:[{role:'user',content:msg}]})});
     if(res.status===401){ld.remove();appendMsg('bot','Session expirée, reconnecte-toi pour utiliser FitAI.');return;}
     var data=await res.json().catch(function(){return null;});ld.remove();
+    if(data&&typeof data.remaining==='number')updateAiQuota(data.remaining);
     if(res.status===429){
       if(data&&data.error==='QUOTA_INTERNAL'){appendMsg('bot','Tu as atteint la limite de messages pour aujourd\'hui. Réessaie demain !');}
       else{appendMsg('bot','FitAI est très sollicité en ce moment, réessaie dans une minute.');}
@@ -2747,6 +2803,12 @@ async function sendAI(){
   }catch(e){ld.remove();appendMsg('bot','Connexion impossible : '+(e&&e.message?e.message:e));}
 }
 function sendQP(txt){goTo('ai');document.getElementById('ai-inp').value=txt;sendAI();}
+// Affiche le nombre de messages FitAI restants pour la journée
+function updateAiQuota(remaining){
+  var el=document.getElementById('ai-quota');if(!el)return;
+  if(remaining<=10)el.textContent=remaining+' message'+(remaining===1?'':'s')+' restant'+(remaining===1?'':'s')+' aujourd\'hui';
+  else el.textContent='';
+}
 function appendMsg(role,txt){var chat=document.getElementById('ai-chat');var div=document.createElement('div');div.className='ai-msg '+role;if(role==='bot')div.innerHTML='<div class="ai-bot-lbl">🤖 FitAI</div>'+mdLite(txt);else div.textContent=txt;chat.appendChild(div);div.scrollIntoView({behavior:'smooth',block:'nearest'});return div;}
 // Convertit un Markdown très simple (gras **texte**, italique *texte*) en HTML, en échappant le reste
 function mdLite(txt){return esc(txt).replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|[\s>])\*([^*\s][^*]*?)\*(?=[\s.,!?<]|$)/g,'$1<i>$2</i>');}
