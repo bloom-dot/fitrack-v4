@@ -486,6 +486,33 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .coach-switch-btn{position:absolute;top:10px;right:10px;z-index:2;width:38px;height:38px;border-radius:50%;background:rgba(10,10,10,.6);backdrop-filter:blur(6px);border:1px solid var(--border2);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .coach-switch-btn svg{width:18px;height:18px}
 .coach-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:0 30px;color:var(--t2);font-size:12px}
+
+/* ═══ ACCUEIL : message du jour, défi hebdo, récap ═══ */
+.daily-msg{display:flex;align-items:flex-start;gap:10px}
+.daily-msg .dm-ico{font-size:22px;flex-shrink:0;line-height:1.4}
+.daily-msg .dm-text{font-size:13px;line-height:1.4}
+.challenge-card .ch-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.challenge-card .ch-title{font-weight:800;font-size:14px}
+.challenge-card .ch-count{font-size:12px;color:var(--t2)}
+.freeze-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--blue);background:rgba(91,156,246,.12);border:1px solid rgba(91,156,246,.25);border-radius:20px;padding:3px 8px;margin-top:10px}
+.recap-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.recap-stat{background:var(--s1);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;text-align:center}
+.recap-stat-val{font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif}
+.recap-stat-lbl{font-size:10px;color:var(--t2);margin-top:2px}
+.recap-diff{font-size:11px;margin-top:4px;font-weight:700}
+.recap-diff.up{color:var(--green)}
+.recap-diff.down{color:var(--red)}
+
+/* ═══ LANDING : tableau comparatif ═══ */
+.land-compare{width:100%;border-collapse:collapse;font-size:12px;overflow:hidden;border-radius:var(--r-sm);border:1px solid var(--border)}
+.land-compare th,.land-compare td{padding:10px 8px;text-align:center;border-bottom:1px solid var(--border)}
+.land-compare th{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;background:var(--s1)}
+.land-compare td:first-child,.land-compare th:first-child{text-align:left;font-weight:600}
+.land-compare tr:last-child td{border-bottom:none}
+.land-compare .land-compare-yes{color:var(--acc);font-weight:800}
+.land-compare .land-compare-no{color:var(--t3)}
+.land-compare th.land-compare-highlight{color:var(--acc)}
+.land-compare-wrap{overflow-x:auto;margin-top:10px}
 .coach-placeholder .cph-ico{font-size:36px}
 .coach-feedback{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(10,10,10,.7);backdrop-filter:blur(6px);border-radius:var(--r-sm);padding:10px 12px;font-size:13px;font-weight:700;text-align:center;color:var(--acc);display:none;border:1px solid var(--border2)}
 .coach-feedback.show{display:block}
@@ -606,6 +633,25 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
       <div class="land-feat-card"><span class="land-feat-ico">🏆</span><div class="land-feat-title">Séances & records</div><div class="land-feat-desc">Carnet d'entraînement complet, calcul automatique du 1RM, détection de tes nouveaux records personnels.</div></div>
       <div class="land-feat-card"><span class="land-feat-ico">🍽️</span><div class="land-feat-title">Nutrition & plan repas</div><div class="land-feat-desc">Suivi de poids, mensurations et besoins caloriques, avec des suggestions de repas générées par IA.</div></div>
       <div class="land-feat-card"><span class="land-feat-ico">🔥</span><div class="land-feat-title">Streaks & badges</div><div class="land-feat-desc">Reste motivé grâce aux séries de séances, aux badges à débloquer et au suivi de ta progression dans le temps.</div></div>
+    </div>
+  </div>
+
+  <!-- Comparatif -->
+  <div class="land-section">
+    <div class="land-section-kicker">Pourquoi FiTrack</div>
+    <h2 class="land-h2 D">Plus qu'un simple chatbot IA</h2>
+    <p class="land-h2-sub">Beaucoup d'apps fitness IA se limitent à un chat. FiTrack combine programme, suivi, gamification et analyse vidéo en direct.</p>
+    <div class="land-compare-wrap">
+      <table class="land-compare">
+        <tr><th></th><th class="land-compare-highlight">FiTrack</th><th>Apps "chatbot IA" classiques</th></tr>
+        <tr><td>Programme sur-mesure</td><td class="land-compare-yes">✓</td><td class="land-compare-yes">✓</td></tr>
+        <tr><td>Suivi séances, records & 1RM</td><td class="land-compare-yes">✓</td><td class="land-compare-no">✗</td></tr>
+        <tr><td>Analyse de posture par caméra en direct</td><td class="land-compare-yes">✓</td><td class="land-compare-no">✗</td></tr>
+        <tr><td>Streaks, défis & badges</td><td class="land-compare-yes">✓</td><td class="land-compare-no">✗</td></tr>
+        <tr><td>Bilan hebdomadaire de progression</td><td class="land-compare-yes">✓</td><td class="land-compare-no">✗</td></tr>
+        <tr><td>Suivi poids, mensurations & nutrition</td><td class="land-compare-yes">✓</td><td class="land-compare-no">✗</td></tr>
+        <tr><td>Assistant IA en français</td><td class="land-compare-yes">✓</td><td class="land-compare-yes">✓</td></tr>
+      </table>
     </div>
   </div>
 
@@ -783,6 +829,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
           <button class="btn-outline" style="width:auto;flex:none;padding:13px 16px" onclick="openProgramModal()">📅 Programme</button>
         </div>
       </div>
+      <div class="card daily-msg" id="daily-msg" style="display:none">
+        <div class="dm-ico">🤖</div>
+        <div class="dm-text" id="daily-msg-text"></div>
+      </div>
+      <div class="card coach-promo" onclick="goTo('coach')">
+        <div class="cp-ico">🎥</div>
+        <div><div class="cp-title">Coach Mouvement IA</div><div class="cp-sub">Analyse ta technique en direct via la caméra — ton avantage exclusif FiTrack</div></div>
+      </div>
       <div class="card" id="weight-reminder" style="display:none;border:1px solid rgba(212,255,0,.3);background:var(--acc-d)">
         <div style="font-size:13px;color:var(--t2)">📏 <span style="color:var(--acc);font-weight:600">Pesée hebdomadaire</span><br>Pense à enregistrer ton poids cette semaine pour garder un suivi précis et adapter ta nutrition.</div>
         <div style="display:flex;gap:10px;margin-top:10px">
@@ -795,6 +849,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
         <div class="stat-card"><div class="stat-val gold" id="h-prs">0</div><div class="stat-lbl">Records battus</div></div>
         <div class="stat-card"><div class="stat-val" id="h-vol" style="font-size:20px">0</div><div class="stat-lbl">Volume total kg</div></div>
         <div class="stat-card"><div class="stat-val" id="h-streak" style="color:#ff9900">0🔥</div><div class="stat-lbl">Streak</div></div>
+      </div>
+      <div class="card challenge-card" id="challenge-card">
+        <div class="ch-head">
+          <div class="ch-title">🎯 Défi de la semaine</div>
+          <div class="ch-count" id="ch-count">0/3 séances</div>
+        </div>
+        <div class="s-progress-bar"><div class="s-progress-fill" id="ch-progress-fill"></div></div>
+        <div id="ch-freeze-info"></div>
       </div>
       <div class="sh"><h2 class="D">Records</h2><a onclick="goTo('records')">Tout voir →</a></div>
       <div id="home-prs"></div>
@@ -1089,6 +1151,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 <!-- SESSION DETAIL MODAL -->
 <div class="modal-bg" id="session-detail-modal" onclick="closeMBg(event,'session-detail-modal')">
   <div class="modal" id="session-detail-body" style="max-height:80vh;overflow-y:auto"></div>
+</div>
+
+<!-- RÉCAP HEBDOMADAIRE MODAL -->
+<div class="modal-bg" id="recap-modal" onclick="closeMBg(event,'recap-modal')">
+  <div class="modal" id="recap-modal-body"></div>
 </div>
 
 <!-- 1RM MODAL -->
@@ -2333,9 +2400,20 @@ function buildDefaultSession(force){
 // ═══════════════════════════════════
 // STREAK
 // ═══════════════════════════════════
+function ensureStreakFreeze(){
+  var ym=new Date().toISOString().slice(0,7);
+  if(streak.freezeMonth!==ym){streak.freezes=1;streak.freezeMonth=ym;DB.s('streak',streak);}
+}
+function daysBetween(d1,d2){return Math.round((new Date(d2)-new Date(d1))/86400000);}
 function updateStreak(){
+  ensureStreakFreeze();
   var t=todayStr();if(streak.last===t)return;
-  if(streak.last===yesterdayStr())streak.count++;else streak.count=1;
+  if(streak.last===yesterdayStr())streak.count++;
+  else if(streak.last&&streak.freezes>0&&daysBetween(streak.last,t)===2){
+    streak.freezes--;streak.count++;
+    toast('🧊 Jeton de protection utilisé pour préserver ta streak !');
+  }
+  else streak.count=1;
   streak.last=t;
   if(!streak.best||streak.count>streak.best)streak.best=streak.count;
   DB.s('streak',streak);
@@ -2373,12 +2451,115 @@ function renderHome(){
   }
   checkWeightReminder();
   renderProgramCard();
+  renderDailyMessage();
+  renderChallengeCard();
+  maybeShowWeeklyRecap();
   var hh=document.getElementById('home-hist');
   if(hh){
     if(!sessions.length){hh.innerHTML='<div class="empty"><div class="empty-ico">📋</div><p>Aucune séance. Lancez votre premier entraînement !</p></div>';}
     else{hh.innerHTML=sessions.slice(0,3).map(function(s,i){var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row" onclick="openSessionDetail('+i+')"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+esc(s.name)+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+'</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';}).join('');}
   }
   renderProfile();
+}
+
+// ═══════════════════════════════════
+// MESSAGE DU JOUR (FitAI proactif)
+// ═══════════════════════════════════
+function exCat(name){
+  var ex=EX_DB.find(function(e){return e.name===name;});
+  return ex?ex.cat:null;
+}
+function computeDailyMessage(){
+  if(!sessions.length)return 'Bienvenue sur FiTrack ! Lance ta première séance pour commencer à suivre ta progression. 💪';
+  var today=new Date();
+  var lastDate=new Date(sessions[0].date);
+  var daysSince=Math.floor((today-lastDate)/86400000);
+  if(daysSince>=3)return 'Ça fait <b>'+daysSince+' jours</b> que tu n\'as pas fait de séance. On y retourne aujourd\'hui ? 🔥';
+  var cats={};
+  sessions.slice(0,15).forEach(function(s){
+    (s.exercises||[]).forEach(function(ex){
+      var cat=exCat(ex.name);
+      if(cat&&cat!=='—'&&!(cat in cats))cats[cat]=s.date;
+    });
+  });
+  var worst=null,worstDays=-1;
+  ['Jambes','Dos','Poitrine','Épaules','Bras','Core'].forEach(function(cat){
+    var d=cats[cat];
+    var days=d?Math.floor((today-new Date(d))/86400000):99;
+    if(days>worstDays){worstDays=days;worst=cat;}
+  });
+  if(worst&&worstDays>=5)return 'Ça fait <b>'+worstDays+' jours</b> que tu n\'as pas travaillé : <b>'+worst+'</b>. Pense à l\'inclure dans ta prochaine séance ! 🎯';
+  if(streak.count>=3)return 'Bravo, <b>'+streak.count+' jours de streak</b> ! Continue comme ça, ne casse pas la chaîne. 🔥';
+  return 'Prêt(e) pour une nouvelle séance aujourd\'hui ? Ton corps te remerciera. 💪';
+}
+function renderDailyMessage(){
+  var el=document.getElementById('daily-msg'),txt=document.getElementById('daily-msg-text');
+  if(!el||!txt)return;
+  txt.innerHTML=computeDailyMessage();
+  el.style.display='flex';
+}
+
+// ═══════════════════════════════════
+// DÉFI HEBDOMADAIRE & STREAK FREEZE
+// ═══════════════════════════════════
+function getMonday(d){
+  var date=new Date(d);var day=date.getDay();var diff=(day===0?-6:1)-day;
+  date.setDate(date.getDate()+diff);date.setHours(0,0,0,0);return date;
+}
+function renderChallengeCard(){
+  var countEl=document.getElementById('ch-count'),fillEl=document.getElementById('ch-progress-fill'),freezeEl=document.getElementById('ch-freeze-info');
+  if(!countEl||!fillEl)return;
+  var target=(program&&program.freq)||(userProfile&&userProfile.freq)||3;
+  var monday=getMonday(new Date());
+  var count=sessions.filter(function(s){return s.date&&new Date(s.date)>=monday;}).length;
+  var pct=Math.min(100,Math.round(count/target*100));
+  countEl.textContent=count+'/'+target+' séances';
+  fillEl.style.width=pct+'%';
+  ensureStreakFreeze();
+  if(freezeEl)freezeEl.innerHTML='<span class="freeze-badge">🧊 '+streak.freezes+' jeton'+(streak.freezes===1?'':'s')+' de protection de streak '+(streak.freezes?'disponible':'utilisé')+' ce mois-ci</span>';
+}
+
+// ═══════════════════════════════════
+// RÉCAP HEBDOMADAIRE
+// ═══════════════════════════════════
+function fmtDateShort(d){var months=['jan','fév','mar','avr','mai','juin','juil','août','sep','oct','nov','déc'];return d.getDate()+' '+months[d.getMonth()];}
+function recapMessage(count,diff){
+  if(count>=4)return 'Superbe semaine, '+count+' séances réalisées ! Garde ce rythme. 🔥';
+  if(diff!==null&&diff>0)return 'Bonne progression : ton volume total a augmenté de '+diff+'% par rapport à la semaine précédente. 📈';
+  return 'Continue sur ta lancée cette semaine ! 💪';
+}
+function maybeShowWeeklyRecap(){
+  if(new Date().getDay()!==1)return;
+  var weekKey=getMonday(new Date()).toISOString().slice(0,10);
+  if(DB.g('recap_shown',null)===weekKey)return;
+  DB.s('recap_shown',weekKey);
+  openWeeklyRecap();
+}
+function openWeeklyRecap(){
+  var now=new Date();
+  var thisMonday=getMonday(now);
+  var lastMonday=new Date(thisMonday);lastMonday.setDate(lastMonday.getDate()-7);
+  var prevMonday=new Date(thisMonday);prevMonday.setDate(prevMonday.getDate()-14);
+  var lastWeek=sessions.filter(function(s){var d=new Date(s.date);return d>=lastMonday&&d<thisMonday;});
+  var prevWeek=sessions.filter(function(s){var d=new Date(s.date);return d>=prevMonday&&d<lastMonday;});
+  var vol=lastWeek.reduce(function(a,s){return a+(s.totalVolume||0);},0);
+  var prevVol=prevWeek.reduce(function(a,s){return a+(s.totalVolume||0);},0);
+  var prsCount=lastWeek.reduce(function(a,s){return a+(s.newPRs?s.newPRs.length:0);},0);
+  var diff=prevVol?Math.round((vol-prevVol)/prevVol*100):null;
+  var lastSunday=new Date(thisMonday.getTime()-86400000);
+  var body=document.getElementById('recap-modal-body');
+  body.innerHTML='<div class="modal-handle"></div>'
+    +'<h2 class="D" style="margin-bottom:4px">📊 Bilan de la semaine</h2>'
+    +'<p style="font-size:12px;color:var(--t2);margin-bottom:14px">Semaine du '+fmtDateShort(lastMonday)+' au '+fmtDateShort(lastSunday)+'</p>'
+    +'<div class="recap-stat-grid">'
+      +'<div class="recap-stat"><div class="recap-stat-val acc">'+lastWeek.length+'</div><div class="recap-stat-lbl">Séances</div></div>'
+      +'<div class="recap-stat"><div class="recap-stat-val gold">'+prsCount+'</div><div class="recap-stat-lbl">Nouveaux records</div></div>'
+      +'<div class="recap-stat"><div class="recap-stat-val">'+(vol>9999?Math.round(vol/1000)+'k':vol)+'</div><div class="recap-stat-lbl">Volume total kg</div>'+(diff!==null?'<div class="recap-diff '+(diff>=0?'up':'down')+'">'+(diff>=0?'▲ +':'▼ ')+diff+'% vs sem. dernière</div>':'')+'</div>'
+      +'<div class="recap-stat"><div class="recap-stat-val" style="color:#ff9900">'+streak.count+'🔥</div><div class="recap-stat-lbl">Streak actuelle</div></div>'
+    +'</div>'
+    +'<p style="font-size:13px;color:var(--t2);margin-bottom:14px">'+(lastWeek.length===0?'Aucune séance la semaine dernière. Cette semaine, on s\'y remet ? 💪':recapMessage(lastWeek.length,diff))+'</p>'
+    +'<button class="btn-primary" style="width:100%" onclick="closeMBg(null,\'recap-modal\')">C\'est parti pour cette semaine 🚀</button>';
+  document.getElementById('recap-modal').classList.add('open');
 }
 
 // ═══════════════════════════════════
