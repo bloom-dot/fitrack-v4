@@ -730,6 +730,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
   <div class="land-footer">
     <div class="land-footer-logo D">FiTrack</div>
     <div class="land-footer-txt">Entraîne-toi. Progresse. Domine.<br>© <span id="land-year"></span> FiTrack — <a href="feedback.html" target="_blank" rel="noopener">Contact & feedback</a></div>
+    <div class="land-footer-txt" style="margin-top:8px">
+      <a href="mentions-legales.html" target="_blank" rel="noopener">Mentions légales</a> ·
+      <a href="confidentialite.html" target="_blank" rel="noopener">Confidentialité</a> ·
+      <a href="cgu.html" target="_blank" rel="noopener">CGU</a> ·
+      <a href="cgv.html" target="_blank" rel="noopener">CGV</a>
+    </div>
   </div>
 </div>
 
@@ -783,8 +789,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
         <div class="field-row"><span class="fi">🔒</span><input type="password" class="inp" id="reg-pwd2" placeholder="Répéter" oninput="checkMatch()"><button class="eye" onclick="togglePwd('reg-pwd2',this)">👁</button></div>
         <div class="err-msg" id="match-err">Les mots de passe ne correspondent pas.</div>
       </div>
-      <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--t2)"><input type="checkbox" id="cgu" style="margin-top:2px;flex-shrink:0"><label for="cgu">J'accepte les conditions d'utilisation</label></div>
-      <div class="err-msg" id="reg-err">Veuillez remplir tous les champs.</div>
+      <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--t2);margin-top:8px"><input type="checkbox" id="cgu" style="margin-top:2px;flex-shrink:0"><label for="cgu">J'ai au moins 16 ans et j'accepte les <a href="cgu.html" target="_blank" rel="noopener" style="color:var(--acc)">CGU</a> et les <a href="cgv.html" target="_blank" rel="noopener" style="color:var(--acc)">CGV</a> de FiTrack</label></div>
+      <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--t2);margin-top:6px"><input type="checkbox" id="cgu2" style="margin-top:2px;flex-shrink:0"><label for="cgu2">J'accepte le traitement de mes données (y compris données de santé : poids, mensurations, blessures, Coach Mouvement) décrit dans la <a href="confidentialite.html" target="_blank" rel="noopener" style="color:var(--acc)">Politique de confidentialité</a>, et je consens à un accès immédiat au service en renonçant à mon droit de rétractation de 14 jours</label></div>
+      <div class="err-msg" id="reg-err">Veuillez remplir tous les champs et accepter les conditions.</div>
       <button class="btn-primary" onclick="doRegister()">Créer mon compte</button>
       <div class="auth-divider">ou</div>
       <div class="social-grid">
@@ -1369,9 +1376,10 @@ async function doRegister(){
   var p=document.getElementById('reg-pwd').value;
   var p2=document.getElementById('reg-pwd2').value;
   var cgu=document.getElementById('cgu').checked;
+  var cgu2=document.getElementById('cgu2').checked;
   var emailOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   var errEl=document.getElementById('reg-err');
-  if(!fn||!e||!emailOk||p.length<8||p!==p2||!cgu){errEl.textContent='Veuillez remplir tous les champs correctement.';errEl.classList.add('show');return;}
+  if(!fn||!e||!emailOk||p.length<8||p!==p2||!cgu||!cgu2){errEl.textContent='Veuillez remplir tous les champs correctement et accepter les conditions.';errEl.classList.add('show');return;}
   errEl.classList.remove('show');
   var btn=event.currentTarget;
   btn.textContent='Création...';btn.disabled=true;

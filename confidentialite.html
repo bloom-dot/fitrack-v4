@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Politique de confidentialité — FiTrack</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/icons/icon-192.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0a;--s1:#141414;--s2:#1c1c1c;--border:#2a2a2a;--text:#fff;--t2:#9a9a9a;--t3:#666;--acc:#d4ff00}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;padding:24px 18px 60px;max-width:680px;margin:0 auto;line-height:1.6;font-size:14px}
+h1{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;text-transform:uppercase;color:var(--acc);letter-spacing:-1px;margin-bottom:6px}
+h2{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;text-transform:uppercase;margin:26px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+h3{font-size:14px;font-weight:700;color:var(--text);margin:14px 0 4px}
+p,li{color:var(--t2);margin-bottom:8px}
+ul{padding-left:20px;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;margin:10px 0 16px;font-size:13px}
+th,td{border:1px solid var(--border);padding:8px;text-align:left;vertical-align:top;color:var(--t2)}
+th{color:var(--text);background:var(--s1)}
+a{color:var(--acc);text-decoration:none}
+a:hover{text-decoration:underline}
+.updated{font-size:12px;color:var(--t3);margin-bottom:24px}
+.back{display:inline-block;margin-top:30px;font-size:13px}
+.placeholder{color:var(--acc);font-style:italic}
+strong{color:var(--text)}
+.callout{background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--acc);border-radius:8px;padding:12px 14px;margin:12px 0;font-size:13px}
+</style>
+</head>
+<body>
+
+<h1>Politique de confidentialité</h1>
+<div class="updated">Dernière mise à jour : <span id="upd"></span></div>
+
+<p>
+  Cette politique explique quelles données personnelles FiTrack collecte, pourquoi, comment elles sont protégées, et quels sont vos droits. Elle s'applique à l'application web et PWA FiTrack (<a href="https://fitrack-v4.vercel.app/">fitrack-v4.vercel.app</a>).
+</p>
+
+<h2>1. Responsable du traitement</h2>
+<p>
+  Le responsable du traitement des données est l'éditeur de FiTrack, identifié dans les <a href="mentions-legales.html">Mentions légales</a>. Pour toute question relative à vos données, vous pouvez écrire à
+  <a href="mailto:fernandmani61@gmail.com">fernandmani61@gmail.com</a>.
+</p>
+
+<h2>2. Données collectées</h2>
+<table>
+  <tr><th>Catégorie</th><th>Exemples</th><th>Finalité</th></tr>
+  <tr><td>Compte</td><td>Nom, prénom, e-mail, mot de passe (haché)</td><td>Création et gestion de votre compte, authentification</td></tr>
+  <tr><td>Profil sportif</td><td>Âge, sexe, taille, poids, niveau, objectif, matériel disponible, blessures déclarées</td><td>Génération de votre programme personnalisé</td></tr>
+  <tr><td>Activité</td><td>Séances enregistrées, séries, charges, répétitions, records (1RM), streak</td><td>Suivi de votre progression, calcul de vos records</td></tr>
+  <tr><td>Mensurations / poids</td><td>Poids, tour de taille/bras/etc., photos de progression (optionnel)</td><td>Suivi de votre évolution physique</td></tr>
+  <tr><td>Coach Mouvement</td><td>Flux vidéo de la caméra pendant l'exercice</td><td>Analyse de votre posture en temps réel — <strong>traitement réalisé entièrement sur votre appareil</strong>, le flux vidéo n'est jamais envoyé sur nos serveurs. Si vous choisissez d'enregistrer un replay, celui-ci reste stocké localement sur votre appareil et peut être supprimé à tout moment.</td></tr>
+  <tr><td>FitAI (assistant IA)</td><td>Messages que vous envoyez au chat, contexte de vos séances</td><td>Réponses personnalisées via l'API Mistral AI</td></tr>
+  <tr><td>Paiement</td><td>Aucune donnée bancaire stockée par FiTrack</td><td>Le paiement de l'abonnement est traité directement par notre prestataire de paiement (Stripe), qui dispose de sa propre politique de confidentialité</td></tr>
+</table>
+
+<div class="callout">
+  ⚕️ <strong>Données de santé</strong> : certaines informations (poids, mensurations, blessures, vidéos d'analyse posturale) sont considérées comme des « données de santé » au sens de l'article 9 du RGPD. Elles ne sont collectées qu'avec votre <strong>consentement explicite</strong>, recueilli lors de la création de votre compte et de l'utilisation des fonctionnalités concernées. Vous pouvez retirer ce consentement à tout moment en supprimant les données concernées ou votre compte.
+</div>
+
+<h2>3. Bases légales du traitement</h2>
+<ul>
+  <li><strong>Exécution du contrat</strong> : création du compte, fourniture du programme et du suivi, gestion de l'abonnement.</li>
+  <li><strong>Consentement</strong> : traitement des données de santé (profil sportif, mensurations, Coach Mouvement), assistant IA.</li>
+  <li><strong>Intérêt légitime</strong> : sécurité du service, prévention de la fraude, amélioration du produit (statistiques anonymisées).</li>
+</ul>
+
+<h2>4. Destinataires et sous-traitants</h2>
+<p>Vos données sont traitées par les prestataires suivants, dans le cadre strict de la fourniture du service :</p>
+<table>
+  <tr><th>Prestataire</th><th>Rôle</th><th>Données concernées</th></tr>
+  <tr><td><strong>Supabase Inc.</strong></td><td>Hébergement de la base de données, authentification, stockage des photos</td><td>Compte, profil, séances, mensurations, photos</td></tr>
+  <tr><td><strong>Vercel Inc.</strong></td><td>Hébergement de l'application et des fonctions serverless</td><td>Toutes les données transmises lors de l'utilisation de l'app</td></tr>
+  <tr><td><strong>Mistral AI</strong> (France)</td><td>Génération des réponses de l'assistant FitAI</td><td>Messages envoyés au chat et contexte de séance associé</td></tr>
+</table>
+<p>
+  Nous ne vendons ni ne louons vos données à des tiers. Aucune donnée n'est utilisée à des fins publicitaires.
+</p>
+
+<h2>5. Durée de conservation</h2>
+<p>
+  Vos données sont conservées tant que votre compte est actif. Vous pouvez supprimer définitivement votre compte et l'ensemble des données associées à tout moment depuis votre profil (Profil → Supprimer mon compte). Cette suppression est irréversible.
+</p>
+
+<h2>6. Sécurité</h2>
+<ul>
+  <li>Connexion chiffrée (HTTPS) sur l'ensemble de l'application.</li>
+  <li>Cloisonnement des données par utilisateur via des règles d'accès (Row Level Security) côté base de données : chaque utilisateur n'a accès qu'à ses propres données.</li>
+  <li>Les clés secrètes (API) ne sont jamais exposées côté navigateur et restent stockées côté serveur.</li>
+  <li>L'analyse vidéo Coach Mouvement est effectuée localement sur votre appareil et n'est jamais transmise sur internet.</li>
+</ul>
+
+<h2>7. Cookies et traceurs</h2>
+<p>
+  FiTrack utilise uniquement des traceurs strictement nécessaires au fonctionnement du service : maintien de votre session de connexion et préférences locales (stockage local de votre navigateur, <code>localStorage</code>). Aucun cookie publicitaire ou de mesure d'audience tiers n'est utilisé.
+</p>
+
+<h2>8. Vos droits</h2>
+<p>Conformément au RGPD, vous disposez des droits suivants concernant vos données personnelles :</p>
+<ul>
+  <li><strong>Droit d'accès</strong> : obtenir une copie des données vous concernant.</li>
+  <li><strong>Droit de rectification</strong> : corriger des données inexactes (directement depuis votre profil).</li>
+  <li><strong>Droit à l'effacement</strong> : supprimer votre compte et vos données depuis votre profil, ou en nous contactant.</li>
+  <li><strong>Droit à la portabilité</strong> : recevoir vos données dans un format structuré.</li>
+  <li><strong>Droit d'opposition et de limitation</strong> du traitement.</li>
+  <li><strong>Retrait du consentement</strong> à tout moment, pour les traitements fondés sur le consentement.</li>
+</ul>
+<p>
+  Pour exercer ces droits, contactez-nous à <a href="mailto:fernandmani61@gmail.com">fernandmani61@gmail.com</a>. Vous avez également le droit d'introduire une réclamation auprès de la <strong>CNIL</strong> (<a href="https://www.cnil.fr" target="_blank" rel="noopener">www.cnil.fr</a>).
+</p>
+
+<h2>9. Mineurs</h2>
+<p>
+  FiTrack n'est pas destiné aux personnes de moins de 16 ans. Si vous avez entre 15 et 18 ans, l'utilisation de FiTrack nécessite l'accord d'un titulaire de l'autorité parentale.
+</p>
+
+<h2>10. Modifications</h2>
+<p>
+  Cette politique peut être mise à jour. En cas de modification substantielle, vous en serez informé via l'application.
+</p>
+
+<a class="back" href="index.html">← Retour à FiTrack</a>
+
+<script>document.getElementById('upd').textContent=new Date().toLocaleDateString('fr-FR',{year:'numeric',month:'long',day:'numeric'});</script>
+</body>
+</html>

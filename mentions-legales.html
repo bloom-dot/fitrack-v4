@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Mentions légales — FiTrack</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/icons/icon-192.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0a;--s1:#141414;--s2:#1c1c1c;--border:#2a2a2a;--text:#fff;--t2:#9a9a9a;--t3:#666;--acc:#d4ff00}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;padding:24px 18px 60px;max-width:680px;margin:0 auto;line-height:1.6;font-size:14px}
+h1{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;text-transform:uppercase;color:var(--acc);letter-spacing:-1px;margin-bottom:6px}
+h2{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;text-transform:uppercase;margin:26px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+p,li{color:var(--t2);margin-bottom:8px}
+ul{padding-left:20px;margin-bottom:8px}
+a{color:var(--acc);text-decoration:none}
+a:hover{text-decoration:underline}
+.updated{font-size:12px;color:var(--t3);margin-bottom:24px}
+.back{display:inline-block;margin-top:30px;font-size:13px}
+.placeholder{color:var(--acc);font-style:italic}
+strong{color:var(--text)}
+</style>
+</head>
+<body>
+
+<h1>Mentions légales</h1>
+<div class="updated">Dernière mise à jour : <span id="upd"></span></div>
+
+<h2>Éditeur du site</h2>
+<p>
+  Le site et l'application FiTrack (accessible à l'adresse <a href="https://fitrack-v4.vercel.app/">fitrack-v4.vercel.app</a>) sont édités par :
+</p>
+<ul>
+  <li><strong>Nom / raison sociale :</strong> <span class="placeholder">[Ton nom et prénom, ou nom de ta micro-entreprise]</span></li>
+  <li><strong>Statut :</strong> <span class="placeholder">[Auto-entrepreneur / micro-entreprise — n° SIRET en cours d'immatriculation]</span></li>
+  <li><strong>Adresse :</strong> <span class="placeholder">[Ton adresse postale]</span></li>
+  <li><strong>Contact :</strong> <a href="mailto:fernandmani61@gmail.com">fernandmani61@gmail.com</a></li>
+</ul>
+<p>Responsable de la publication : la personne mentionnée ci-dessus.</p>
+
+<h2>Hébergement</h2>
+<p>L'application est hébergée par :</p>
+<ul>
+  <li><strong>Vercel Inc.</strong> — 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis — <a href="https://vercel.com" target="_blank" rel="noopener">vercel.com</a></li>
+  <li><strong>Supabase Inc.</strong> (base de données, authentification, stockage) — <a href="https://supabase.com" target="_blank" rel="noopener">supabase.com</a></li>
+</ul>
+
+<h2>Propriété intellectuelle</h2>
+<p>
+  L'ensemble des contenus présents sur FiTrack (textes, logos, graphismes, icônes, structure du programme, code source) est, sauf mention contraire, la propriété de l'éditeur du site et est protégé par le droit de la propriété intellectuelle. Toute reproduction, représentation, modification ou exploitation, totale ou partielle, sans autorisation écrite préalable est interdite.
+</p>
+
+<h2>Médiation de la consommation</h2>
+<p>
+  Conformément aux articles L.616-1 et R.616-1 du Code de la consommation, en cas de litige non résolu avec le service client, le consommateur peut recourir gratuitement à un médiateur de la consommation. Les coordonnées du médiateur compétent seront communiquées sur simple demande ou indiquées dans les <a href="cgv.html">Conditions Générales de Vente</a>.
+</p>
+
+<h2>Données personnelles</h2>
+<p>
+  Le traitement des données personnelles est décrit en détail dans la <a href="confidentialite.html">Politique de confidentialité</a>.
+</p>
+
+<a class="back" href="index.html">← Retour à FiTrack</a>
+
+<script>document.getElementById('upd').textContent=new Date().toLocaleDateString('fr-FR',{year:'numeric',month:'long',day:'numeric'});</script>
+</body>
+</html>
