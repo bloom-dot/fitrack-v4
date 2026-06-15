@@ -417,8 +417,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .coach-promo .cp-sub{font-size:11px;color:var(--t2);margin-top:2px}
 .coach-cam-wrap{position:relative;width:100%;aspect-ratio:3/4;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
 .coach-cam-wrap video,.coach-cam-wrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.coach-cam-wrap video{transform:scaleX(-1)}
-.coach-cam-wrap canvas{transform:scaleX(-1)}
+.coach-cam-wrap.mirror video,.coach-cam-wrap.mirror canvas{transform:scaleX(-1)}
+.coach-switch-btn{position:absolute;top:10px;right:10px;z-index:2;width:38px;height:38px;border-radius:50%;background:rgba(10,10,10,.6);backdrop-filter:blur(6px);border:1px solid var(--border2);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.coach-switch-btn svg{width:18px;height:18px}
 .coach-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:0 30px;color:var(--t2);font-size:12px}
 .coach-placeholder .cph-ico{font-size:36px}
 .coach-feedback{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(10,10,10,.7);backdrop-filter:blur(6px);border-radius:var(--r-sm);padding:10px 12px;font-size:13px;font-weight:700;text-align:center;color:var(--acc);display:none;border:1px solid var(--border2)}
@@ -718,13 +719,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
           <option value="pullup">Tractions</option>
         </select>
       </div>
-      <div class="coach-cam-wrap">
+      <div class="coach-cam-wrap mirror" id="coach-cam-wrap">
         <video id="coach-video" playsinline muted></video>
         <canvas id="coach-canvas"></canvas>
         <div class="coach-placeholder" id="coach-placeholder">
           <div class="cph-ico">🎥</div>
           <div>Lance la caméra pour que le coach analyse ta posture en direct.</div>
         </div>
+        <button class="coach-switch-btn" id="coach-switch-btn" onclick="coachSwitchCamera()" style="display:none" title="Changer de caméra">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg>
+        </button>
         <div class="coach-feedback" id="coach-feedback"></div>
       </div>
       <button class="btn-primary" id="coach-toggle-btn" onclick="toggleCoachCamera()">📷 Démarrer la caméra</button>
@@ -2879,7 +2883,7 @@ function dismissPwaModal(){
 // n'est envoyée sur internet. La librairie n'est chargée que si l'utilisateur
 // ouvre cet écran, pour ne pas alourdir le chargement du reste de l'app.
 // ═══════════════════════════════════
-var coachExercise='squat',coachStream=null,coachPose=null,coachRunning=false,coachLastFeedback=0;
+var coachExercise='squat',coachStream=null,coachPose=null,coachRunning=false,coachLastFeedback=0,coachFacing='environment';
 var COACH_CONNECTIONS=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
 
 function coachSetExercise(v){
@@ -2911,10 +2915,7 @@ async function toggleCoachCamera(){
   btn.disabled=true;btn.textContent='⏳ Chargement...';
   try{
     await loadCoachScript('https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js');
-    coachStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
-    var video=document.getElementById('coach-video');
-    video.srcObject=coachStream;
-    await video.play();
+    await startCoachStream();
     if(!coachPose){
       coachPose=new Pose({locateFile:function(file){return 'https://cdn.jsdelivr.net/npm/@mediapipe/pose/'+file;}});
       coachPose.setOptions({modelComplexity:1,smoothLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
@@ -2922,12 +2923,41 @@ async function toggleCoachCamera(){
     }
     document.getElementById('coach-placeholder').style.display='none';
     document.getElementById('coach-stats').style.display='flex';
+    document.getElementById('coach-switch-btn').style.display='flex';
     coachSetExercise(coachExercise);
     coachRunning=true;
     btn.textContent='⏹ Arrêter la caméra';
     coachLoop();
   }catch(e){
     alert('Impossible d\'accéder à la caméra : '+(e&&e.message?e.message:e));
+  }
+  btn.disabled=false;
+}
+
+// Ouvre le flux caméra selon coachFacing ('environment'=dos, 'user'=face) et
+// met à jour le miroir (on inverse l'image uniquement pour la caméra avant,
+// comme un effet "selfie", pas pour la caméra arrière)
+async function startCoachStream(){
+  if(coachStream){coachStream.getTracks().forEach(function(t){t.stop();});coachStream=null;}
+  coachStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:coachFacing},audio:false});
+  var video=document.getElementById('coach-video');
+  video.srcObject=coachStream;
+  await video.play();
+  var wrap=document.getElementById('coach-cam-wrap');
+  wrap.classList.toggle('mirror',coachFacing==='user');
+}
+
+// Bascule entre la caméra arrière et la caméra avant pendant l'analyse
+async function coachSwitchCamera(){
+  coachFacing=coachFacing==='environment'?'user':'environment';
+  var btn=document.getElementById('coach-switch-btn');
+  btn.disabled=true;
+  try{
+    await startCoachStream();
+  }catch(e){
+    alert('Impossible de changer de caméra : '+(e&&e.message?e.message:e));
+    coachFacing=coachFacing==='environment'?'user':'environment';
+    await startCoachStream();
   }
   btn.disabled=false;
 }
@@ -2948,6 +2978,7 @@ function stopCoachCamera(){
   if(canvas){var ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);}
   var ph=document.getElementById('coach-placeholder');if(ph)ph.style.display='flex';
   var stats=document.getElementById('coach-stats');if(stats)stats.style.display='none';
+  var sw=document.getElementById('coach-switch-btn');if(sw)sw.style.display='none';
   var fb=document.getElementById('coach-feedback');if(fb)fb.classList.remove('show');
   var btn=document.getElementById('coach-toggle-btn');if(btn){btn.textContent='📷 Démarrer la caméra';btn.disabled=false;}
 }
