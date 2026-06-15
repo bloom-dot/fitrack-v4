@@ -7,7 +7,22 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FiTrack">
-<title>FiTrack</title>
+<title>FiTrack — Suivi sportif, nutrition & IA gratuits</title>
+<meta name="description" content="FiTrack est une application gratuite de suivi sportif en français : programmes d'entraînement, suivi de séances, records personnels, nutrition et plan repas généré par l'IA FitAI.">
+<meta name="keywords" content="suivi sportif, application musculation gratuite, programme entrainement, carnet d'entrainement, suivi nutrition, plan repas IA, FitAI, FiTrack">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://fitrack-v4.vercel.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FiTrack">
+<meta property="og:title" content="FiTrack — Entraîne-toi. Progresse. Domine.">
+<meta property="og:description" content="L'application gratuite de suivi sportif : programmes, séances, records, nutrition et plan repas généré par l'IA FitAI.">
+<meta property="og:url" content="https://fitrack-v4.vercel.app/">
+<meta property="og:image" content="https://fitrack-v4.vercel.app/assets/icons/icon-512.png">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="FiTrack — Entraîne-toi. Progresse. Domine.">
+<meta name="twitter:description" content="L'application gratuite de suivi sportif : programmes, séances, records, nutrition et plan repas généré par l'IA FitAI.">
+<meta name="twitter:image" content="https://fitrack-v4.vercel.app/assets/icons/icon-512.png">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
@@ -116,6 +131,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .modal{background:var(--s1);border-radius:20px 20px 0 0;padding:20px 20px calc(24px + var(--safe));width:100%;max-height:85dvh;overflow-y:auto;animation:slideup .28s cubic-bezier(.32,.72,0,1)}
 @keyframes slideup{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .modal-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 18px}
+
+/* ═══ ÉCRAN DE CHARGEMENT ═══ */
+#loading-screen{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);transition:opacity .4s ease}
+#loading-screen.hide{opacity:0;pointer-events:none}
+.ld-logo{font-family:'Barlow Condensed',sans-serif;font-size:52px;font-weight:900;color:var(--acc);letter-spacing:-1px}
+.ld-tagline{font-size:13px;color:var(--t2);text-align:center;max-width:280px;line-height:1.5}
+.ld-spinner{width:26px;height:26px;border:3px solid var(--s3);border-top-color:var(--acc);border-radius:50%;animation:ld-spin .7s linear infinite;margin-top:6px}
+@keyframes ld-spin{to{transform:rotate(360deg)}}
 
 /* ═══ AUTH SCREENS ═══ */
 .auth-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:32px 20px;background:var(--bg)}
@@ -440,6 +463,13 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 </style>
 </head>
 <body>
+
+<!-- ══════════════ CHARGEMENT ══════════════ -->
+<div id="loading-screen">
+  <h1 class="ld-logo">FiTrack</h1>
+  <p class="ld-tagline">L'application gratuite de suivi sportif : programmes, séances, records, nutrition et plan repas généré par l'IA FitAI.</p>
+  <div class="ld-spinner"></div>
+</div>
 
 <!-- ══════════════ AUTH ══════════════ -->
 <div id="auth-screen" class="auth-wrap">
@@ -2696,6 +2726,10 @@ async function deleteAccount(){
   var session=(await sb.auth.getSession()).data.session;
   if(session){await routeAfterAuth();}
   // else: show auth screen (already visible by default)
+
+  // Masque l'écran de chargement une fois qu'on sait où router l'utilisateur
+  var ld=document.getElementById('loading-screen');
+  if(ld){ld.classList.add('hide');setTimeout(function(){ld.style.display='none';},400);}
 
   // Gère le retour de connexion via Google (redirection OAuth)
   sb.auth.onAuthStateChange(function(event,session){
