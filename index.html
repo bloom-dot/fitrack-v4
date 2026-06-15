@@ -1171,7 +1171,7 @@ async function syncSessionsPRsStreak(session){
   try{
     var ss=await sb.from('sessions').select('*').eq('user_id',session.user.id).order('date',{ascending:false});
     if(ss.data&&ss.data.length){
-      sessions=ss.data.map(function(r){return r.exercises;});DB.s('sessions',sessions);
+      sessions=ss.data.map(function(r){var sd=r.exercises;sd._id=r.id;return sd;});DB.s('sessions',sessions);
     }else if(sessions.length){
       for(var i=0;i<sessions.length;i++){
         var sd=sessions[i];
@@ -1917,8 +1917,25 @@ function openSessionDetail(idx){
         +'</div>';
     }).join('');
   }
+  html+='<div class="sh" style="margin-top:18px"><h2 class="D" style="color:var(--red)">Zone de danger</h2></div>'
+    +'<button class="btn-outline" style="border-color:rgba(255,82,82,.25);color:var(--red);width:100%" onclick="deleteSession('+idx+')">🗑 Supprimer cette séance</button>';
   document.getElementById('session-detail-body').innerHTML=html;
   document.getElementById('session-detail-modal').classList.add('open');
+}
+
+async function deleteSession(idx){
+  var s=sessions[idx];if(!s)return;
+  if(!confirm('Supprimer définitivement cette séance ("'+s.name+'") ? Cette action est irréversible.'))return;
+  sessions.splice(idx,1);DB.s('sessions',sessions);
+  closeMBg(null,'session-detail-modal');
+  renderHistory();
+  toast('Séance supprimée');
+  if(s._id){
+    try{
+      var session=(await sb.auth.getSession()).data.session;
+      if(session)await sb.from('sessions').delete().eq('id',s._id).eq('user_id',session.user.id);
+    }catch(e){}
+  }
 }
 
 // ═══════════════════════════════════
@@ -2010,7 +2027,8 @@ async function syncSessionToSupabase(sd){
   try{
     var session=(await sb.auth.getSession()).data.session;
     if(!session)return;
-    await sb.from('sessions').insert({user_id:session.user.id,date:sd.date,duration_seconds:sd.duration,exercises:sd});
+    var res=await sb.from('sessions').insert({user_id:session.user.id,date:sd.date,duration_seconds:sd.duration,exercises:sd}).select('id').single();
+    if(res.data){sd._id=res.data.id;DB.s('sessions',sessions);}
   }catch(e){}
 }
 function showNextPR(){
