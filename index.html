@@ -67,7 +67,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 /* ═══ BOTTOM NAV ═══ */
 .nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(10,10,10,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);height:calc(var(--nav) + var(--safe));padding-bottom:var(--safe);display:flex;align-items:center;justify-content:space-around}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:6px 4px}
-.ni-ic{font-size:19px;color:var(--t3);transition:all .2s}
+.ni-ic{color:var(--t3);transition:all .2s;display:flex;align-items:center;justify-content:center}
+.ni-ic svg{width:21px;height:21px;display:block}
 .ni-lb{font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;transition:all .2s}
 .ni.on .ni-ic,.ni.on .ni-lb{color:var(--acc)}
 
@@ -810,12 +811,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 
   <!-- NAV -->
   <nav class="nav">
-    <div class="ni on" id="nav-home" onclick="goTo('home')"><div class="ni-ic">🏠</div><div class="ni-lb">Accueil</div></div>
-    <div class="ni" id="nav-log" onclick="goTo('log')"><div class="ni-ic">⚡</div><div class="ni-lb">Logger</div></div>
-    <div class="ni" id="nav-records" onclick="goTo('records')"><div class="ni-ic">🏆</div><div class="ni-lb">Records</div></div>
-    <div class="ni" id="nav-nutrition" onclick="goTo('nutrition')"><div class="ni-ic">🥗</div><div class="ni-lb">Nutrition</div></div>
-    <div class="ni" id="nav-history" onclick="goTo('history')"><div class="ni-ic">📊</div><div class="ni-lb">Historique</div></div>
-    <div class="ni" id="nav-ai" onclick="goTo('ai')"><div class="ni-ic">🤖</div><div class="ni-lb">FitAI</div></div>
+    <div class="ni on" id="nav-home" onclick="goTo('home')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg></div><div class="ni-lb">Accueil</div></div>
+    <div class="ni" id="nav-log" onclick="goTo('log')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg></div><div class="ni-lb">Logger</div></div>
+    <div class="ni" id="nav-records" onclick="goTo('records')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/></svg></div><div class="ni-lb">Records</div></div>
+    <div class="ni" id="nav-nutrition" onclick="goTo('nutrition')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div><div class="ni-lb">Nutrition</div></div>
+    <div class="ni" id="nav-history" onclick="goTo('history')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><div class="ni-lb">Historique</div></div>
+    <div class="ni" id="nav-ai" onclick="goTo('ai')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></div><div class="ni-lb">FitAI</div></div>
   </nav>
 </div>
 
