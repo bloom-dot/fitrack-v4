@@ -737,9 +737,54 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
       <div class="card">
         <div class="inp-label">Exercice</div>
         <select class="inp" id="coach-exercise" onchange="coachSetExercise(this.value)">
-          <option value="squat">Squat</option>
-          <option value="deadlift">Soulevé de terre</option>
-          <option value="pullup">Tractions</option>
+          <optgroup label="Poitrine">
+            <option value="Développé couché">Développé couché</option>
+            <option value="Développé incliné">Développé incliné</option>
+            <option value="Écarté haltères">Écarté haltères</option>
+            <option value="Dips">Dips</option>
+            <option value="Pompes">Pompes</option>
+            <option value="Pompes diamant">Pompes diamant</option>
+          </optgroup>
+          <optgroup label="Dos">
+            <option value="Tractions" selected>Tractions</option>
+            <option value="Deadlift">Soulevé de terre (Deadlift)</option>
+            <option value="Tirage horizontal">Tirage horizontal</option>
+            <option value="Tirage poulie haute">Tirage poulie haute</option>
+            <option value="Tirage poulie basse">Tirage poulie basse</option>
+            <option value="Rowing haltères">Rowing haltères</option>
+            <option value="Superman">Superman</option>
+          </optgroup>
+          <optgroup label="Épaules">
+            <option value="Overhead Press">Overhead Press</option>
+            <option value="Élévations latérales">Élévations latérales</option>
+            <option value="Élévations frontales">Élévations frontales</option>
+            <option value="Face pull">Face pull</option>
+          </optgroup>
+          <optgroup label="Jambes">
+            <option value="Squat barre">Squat barre</option>
+            <option value="Squat gobelet">Squat gobelet</option>
+            <option value="Leg press">Leg press</option>
+            <option value="Fentes marchées">Fentes marchées</option>
+            <option value="Romanian Deadlift">Romanian Deadlift</option>
+            <option value="Hip thrust">Hip thrust</option>
+            <option value="Leg curl">Leg curl</option>
+            <option value="Mollets debout">Mollets debout</option>
+            <option value="Good morning">Good morning</option>
+            <option value="Chaise isométrique">Chaise isométrique</option>
+          </optgroup>
+          <optgroup label="Bras">
+            <option value="Curl barre">Curl barre</option>
+            <option value="Curl haltères">Curl haltères</option>
+            <option value="Curl marteau">Curl marteau</option>
+            <option value="Extension triceps">Extension triceps</option>
+            <option value="Skullcrushers">Skullcrushers</option>
+          </optgroup>
+          <optgroup label="Core">
+            <option value="Planche">Planche</option>
+            <option value="Ab wheel">Ab wheel</option>
+            <option value="Crunch">Crunch</option>
+            <option value="Relevé de jambes">Relevé de jambes</option>
+          </optgroup>
         </select>
       </div>
       <div class="coach-cam-wrap mirror" id="coach-cam-wrap">
@@ -761,7 +806,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
         <div class="coach-stat"><div class="cs-val" id="coach-angle-2">--°</div><div class="cs-lbl" id="coach-angle-2-lbl">Angle</div></div>
       </div>
       <div class="coach-replay" id="coach-replay"></div>
-      <div class="coach-tip" id="coach-tip">Place ton téléphone de profil (vue de côté), à environ 2 mètres, pour que la caméra voie tout ton corps. Le squelette est <span style="color:var(--red);font-weight:700">rouge</span> en position incorrecte et passe au <span style="color:var(--green);font-weight:700">vert</span> avec un son quand le mouvement est bien réalisé — pratique si tu ne peux pas regarder l'écran. Tout tourne sur ton téléphone, rien n'est envoyé sur internet.</div>
+      <div class="coach-tip" id="coach-tip">Choisis ton exercice dans la liste ci-dessus : le coach analyse maintenant tous les exercices de la bibliothèque avec des repères adaptés à chaque mouvement. Place ton téléphone de profil (vue de côté), à environ 2 mètres, pour que la caméra voie tout ton corps. Le squelette est <span style="color:var(--red);font-weight:700">rouge</span> en position incorrecte et passe au <span style="color:var(--green);font-weight:700">vert</span> avec un son quand le mouvement est bien réalisé — pratique si tu ne peux pas regarder l'écran. Pour certains exercices (isolation, gainage), l'analyse reste indicative. Tout tourne sur ton téléphone, rien n'est envoyé sur internet.</div>
     </div>
   </div>
 
@@ -2952,17 +2997,19 @@ function dismissPwaModal(){
 // n'est envoyée sur internet. La librairie n'est chargée que si l'utilisateur
 // ouvre cet écran, pour ne pas alourdir le chargement du reste de l'app.
 // ═══════════════════════════════════
-var coachExercise='squat',coachStream=null,coachPose=null,coachRunning=false,coachLastFeedback=0,coachFacing='environment';
+var coachExercise='Tractions',coachStream=null,coachPose=null,coachRunning=false,coachLastFeedback=0,coachFacing='environment';
 var coachFormGood=false,coachLastBeep=0,coachAudioCtx=null;
 var coachRecorder=null,coachRecChunks=[],coachRecording=false;
 var COACH_CONNECTIONS=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
 
 function coachSetExercise(v){
   coachExercise=v;
-  var labels={squat:['Genou','Buste'],deadlift:['Hanche','Jambe'],pullup:['Coude','Amplitude']};
-  var l=labels[v]||['Angle','Angle'];
-  document.getElementById('coach-angle-1-lbl').textContent=l[0];
-  document.getElementById('coach-angle-2-lbl').textContent=l[1];
+  var type=COACH_EX_TYPE[v]||'squat';
+  var cfg=COACH_TYPES[type];
+  document.getElementById('coach-angle-1-lbl').textContent=cfg.a1lbl;
+  document.getElementById('coach-angle-2-lbl').textContent=cfg.a2lbl;
+  document.getElementById('coach-angle-1').textContent='--°';
+  document.getElementById('coach-angle-2').textContent='--°';
 }
 
 function loadCoachScript(src){
@@ -3093,7 +3140,7 @@ function onCoachResults(results){
 function pickCoachSide(lm){
   var lv=(lm[23].visibility+lm[25].visibility+lm[27].visibility+lm[11].visibility)/4;
   var rv=(lm[24].visibility+lm[26].visibility+lm[28].visibility+lm[12].visibility)/4;
-  return rv>=lv?{sh:12,hip:24,knee:26,ankle:28,elb:14,wr:16}:{sh:11,hip:23,knee:25,ankle:27,elb:13,wr:15};
+  return rv>=lv?{sh:12,hip:24,knee:26,ankle:28,elb:14,wr:16,foot:32}:{sh:11,hip:23,knee:25,ankle:27,elb:13,wr:15,foot:31};
 }
 
 function showCoachFeedback(msg,warn){
@@ -3128,47 +3175,179 @@ function setCoachFormState(good){
   coachFormGood=good;
 }
 
+// Configuration des "types de mouvement" : chaque type décrit comment calculer
+// les 2 angles affichés et le feedback (message + bonne/mauvaise forme) à
+// partir des points du squelette (p.sh, p.hip, p.knee, p.ankle, p.elb, p.wr, p.foot)
+var COACH_TYPES={
+  squat:{a1lbl:'Genou',a2lbl:'Buste',calc:function(p){
+    var k=coachAngle(p.hip,p.knee,p.ankle),b=coachAngle(p.sh,p.hip,p.knee);
+    return {a1:k,a2:b,good:k<=100&&b>=35,msg:
+      k>150?['Position de départ : descends en pliant genoux et hanches',false]
+      :k>100?['Continue de descendre pour atteindre la profondeur',false]
+      :b<35?['Garde le buste plus droit, évite de trop te pencher en avant',true]
+      :['Bonne profondeur, garde le dos droit !',false]};
+  }},
+  'wall-sit':{a1lbl:'Genou',a2lbl:'Buste',calc:function(p){
+    var k=coachAngle(p.hip,p.knee,p.ankle),b=coachAngle(p.sh,p.hip,p.knee);
+    return {a1:k,a2:b,good:k>=80&&k<=100,msg:
+      k>100?['Descends jusqu\'à former un angle de 90° au genou',false]
+      :k<80?['Remonte légèrement, ne descends pas trop bas',true]
+      :['Bon angle, maintiens la position !',false]};
+  }},
+  hinge:{a1lbl:'Hanche',a2lbl:'Jambe',calc:function(p){
+    var h=coachAngle(p.sh,p.hip,p.knee),l=coachAngle(p.hip,p.knee,p.ankle);
+    return {a1:h,a2:l,good:h>=70&&h<=160,msg:
+      h<70?['Vérifie que ton dos reste droit, ne l\'arrondis pas en descendant',true]
+      :h>160?['Position haute : verrouille les hanches sans cambrer le bas du dos',false]
+      :['Bon mouvement de hanches, pousse le sol avec les pieds',false]};
+  }},
+  'hip-thrust':{a1lbl:'Hanche',a2lbl:'Genou',calc:function(p){
+    var h=coachAngle(p.sh,p.hip,p.knee),k=coachAngle(p.hip,p.knee,p.ankle);
+    return {a1:h,a2:k,good:h>=160,msg:
+      h<120?['Position basse : pousse les hanches vers le haut',false]
+      :h<160?['Continue de monter, verrouille les hanches en haut',false]
+      :['Bon verrouillage, redescends en contrôlant',false]};
+  }},
+  lunge:{a1lbl:'Genou avant',a2lbl:'Buste',calc:function(p){
+    var k=coachAngle(p.hip,p.knee,p.ankle),b=coachAngle(p.sh,p.hip,p.knee);
+    return {a1:k,a2:b,good:k<=100&&b>=60,msg:
+      k>150?['Position de départ : descends en fléchissant le genou avant',false]
+      :k>100?['Continue de descendre vers 90° au genou avant',false]
+      :b<60?['Garde le buste droit, évite de te pencher en avant',true]
+      :['Bonne profondeur, reviens en poussant sur le talon',false]};
+  }},
+  'machine-knee':{a1lbl:'Genou',a2lbl:'Hanche',calc:function(p){
+    var k=coachAngle(p.hip,p.knee,p.ankle),h=coachAngle(p.sh,p.hip,p.knee);
+    return {a1:k,a2:h,good:k<=100,msg:
+      k>150?['Position tendue : commence le mouvement en contrôlant',false]
+      :k>100?['Continue le mouvement jusqu\'à pleine amplitude',false]
+      :['Bonne amplitude, reviens en contrôlant',false]};
+  }},
+  calf:{a1lbl:'Cheville',a2lbl:'Genou',calc:function(p){
+    if(!p.foot)return null;
+    var a=coachAngle(p.knee,p.ankle,p.foot),k=coachAngle(p.hip,p.knee,p.ankle);
+    return {a1:a,a2:k,good:a>=160,msg:
+      a<130?['Position basse : pousse sur la pointe des pieds',false]
+      :a<160?['Continue de monter sur la pointe des pieds',false]
+      :['Bonne extension, redescends en contrôlant',false]};
+  }},
+  'pull-vertical':{a1lbl:'Coude',a2lbl:'Amplitude',a2suffix:'%',calc:function(p){
+    if(!p.elb||!p.wr)return null;
+    var e=coachAngle(p.sh,p.elb,p.wr),amp=Math.abs(p.wr.y-p.sh.y)*100;
+    return {a1:e,a2:amp,good:e<=80,msg:
+      e>150?['Bras tendus : position basse correcte, tire vers le haut',false]
+      :e>80?['Continue de tirer, monte le menton au-dessus des mains',false]
+      :['Bonne amplitude ! Redescends en contrôlant le mouvement',false]};
+  }},
+  'pull-horizontal':{a1lbl:'Coude',a2lbl:'Buste',calc:function(p){
+    if(!p.elb||!p.wr)return null;
+    var e=coachAngle(p.sh,p.elb,p.wr),b=coachAngle(p.sh,p.hip,p.knee);
+    return {a1:e,a2:b,good:e<=70,msg:
+      e>150?['Bras tendus : étire bien avant de tirer',false]
+      :e>70?['Continue de tirer les coudes vers l\'arrière',false]
+      :['Bonne contraction, garde le dos droit en revenant',false]};
+  }},
+  'push-horizontal':{a1lbl:'Coude',a2lbl:'Buste',calc:function(p){
+    if(!p.elb||!p.wr)return null;
+    var e=coachAngle(p.sh,p.elb,p.wr),b=coachAngle(p.sh,p.hip,p.knee);
+    return {a1:e,a2:b,good:e<=90,msg:
+      e>150?['Bras tendus : descends en contrôlant',false]
+      :e>90?['Continue de descendre vers 90° au coude',false]
+      :['Bonne profondeur, repousse maintenant !',false]};
+  }},
+  'press-overhead':{a1lbl:'Coude',a2lbl:'Bras',calc:function(p){
+    if(!p.elb||!p.wr)return null;
+    var e=coachAngle(p.sh,p.elb,p.wr),a=coachAngle(p.hip,p.sh,p.elb);
+    return {a1:e,a2:a,good:e>=160&&a>=160,msg:
+      e<100?['Position basse : barre aux épaules, pousse vers le haut',false]
+      :e<160?['Continue de pousser au-dessus de la tête',false]
+      :a<160?['Termine le mouvement bras tendus au-dessus de la tête',true]
+      :['Bonne extension, redescends en contrôlant',false]};
+  }},
+  'lateral-raise':{a1lbl:'Épaule',a2lbl:'Coude',calc:function(p){
+    if(!p.elb)return null;
+    var a=coachAngle(p.hip,p.sh,p.elb),e=p.wr?coachAngle(p.sh,p.elb,p.wr):0;
+    return {a1:a,a2:e,good:a>=70&&a<=100,msg:
+      a<30?['Position basse : lève les bras jusqu\'à hauteur d\'épaule',false]
+      :a<70?['Continue de monter les bras',false]
+      :a<=100?['Bonne hauteur, contrôle la descente',false]
+      :['Ne monte pas plus haut que les épaules',true]};
+  }},
+  curl:{a1lbl:'Coude',a2lbl:'Amplitude',calc:function(p){
+    if(!p.elb||!p.wr)return null;
+    var e=coachAngle(p.sh,p.elb,p.wr);
+    return {a1:e,a2:e,good:e<=50,msg:
+      e>150?['Bras tendus : position de départ, débute la flexion',false]
+      :e>50?['Continue de plier le coude',false]
+      :['Bonne contraction, redescends en contrôlant',false]};
+  }},
+  'triceps-ext':{a1lbl:'Coude',a2lbl:'Amplitude',calc:function(p){
+    if(!p.elb||!p.wr)return null;
+    var e=coachAngle(p.sh,p.elb,p.wr);
+    return {a1:e,a2:e,good:e>=150,msg:
+      e<60?['Position fléchie : étends le coude en contrôlant',false]
+      :e<150?['Continue l\'extension du coude',false]
+      :['Bonne extension, reviens en contrôlant sans bouger les coudes',false]};
+  }},
+  'core-plank':{a1lbl:'Alignement',a2lbl:'Hanche',calc:function(p){
+    var l=coachAngle(p.sh,p.hip,p.ankle),h=coachAngle(p.sh,p.hip,p.knee);
+    return {a1:l,a2:h,good:l>=160,msg:
+      l<140?['Hanches trop basses : remonte le bassin pour aligner le corps',true]
+      :l<160?['Presque aligné, gaine un peu plus les abdos',false]
+      :['Bon alignement, garde la position !',false]};
+  }},
+  crunch:{a1lbl:'Buste',a2lbl:'Hanche',calc:function(p){
+    var b=coachAngle(p.sh,p.hip,p.knee);
+    return {a1:b,a2:b,good:b<=110,msg:
+      b>150?['Position de départ : enroule le buste vers le haut',false]
+      :b>110?['Continue d\'enrouler le buste',false]
+      :['Bonne contraction, redescends en contrôlant',false]};
+  }},
+  'leg-raise':{a1lbl:'Hanche',a2lbl:'Genou',calc:function(p){
+    var h=coachAngle(p.sh,p.hip,p.ankle),k=coachAngle(p.hip,p.knee,p.ankle);
+    return {a1:h,a2:k,good:h<=100,msg:
+      h>150?['Position de départ : lève les jambes en gardant le bas du dos au sol',false]
+      :h>100?['Continue de lever les jambes',false]
+      :['Bonne amplitude, redescends en contrôlant sans cambrer',false]};
+  }}
+};
+
+// Associe chaque exercice de la bibliothèque à un type de mouvement analysable par caméra
+var COACH_EX_TYPE={
+  'Développé couché':'push-horizontal','Développé incliné':'push-horizontal','Écarté haltères':'push-horizontal','Dips':'push-horizontal','Pompes':'push-horizontal','Pompes diamant':'push-horizontal',
+  'Tractions':'pull-vertical','Tirage poulie haute':'pull-vertical',
+  'Deadlift':'hinge','Romanian Deadlift':'hinge','Good morning':'hinge',
+  'Tirage horizontal':'pull-horizontal','Tirage poulie basse':'pull-horizontal','Rowing haltères':'pull-horizontal','Face pull':'pull-horizontal',
+  'Overhead Press':'press-overhead',
+  'Élévations latérales':'lateral-raise','Élévations frontales':'lateral-raise',
+  'Squat barre':'squat','Squat gobelet':'squat',
+  'Leg press':'machine-knee','Leg curl':'machine-knee',
+  'Fentes marchées':'lunge',
+  'Hip thrust':'hip-thrust',
+  'Curl barre':'curl','Curl haltères':'curl','Curl marteau':'curl',
+  'Extension triceps':'triceps-ext','Skullcrushers':'triceps-ext',
+  'Planche':'core-plank','Ab wheel':'core-plank','Superman':'core-plank',
+  'Crunch':'crunch',
+  'Relevé de jambes':'leg-raise',
+  'Mollets debout':'calf',
+  'Chaise isométrique':'wall-sit'
+};
+
 function computeCoachFeedback(lm){
   var s=pickCoachSide(lm);
-  var sh=lm[s.sh],hip=lm[s.hip],knee=lm[s.knee],ankle=lm[s.ankle],elb=lm[s.elb],wr=lm[s.wr];
-  if(!sh||!hip||!knee||!ankle)return;
+  var p={sh:lm[s.sh],hip:lm[s.hip],knee:lm[s.knee],ankle:lm[s.ankle],elb:lm[s.elb],wr:lm[s.wr],foot:lm[s.foot]};
+  if(!p.sh||!p.hip||!p.knee||!p.ankle)return;
+  var type=COACH_EX_TYPE[coachExercise]||'squat';
+  var cfg=COACH_TYPES[type];
+  var r=cfg.calc(p);
+  if(!r)return;
+  document.getElementById('coach-angle-1').textContent=Math.round(r.a1)+(cfg.a1suffix||'°');
+  document.getElementById('coach-angle-2').textContent=Math.round(r.a2)+(cfg.a2suffix||'°');
+  setCoachFormState(r.good);
   var now=Date.now();
-  if(coachExercise==='squat'){
-    var kneeAngle=coachAngle(hip,knee,ankle);
-    var backAngle=coachAngle(sh,hip,knee);
-    document.getElementById('coach-angle-1').textContent=Math.round(kneeAngle)+'°';
-    document.getElementById('coach-angle-2').textContent=Math.round(backAngle)+'°';
-    setCoachFormState(kneeAngle<=100&&backAngle>=35);
-    if(now-coachLastFeedback<1200)return;
-    if(kneeAngle>150)showCoachFeedback('Position de départ : descends en pliant genoux et hanches');
-    else if(kneeAngle>100)showCoachFeedback('Continue de descendre pour atteindre la profondeur');
-    else if(backAngle<35)showCoachFeedback('Garde le buste plus droit, évite de trop te pencher en avant',true);
-    else showCoachFeedback('Bonne profondeur, garde le dos droit !');
-    coachLastFeedback=now;
-  }else if(coachExercise==='deadlift'){
-    var hipAngle=coachAngle(sh,hip,knee);
-    var legAngle=coachAngle(hip,knee,ankle);
-    document.getElementById('coach-angle-1').textContent=Math.round(hipAngle)+'°';
-    document.getElementById('coach-angle-2').textContent=Math.round(legAngle)+'°';
-    setCoachFormState(hipAngle>=70&&hipAngle<=160);
-    if(now-coachLastFeedback<1200)return;
-    if(hipAngle<70)showCoachFeedback('Vérifie que ton dos reste droit, ne l\'arrondis pas en descendant',true);
-    else if(hipAngle>160)showCoachFeedback('Position haute : verrouille les hanches sans cambrer le bas du dos');
-    else showCoachFeedback('Bon mouvement de hanches, pousse le sol avec les pieds');
-    coachLastFeedback=now;
-  }else if(coachExercise==='pullup'){
-    if(!elb||!wr)return;
-    var elbowAngle=coachAngle(sh,elb,wr);
-    var amplitude=Math.abs(wr.y-sh.y);
-    document.getElementById('coach-angle-1').textContent=Math.round(elbowAngle)+'°';
-    document.getElementById('coach-angle-2').textContent=(amplitude*100).toFixed(0)+'%';
-    setCoachFormState(elbowAngle<=80);
-    if(now-coachLastFeedback<1200)return;
-    if(elbowAngle>150)showCoachFeedback('Bras tendus : position basse correcte, tire vers le haut');
-    else if(elbowAngle>80)showCoachFeedback('Continue de tirer, monte le menton au-dessus des mains');
-    else showCoachFeedback('Bonne amplitude ! Redescends en contrôlant le mouvement');
-    coachLastFeedback=now;
-  }
+  if(now-coachLastFeedback<1200)return;
+  showCoachFeedback(r.msg[0],r.msg[1]);
+  coachLastFeedback=now;
 }
 
 // Enregistrement de la séance filmée (avec squelette superposé) pour revoir
