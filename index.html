@@ -675,6 +675,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
         <div class="ai-orb"></div>
         <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;text-transform:uppercase">FitAI — Coach Perso</div><div style="font-size:12px;color:var(--t2);margin-top:2px">Programmes · Nutrition · Progression</div></div>
       </div>
+      <div class="card coach-promo" onclick="goTo('coach')">
+        <div class="cp-ico">🎥</div>
+        <div><div class="cp-title">Coach Mouvement IA</div><div class="cp-sub">Analyse ta technique en direct via la caméra</div></div>
+      </div>
       <div class="qp-grid">
         <div class="qp" onclick="sendQP('Crée-moi un programme PPL sur mesure')">🏋 Programme PPL</div>
         <div class="qp" onclick="sendQP('Analyse ma progression ce mois')">📊 Ma progression</div>
@@ -696,10 +700,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
   <div class="screen" id="screen-library">
     <div class="topbar"><div><h1 class="D">Exercices</h1><div class="sub">Muscles ciblés &amp; technique d'exécution</div></div></div>
     <div class="scroll">
-      <div class="card coach-promo" onclick="goTo('coach')">
-        <div class="cp-ico">🎥</div>
-        <div><div class="cp-title">Coach Mouvement IA</div><div class="cp-sub">Analyse ta technique en direct via la caméra</div></div>
-      </div>
       <input class="ex-search" placeholder="🔍 Rechercher un exercice..." oninput="filterLibEx(this.value)">
       <div id="lib-list"></div>
     </div>
@@ -707,7 +707,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 
   <!-- COACH MOUVEMENT -->
   <div class="screen" id="screen-coach">
-    <div class="topbar"><div><button onclick="goTo('library')" style="background:none;border:none;color:var(--t2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;margin-bottom:4px">← Retour</button><h1 class="D">Coach Mouvement</h1><div class="sub">Analyse ta technique en direct par caméra</div></div></div>
+    <div class="topbar"><div><button onclick="goTo('ai')" style="background:none;border:none;color:var(--t2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;margin-bottom:4px">← Retour</button><h1 class="D">Coach Mouvement</h1><div class="sub">Analyse ta technique en direct par caméra</div></div></div>
     <div class="scroll">
       <div class="card">
         <div class="inp-label">Exercice</div>
