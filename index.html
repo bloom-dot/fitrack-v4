@@ -2999,7 +2999,7 @@ function dismissPwaModal(){
 // ═══════════════════════════════════
 var coachExercise='Tractions',coachStream=null,coachPose=null,coachRunning=false,coachLastFeedback=0,coachFacing='environment';
 var coachFormGood=false,coachLastBeep=0,coachAudioCtx=null;
-var coachRecorder=null,coachRecChunks=[],coachRecording=false;
+var coachRecorder=null,coachRecChunks=[],coachRecording=false,coachReplayUrl=null;
 var COACH_CONNECTIONS=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
 
 function coachSetExercise(v){
@@ -3374,16 +3374,24 @@ function toggleCoachRecording(){
     btn.textContent='🔴 Enregistrer la vidéo';
     btn.classList.remove('active');
     if(!coachRecChunks.length)return;
+    if(coachReplayUrl)URL.revokeObjectURL(coachReplayUrl);
     var blob=new Blob(coachRecChunks,{type:'video/webm'});
-    var url=URL.createObjectURL(blob);
+    coachReplayUrl=URL.createObjectURL(blob);
     var wrap=document.getElementById('coach-replay');
-    wrap.innerHTML='<div class="inp-label">Dernière exécution enregistrée</div><video src="'+url+'" controls playsinline></video><a href="'+url+'" download="coach-mouvement.webm" class="btn-outline" style="margin-top:8px;display:block;text-align:center;text-decoration:none">⬇ Télécharger la vidéo</a>';
+    wrap.innerHTML='<div class="inp-label">Dernière exécution enregistrée</div><video src="'+coachReplayUrl+'" controls playsinline></video><div style="display:flex;gap:8px;margin-top:8px"><a href="'+coachReplayUrl+'" download="coach-mouvement.webm" class="btn-outline" style="flex:1;text-align:center;text-decoration:none">⬇ Télécharger</a><button class="btn-outline" style="flex:1" onclick="deleteCoachReplay()">🗑 Supprimer</button></div>';
     wrap.style.display='block';
   };
   coachRecorder.start();
   coachRecording=true;
   btn.textContent='⏹ Arrêter l\'enregistrement';
   btn.classList.add('active');
+}
+
+function deleteCoachReplay(){
+  if(coachReplayUrl){URL.revokeObjectURL(coachReplayUrl);coachReplayUrl=null;}
+  var wrap=document.getElementById('coach-replay');
+  wrap.innerHTML='';
+  wrap.style.display='none';
 }
 </script>
 </body>
