@@ -276,7 +276,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .session-hdr{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px}
 .session-name{background:transparent;border:none;outline:none;font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--text);width:100%;text-transform:uppercase;margin-bottom:10px}
 .session-name::placeholder{color:var(--t3)}
+.s-timer-row{display:none;align-items:center;justify-content:center;gap:10px}
+.s-timer-row.show{display:flex}
 .s-timer{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:var(--acc);text-align:center;letter-spacing:1px;padding:6px 0}
+.s-cancel-btn{background:none;border:1px solid var(--border2);color:var(--t2);font-size:11px;font-weight:600;border-radius:6px;padding:6px 10px;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap}
 .rest-row{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap}
 .rest-lbl{font-size:11px;color:var(--t2);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 .rest-opts{display:flex;gap:6px;margin-left:auto}
@@ -611,7 +614,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
       <div class="session-hdr">
         <input class="session-name" id="session-name" placeholder="Nom de la séance..." value="Push Day">
         <button class="btn-primary" id="s-timer-start" onclick="startSessionTimer()">▶ Démarrer la séance</button>
-        <div class="s-timer" id="s-timer" style="display:none">⏱ 00:00</div>
+        <div class="s-timer-row" id="s-timer-row">
+          <div class="s-timer" id="s-timer">⏱ 00:00</div>
+          <button class="s-cancel-btn" onclick="cancelSession()">✕ Annuler</button>
+        </div>
         <div class="rest-row">
           <span class="rest-lbl">Repos</span>
           <div class="rest-disp" id="rest-disp">2:00</div>
@@ -1540,7 +1546,7 @@ function startSessionTimer(){
   if(sStart)return;
   sStart=Date.now();
   var btn=document.getElementById('s-timer-start');if(btn)btn.style.display='none';
-  var el=document.getElementById('s-timer');if(el)el.style.display='';
+  var row=document.getElementById('s-timer-row');if(row)row.classList.add('show');
   var addBtn=document.getElementById('add-ex-btn');if(addBtn)addBtn.style.display='';
   var finBtn=document.getElementById('finish-session-btn');if(finBtn)finBtn.style.display='';
   sInt=setInterval(function(){var s=Math.floor((Date.now()-sStart)/1000);var m=Math.floor(s/60).toString().padStart(2,'0');var sc=(s%60).toString().padStart(2,'0');var el=document.getElementById('s-timer');if(el)el.textContent='⏱ '+m+':'+sc;},1000);
@@ -1550,9 +1556,18 @@ function stopSessionTimer(){clearInterval(sInt);sInt=null;var d=sStart?Math.floo
 // et les boutons "Ajouter un exercice"/"Terminer" masqués jusqu'au démarrage)
 function resetSessionTimerUI(){
   var btn=document.getElementById('s-timer-start');if(btn)btn.style.display='';
-  var el=document.getElementById('s-timer');if(el){el.style.display='none';el.textContent='⏱ 00:00';}
+  var row=document.getElementById('s-timer-row');if(row)row.classList.remove('show');
+  var el=document.getElementById('s-timer');if(el)el.textContent='⏱ 00:00';
   var addBtn=document.getElementById('add-ex-btn');if(addBtn)addBtn.style.display='none';
   var finBtn=document.getElementById('finish-session-btn');if(finBtn)finBtn.style.display='none';
+}
+// Annule la séance en cours (démarrée par erreur) : arrête le chrono et
+// réinitialise la liste d'exercices sans rien enregistrer.
+function cancelSession(){
+  if(!confirm('Annuler cette séance ? Les séries déjà saisies seront perdues.'))return;
+  clearInterval(sInt);sInt=null;sStart=null;
+  buildDefaultSession(false);
+  toast('Séance annulée');
 }
 
 // REST TIMER
