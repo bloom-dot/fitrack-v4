@@ -304,7 +304,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .banner-meta{font-size:12px;color:var(--t2)}
 .day-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:5px 10px;border-radius:20px;margin-bottom:10px}
 .day-status.rest{background:var(--s2);color:var(--t2)}
-.day-status.pending{background:var(--acc-d);color:var(--acc)}
+.day-status.pending{background:var(--acc-d);color:var(--acc);animation:statusPulse 2s ease-in-out infinite}
+@keyframes statusPulse{0%,100%{box-shadow:0 0 0 0 rgba(212,255,0,.35)}60%{box-shadow:0 0 0 8px rgba(212,255,0,0)}}
 .day-status.done{background:rgba(80,220,120,.12);color:#4ade80}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .stat-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:15px}
@@ -361,6 +362,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .rest-float.alarm{animation:restAlarm .5s ease-in-out infinite;border-color:var(--acc)}
 .rest-float.alarm .rest-float-time{color:var(--bg)}
 @keyframes restAlarm{0%,100%{background:var(--s1)}50%{background:var(--acc)}}
+.rest-edge{position:fixed;z-index:998;background:var(--acc);opacity:0;pointer-events:none;border-radius:2px}
+.rest-edge-top{top:0;left:0;right:0;height:5px}
+.rest-edge-left{top:0;left:0;bottom:0;width:5px}
+.rest-edge-right{top:0;right:0;bottom:0;width:5px}
+.rest-edge.alarm{animation:edgeFlash .5s ease-in-out infinite}
+@keyframes edgeFlash{0%,100%{opacity:0}50%{opacity:1}}
 .ex-block{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);margin-bottom:11px;overflow:hidden}
 .ex-block-hdr{padding:13px 14px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--border)}
 .ex-block-name{font-weight:600;font-size:14px}
@@ -1124,6 +1131,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
     <div class="scroll"><div class="badge-grid" id="badge-grid"></div></div>
   </div>
 
+  <!-- FLASH BORDS ALARME REPOS -->
+  <div class="rest-edge rest-edge-top" id="rest-edge-top"></div>
+  <div class="rest-edge rest-edge-left" id="rest-edge-left"></div>
+  <div class="rest-edge rest-edge-right" id="rest-edge-right"></div>
+
   <!-- MINUTEUR DE REPOS FLOTTANT (visible sur toutes les pages) -->
   <div class="rest-float" id="rest-float" onclick="toggleRest()">
     <div class="rest-float-time" id="rest-float-time">2:00</div>
@@ -1385,9 +1397,17 @@ async function doRegister(){
   btn.textContent='Création...';btn.disabled=true;
   var res=await sb.auth.signUp({email:e,password:p,options:{data:{first_name:fn,last_name:ln}}});
   btn.textContent='Créer mon compte';btn.disabled=false;
-  if(res.error){errEl.textContent=res.error.message==='User already registered'?'Un compte existe déjà avec cet e-mail.':'Erreur lors de la création du compte.';errEl.classList.add('show');return;}
+  if(res.error){
+    var msg=res.error.message||'';
+    errEl.textContent=msg.includes('already registered')||msg.includes('already been registered')?'Un compte existe déjà avec cet e-mail.':(msg.includes('password')?'Mot de passe invalide (8 caractères minimum).':'Erreur : '+msg);
+    errEl.classList.add('show');return;
+  }
   DB.s('user_name',fn+' '+ln);
-  if(!res.data.session){toast('Vérifiez votre boîte mail pour confirmer votre compte ✉');return;}
+  if(!res.data.session){
+    errEl.style.background='rgba(212,255,0,.08)';errEl.style.borderColor='rgba(212,255,0,.4)';errEl.style.color='var(--acc)';
+    errEl.textContent='✉ Un lien de confirmation a été envoyé à '+e+'. Vérifie ta boîte mail (et les spams) puis clique sur le lien pour activer ton compte.';
+    errEl.classList.add('show');btn.style.display='none';return;
+  }
   await routeAfterAuth();
 }
 async function doForgot(){
@@ -1902,6 +1922,15 @@ function updateSessionProgress(){
   var txt=document.getElementById('s-progress-txt');if(txt)txt.textContent=done.length+'/'+all.length+' séries';
   var fill=document.getElementById('s-progress-fill');if(fill)fill.style.width=(all.length?Math.round(done.length/all.length*100):0)+'%';
 }
+function onSetDone(el){
+  el.classList.toggle('done');
+  el.textContent=el.classList.contains('done')?'✓':'';
+  updateSessionProgress();
+  if(el.classList.contains('done')){
+    if(rAlarm){stopRestAlarm();setRestEdgeAlarm(false);rAlarm=false;}
+    if(!rRun){if(rLeft<=0)rLeft=rDur;rEndTime=null;toggleRest();}
+  }
+}
 function stopSessionTimer(){clearInterval(sInt);sInt=null;var d=sStart?Math.floor((Date.now()-sStart)/1000):0;sStart=null;return d;}
 // Réinitialise l'affichage du chrono de séance (bouton "Démarrer" visible, chrono caché,
 // et les boutons "Ajouter un exercice"/"Terminer" masqués jusqu'au démarrage)
@@ -1999,6 +2028,7 @@ function restTick(){
 }
 function resetRest(){
   clearInterval(rInt);stopRestAlarm();
+  setRestEdgeAlarm(false);
   rRun=false;rAlarm=false;rLeft=rDur;rEndTime=null;
   var b=document.getElementById('rest-btn');if(b)b.textContent='▶ Go';
   closeRestNotification();
@@ -2006,8 +2036,10 @@ function resetRest(){
 }
 // Déclenche l'alarme : son répété, vibration, animation flash du minuteur
 // flottant, et notification système si l'app est en arrière-plan.
+function setRestEdgeAlarm(on){['rest-edge-top','rest-edge-left','rest-edge-right'].forEach(function(id){var el=document.getElementById(id);if(el)el.classList.toggle('alarm',on);});}
 function fireRestAlarm(){
   rAlarm=true;
+  setRestEdgeAlarm(true);
   if(navigator.vibrate)navigator.vibrate([400,200,400,200,400]);
   playAlarmSound();
   rAlarmInt=setInterval(function(){if(navigator.vibrate)navigator.vibrate(400);playAlarmSound();},2000);
@@ -2121,7 +2153,7 @@ function addSetRow(bid,sug,r){
     +'<input class="set-inp'+(sug?' sug':'')+'" type="number" min="0" step="0.5" placeholder="kg" value="'+(sug||'')+'" onfocus="this.classList.remove(\'sug\')" oninput="onSetInp(this)">'
     +'<input class="set-inp" type="number" min="0" step="1" placeholder="reps" value="'+(r||'')+'" oninput="onSetInp(this)">'
     +'<div class="set-vol">—</div>'
-    +'<div class="set-ck" onclick="this.classList.toggle(\'done\');this.textContent=this.classList.contains(\'done\')?\'✓\':\'\';updateSessionProgress()">'+'</div>';
+    +'<div class="set-ck" onclick="onSetDone(this)">'+'</div>';
   if(btn)wrap.insertBefore(row,btn);else wrap.appendChild(row);
 }
 
@@ -2131,7 +2163,7 @@ function addSetBtn(bid){
   btn.onclick=function(){
     var n=wrap.querySelectorAll('.set-row').length+1;
     var row=document.createElement('div');row.className='set-row';
-    row.innerHTML='<div class="set-n">'+n+'</div><input class="set-inp" type="number" step="0.5" placeholder="kg" oninput="onSetInp(this)"><input class="set-inp" type="number" step="1" placeholder="reps" oninput="onSetInp(this)"><div class="set-vol">—</div><div class="set-ck" onclick="this.classList.toggle(\'done\');this.textContent=this.classList.contains(\'done\')?\'✓\':\'\';updateSessionProgress()">'+'</div>';
+    row.innerHTML='<div class="set-n">'+n+'</div><input class="set-inp" type="number" step="0.5" placeholder="kg" oninput="onSetInp(this)"><input class="set-inp" type="number" step="1" placeholder="reps" oninput="onSetInp(this)"><div class="set-vol">—</div><div class="set-ck" onclick="onSetDone(this)">'+'</div>';
     wrap.insertBefore(row,btn);
     updateSessionProgress();
   };
@@ -3544,11 +3576,19 @@ function pickCoachSide(lm){
   return rv>=lv?{sh:12,hip:24,knee:26,ankle:28,elb:14,wr:16,foot:32}:{sh:11,hip:23,knee:25,ankle:27,elb:13,wr:15,foot:31};
 }
 
+var coachTTSEnabled=true,coachLastSpoken='';
 function showCoachFeedback(msg,warn){
   var fb=document.getElementById('coach-feedback');
   fb.textContent=msg;
   fb.classList.add('show');
   fb.classList.toggle('warn',!!warn);
+  if(coachTTSEnabled&&'speechSynthesis' in window&&msg&&msg!==coachLastSpoken){
+    coachLastSpoken=msg;
+    var u=new SpeechSynthesisUtterance(msg);
+    u.lang='fr-FR';u.rate=1.1;u.volume=0.9;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  }
 }
 
 // Joue un court bip lorsque le mouvement passe en position correcte
@@ -3779,10 +3819,11 @@ function toggleCoachRecording(){
     var blob=new Blob(coachRecChunks,{type:'video/webm'});
     coachReplayUrl=URL.createObjectURL(blob);
     var wrap=document.getElementById('coach-replay');
-    wrap.innerHTML='<div class="inp-label">Dernière exécution enregistrée</div><video src="'+coachReplayUrl+'" controls playsinline></video><div style="display:flex;gap:8px;margin-top:8px"><a href="'+coachReplayUrl+'" download="coach-mouvement.webm" class="btn-outline" style="flex:1;text-align:center;text-decoration:none">⬇ Télécharger</a><button class="btn-outline" style="flex:1" onclick="deleteCoachReplay()">🗑 Supprimer</button></div>';
+    var shareBtn=navigator.share&&navigator.canShare?'<button class="btn-outline" style="flex:1" onclick="shareCoachReplay()">↗ Partager</button>':'';
+    wrap.innerHTML='<div class="inp-label">Dernière exécution enregistrée</div><video src="'+coachReplayUrl+'" controls playsinline></video><div style="display:flex;gap:8px;margin-top:8px"><a href="'+coachReplayUrl+'" download="coach-mouvement.webm" class="btn-outline" style="flex:1;text-align:center;text-decoration:none">⬇ Télécharger</a>'+shareBtn+'<button class="btn-outline" style="flex:1" onclick="deleteCoachReplay()">🗑 Supprimer</button></div>';
     wrap.style.display='block';
   };
-  coachRecorder.start();
+  coachRecorder.start(1000);
   coachRecording=true;
   btn.textContent='⏹ Arrêter l\'enregistrement';
   btn.classList.add('active');
@@ -3793,6 +3834,19 @@ function deleteCoachReplay(){
   var wrap=document.getElementById('coach-replay');
   wrap.innerHTML='';
   wrap.style.display='none';
+}
+async function shareCoachReplay(){
+  if(!coachReplayUrl)return;
+  try{
+    var resp=await fetch(coachReplayUrl);
+    var blob=await resp.blob();
+    var file=new File([blob],'coach-mouvement.webm',{type:'video/webm'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:'Mon mouvement FiTrack',text:'Regarde mon exécution analysée par Coach Mouvement 💪'});
+    } else {
+      await navigator.share({url:coachReplayUrl,title:'Mon mouvement FiTrack'});
+    }
+  }catch(e){if(e.name!=='AbortError')toast('Partage non supporté sur ce navigateur.');}
 }
 </script>
 </body>
