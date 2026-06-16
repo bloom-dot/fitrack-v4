@@ -1,11 +1,17 @@
 /**
- * FiTrack - API Défis entre utilisateurs
+ * FiTrack - API Défis de performance
  *
- * GET    /api/challenges?action=list&token=...          → défis de l'utilisateur + publics
- * GET    /api/challenges?action=get&code=XXX&token=...  → détail + classement d'un défi
- * POST   /api/challenges  { action:"create", title, target_sessions, duration_days, is_public }
- * POST   /api/challenges  { action:"join", code }
- * POST   /api/challenges  { action:"leave", challenge_id }
+ * GET  /api/challenges?action=leaderboard&type_id=...&week_key=...&friend_code=...
+ *   → classement des scores pour un défi donné
+ * GET  /api/challenges?action=my_score&type_id=...&week_key=...&friend_code=...
+ *   → meilleur score perso
+ *
+ * POST /api/challenges  { action:"log", type_id, week_key, score, friend_code? }
+ *   → enregistre / améliore le score
+ * POST /api/challenges  { action:"create_friend", type_id, week_key }
+ *   → crée un défi ami, retourne un code
+ * POST /api/challenges  { action:"get_friend", code }
+ *   → info défi ami (type_id, week_key) + classement
  */
 
 export const config = { runtime: "edge" };
@@ -27,139 +33,126 @@ export default async function handler(request) {
     headers: { Authorization: `Bearer ${token}`, apikey: serviceKey },
   });
   if (!userRes.ok) return jsonError("Token invalide", 401);
-  const { id: userId, email } = await userRes.json();
-  const displayName = email?.split("@")[0] || "Anonyme";
+  const { id: userId } = await userRes.json();
 
   const sh = supabaseHeaders(serviceKey);
 
+  // ── GET ──────────────────────────────────────────────────────────
   if (request.method === "GET") {
     const url = new URL(request.url);
     const action = url.searchParams.get("action");
+    const typeId = url.searchParams.get("type_id") || "";
+    const weekKey = url.searchParams.get("week_key") || "";
+    const friendCode = url.searchParams.get("friend_code") || null;
 
-    if (action === "list") {
-      // Défis rejoints par l'utilisateur
-      const [joinedRes, publicRes] = await Promise.all([
-        fetch(`${SUPABASE_URL}/rest/v1/challenge_participants?select=challenge_id,joined_at,challenges(*)&user_id=eq.${userId}&order=joined_at.desc&limit=20`, { headers: sh }),
-        fetch(`${SUPABASE_URL}/rest/v1/challenges?is_public=eq.true&order=created_at.desc&limit=20`, { headers: sh }),
-      ]);
-      const joined = joinedRes.ok ? await joinedRes.json() : [];
-      const publicC = publicRes.ok ? await publicRes.json() : [];
-      const joinedIds = new Set(joined.map((j) => j.challenge_id));
-      const discover = publicC.filter((c) => !joinedIds.has(c.id));
-      return jsonOk({ joined: joined.map((j) => ({ ...j.challenges, joined_at: j.joined_at })), discover });
+    if (action === "leaderboard") {
+      let qs = `challenge_type_id=eq.${encodeURIComponent(typeId)}&week_key=eq.${encodeURIComponent(weekKey)}&order=score.desc&limit=50`;
+      if (friendCode) qs += `&friend_code=eq.${encodeURIComponent(friendCode)}`;
+      else qs += `&friend_code=is.null`;
+
+      const rRes = await fetch(`${SUPABASE_URL}/rest/v1/challenge_results?${qs}`, { headers: sh });
+      const results = rRes.ok ? await rRes.json() : [];
+
+      // Récupérer les noms
+      const userIds = [...new Set(results.map((r) => r.user_id))];
+      let names = {};
+      if (userIds.length) {
+        const pRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=in.(${userIds.join(",")})&select=id,name`, { headers: sh });
+        const profiles = pRes.ok ? await pRes.json() : [];
+        profiles.forEach((p) => { names[p.id] = p.name || "Anonyme"; });
+      }
+
+      return jsonOk(results.map((r, i) => ({
+        rank: i + 1,
+        user_id: r.user_id,
+        name: names[r.user_id] || "Anonyme",
+        score: r.score,
+        is_me: r.user_id === userId,
+        logged_at: r.logged_at,
+      })));
     }
 
-    if (action === "get") {
-      const code = url.searchParams.get("code");
-      if (!code) return jsonError("Code requis", 400);
+    if (action === "get_friend") {
+      const code = url.searchParams.get("code") || "";
+      const fcRes = await fetch(`${SUPABASE_URL}/rest/v1/friend_challenges?code=eq.${encodeURIComponent(code.toUpperCase())}&limit=1`, { headers: sh });
+      const [fc] = fcRes.ok ? await fcRes.json() : [];
+      if (!fc) return jsonError("Défi introuvable", 404);
 
-      const cRes = await fetch(`${SUPABASE_URL}/rest/v1/challenges?code=eq.${encodeURIComponent(code.toUpperCase())}&limit=1`, { headers: sh });
-      const [challenge] = cRes.ok ? await cRes.json() : [];
-      if (!challenge) return jsonError("Défi introuvable", 404);
-
-      // Participants avec leur progression (séances pendant la période)
-      const partRes = await fetch(`${SUPABASE_URL}/rest/v1/challenge_participants?challenge_id=eq.${challenge.id}`, { headers: sh });
-      const participants = partRes.ok ? await partRes.json() : [];
-
-      // Pour chaque participant, compter les séances dans la période du défi
-      const leaderboard = await Promise.all(
-        participants.map(async (p) => {
-          const sessRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/sessions?user_id=eq.${p.user_id}&date=gte.${challenge.start_date}&date=lte.${challenge.end_date}&select=id`,
-            { headers: sh }
-          );
-          const sessions = sessRes.ok ? await sessRes.json() : [];
-          return { user_id: p.user_id, sessions: sessions.length, joined_at: p.joined_at };
-        })
-      );
-      leaderboard.sort((a, b) => b.sessions - a.sessions);
-
-      // Récupérer les noms depuis profiles
-      const profileIds = leaderboard.map((l) => l.user_id);
-      let profiles = [];
-      if (profileIds.length) {
-        const pRes = await fetch(
-          `${SUPABASE_URL}/rest/v1/profiles?id=in.(${profileIds.join(",")})&select=id,name`,
-          { headers: sh }
-        );
-        profiles = pRes.ok ? await pRes.json() : [];
+      // Classement
+      const rRes = await fetch(`${SUPABASE_URL}/rest/v1/challenge_results?challenge_type_id=eq.${encodeURIComponent(fc.challenge_type_id)}&week_key=eq.${encodeURIComponent(fc.week_key)}&friend_code=eq.${encodeURIComponent(code.toUpperCase())}&order=score.desc&limit=20`, { headers: sh });
+      const results = rRes.ok ? await rRes.json() : [];
+      const userIds = [...new Set(results.map((r) => r.user_id))];
+      let names = {};
+      if (userIds.length) {
+        const pRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=in.(${userIds.join(",")})&select=id,name`, { headers: sh });
+        const profiles = pRes.ok ? await pRes.json() : [];
+        profiles.forEach((p) => { names[p.id] = p.name || "Anonyme"; });
       }
-      const nameMap = Object.fromEntries(profiles.map((p) => [p.id, p.name || "Anonyme"]));
-
-      const isParticipant = participants.some((p) => p.user_id === userId);
       return jsonOk({
-        challenge,
-        leaderboard: leaderboard.map((l, i) => ({
-          rank: i + 1,
-          user_id: l.user_id,
-          name: nameMap[l.user_id] || "Anonyme",
-          sessions: l.sessions,
-          is_me: l.user_id === userId,
+        friend_challenge: fc,
+        leaderboard: results.map((r, i) => ({
+          rank: i + 1, user_id: r.user_id, name: names[r.user_id] || "Anonyme",
+          score: r.score, is_me: r.user_id === userId,
         })),
-        is_participant: isParticipant,
-        my_sessions: leaderboard.find((l) => l.user_id === userId)?.sessions || 0,
       });
     }
 
     return jsonError("Action inconnue", 400);
   }
 
+  // ── POST ─────────────────────────────────────────────────────────
   if (request.method === "POST") {
     const body = await request.json();
     const { action } = body;
 
-    if (action === "create") {
-      const { title, target_sessions, duration_days, is_public } = body;
-      if (!title || !target_sessions || !duration_days) return jsonError("Champs manquants", 400);
+    if (action === "log") {
+      const { type_id, week_key, score, friend_code } = body;
+      if (!type_id || !week_key || score == null) return jsonError("Champs manquants", 400);
+      const scoreNum = parseFloat(score);
+      if (isNaN(scoreNum) || scoreNum < 0) return jsonError("Score invalide", 400);
 
-      // Créer le défi
-      const cRes = await fetch(`${SUPABASE_URL}/rest/v1/challenges`, {
+      // Vérifier si un score existe déjà — ne mettre à jour que si meilleur
+      let qs = `user_id=eq.${userId}&challenge_type_id=eq.${encodeURIComponent(type_id)}&week_key=eq.${encodeURIComponent(week_key)}`;
+      if (friend_code) qs += `&friend_code=eq.${encodeURIComponent(friend_code.toUpperCase())}`;
+      else qs += `&friend_code=is.null`;
+      const existing = await fetch(`${SUPABASE_URL}/rest/v1/challenge_results?${qs}&limit=1`, { headers: sh });
+      const [prev] = existing.ok ? await existing.json() : [];
+
+      if (prev) {
+        if (scoreNum <= prev.score) return jsonOk({ ok: true, improved: false, best: prev.score });
+        await fetch(`${SUPABASE_URL}/rest/v1/challenge_results?id=eq.${prev.id}`, {
+          method: "PATCH",
+          headers: sh,
+          body: JSON.stringify({ score: scoreNum, logged_at: new Date().toISOString() }),
+        });
+        return jsonOk({ ok: true, improved: true, best: scoreNum });
+      }
+
+      await fetch(`${SUPABASE_URL}/rest/v1/challenge_results`, {
         method: "POST",
-        headers: { ...sh, Prefer: "return=representation" },
+        headers: sh,
         body: JSON.stringify({
-          creator_id: userId,
-          title,
-          target_sessions: parseInt(target_sessions),
-          duration_days: parseInt(duration_days),
-          is_public: !!is_public,
-          start_date: new Date().toISOString().slice(0, 10),
+          user_id: userId,
+          challenge_type_id: type_id,
+          week_key,
+          score: scoreNum,
+          friend_code: friend_code ? friend_code.toUpperCase() : null,
         }),
       });
-      const [challenge] = cRes.ok ? await cRes.json() : [];
-      if (!challenge) return jsonError("Erreur création défi", 500);
-
-      // Rejoindre automatiquement son propre défi
-      await fetch(`${SUPABASE_URL}/rest/v1/challenge_participants`, {
-        method: "POST",
-        headers: sh,
-        body: JSON.stringify({ challenge_id: challenge.id, user_id: userId }),
-      });
-
-      return jsonOk({ challenge });
+      return jsonOk({ ok: true, improved: true, best: scoreNum });
     }
 
-    if (action === "join") {
-      const { code } = body;
-      if (!code) return jsonError("Code requis", 400);
-      const cRes = await fetch(`${SUPABASE_URL}/rest/v1/challenges?code=eq.${encodeURIComponent(code.toUpperCase())}&limit=1`, { headers: sh });
-      const [challenge] = cRes.ok ? await cRes.json() : [];
-      if (!challenge) return jsonError("Défi introuvable", 404);
-
-      await fetch(`${SUPABASE_URL}/rest/v1/challenge_participants`, {
+    if (action === "create_friend") {
+      const { type_id, week_key } = body;
+      if (!type_id || !week_key) return jsonError("Champs manquants", 400);
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/friend_challenges`, {
         method: "POST",
-        headers: { ...sh, Prefer: "resolution=ignore-duplicates" },
-        body: JSON.stringify({ challenge_id: challenge.id, user_id: userId }),
+        headers: { ...sh, Prefer: "return=representation" },
+        body: JSON.stringify({ creator_id: userId, challenge_type_id: type_id, week_key }),
       });
-      return jsonOk({ challenge });
-    }
-
-    if (action === "leave") {
-      const { challenge_id } = body;
-      await fetch(`${SUPABASE_URL}/rest/v1/challenge_participants?challenge_id=eq.${challenge_id}&user_id=eq.${userId}`, {
-        method: "DELETE",
-        headers: sh,
-      });
-      return jsonOk({ ok: true });
+      const [fc] = res.ok ? await res.json() : [];
+      if (!fc) return jsonError("Erreur création défi", 500);
+      return jsonOk({ code: fc.code, expires_at: fc.expires_at });
     }
 
     return jsonError("Action inconnue", 400);
@@ -168,12 +161,8 @@ export default async function handler(request) {
   return jsonError("Méthode non autorisée", 405);
 }
 
-function supabaseHeaders(serviceKey) {
-  return {
-    "Content-Type": "application/json",
-    apikey: serviceKey,
-    Authorization: `Bearer ${serviceKey}`,
-  };
+function supabaseHeaders(k) {
+  return { "Content-Type": "application/json", apikey: k, Authorization: `Bearer ${k}` };
 }
 function corsHeaders() {
   return {
@@ -185,6 +174,6 @@ function corsHeaders() {
 function jsonOk(data) {
   return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json", ...corsHeaders() } });
 }
-function jsonError(msg, status) {
-  return new Response(JSON.stringify({ error: msg }), { status, headers: { "Content-Type": "application/json", ...corsHeaders() } });
+function jsonError(msg, s) {
+  return new Response(JSON.stringify({ error: msg }), { status: s, headers: { "Content-Type": "application/json", ...corsHeaders() } });
 }
