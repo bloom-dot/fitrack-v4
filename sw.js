@@ -1,8 +1,5 @@
-// Service worker FiTrack — minimal, requis pour que les navigateurs
-// (notamment Chrome/Android) proposent "Installer l'application" /
-// "Ajouter à l'écran d'accueil", et permet un chargement plus rapide
-// + un fonctionnement basique hors-ligne pour l'app shell.
-const CACHE_NAME = 'fitrack-v4-shell-1';
+// Service worker FiTrack — cache app shell + gestion notifications push
+const CACHE_NAME = 'fitrack-v4-shell-2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -29,19 +26,11 @@ self.addEventListener('activate', function(event) {
   self.clients.claim();
 });
 
-// Stratégie : "network first" pour toujours avoir les dernières
-// données/pages à jour quand il y a du réseau, et fallback sur le
-// cache (app shell) si hors-ligne.
 self.addEventListener('fetch', function(event) {
   if (event.request.method !== 'GET') return;
   var url = new URL(event.request.url);
-  // On ne touche pas aux appels vers Supabase / API externes
   if (url.origin !== self.location.origin) return;
-  // On ne met pas en cache les URLs avec paramètres (ex: redirection
-  // OAuth contenant un code/jeton dans l'URL) pour éviter de stocker
-  // des informations sensibles dans le Cache Storage de l'appareil.
   if (url.search) { event.respondWith(fetch(event.request)); return; }
-
   event.respondWith(
     fetch(event.request).then(function(res) {
       var resClone = res.clone();
@@ -51,6 +40,38 @@ self.addEventListener('fetch', function(event) {
       return caches.match(event.request).then(function(cached) {
         return cached || caches.match('./index.html');
       });
+    })
+  );
+});
+
+// ─── PUSH NOTIFICATIONS ───────────────────────────────────────────────
+self.addEventListener('push', function(event) {
+  var data = {};
+  try { data = event.data ? event.data.json() : {}; } catch(e) {}
+  var title = data.title || 'FiTrack';
+  var options = {
+    body: data.body || '',
+    icon: './assets/icons/icon-192.png',
+    badge: './assets/icons/icon-192.png',
+    vibrate: [200, 100, 200],
+    data: { url: data.url || '/' },
+    tag: data.tag || 'fitrack-notif',
+    renotify: true
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Clic sur une notification : ouvre / focus l'app
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  var targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      for (var i = 0; i < clientList.length; i++) {
+        var client = clientList[i];
+        if ('focus' in client) { client.focus(); return; }
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
     })
   );
 });

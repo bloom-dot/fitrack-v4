@@ -511,6 +511,18 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .recap-diff.down{color:var(--red)}
 
 /* ═══ LANDING : tableau comparatif ═══ */
+.ch-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}
+.ch-card:active{border-color:var(--acc)}
+.ch-card-title{font-weight:700;font-size:14px;margin-bottom:4px}
+.ch-card-meta{font-size:11px;color:var(--t2);margin-bottom:8px}
+.ch-card-code{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:var(--acc);letter-spacing:3px}
+.ch-leaderboard{margin-top:12px}
+.ch-lb-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.ch-lb-rank{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--t3);min-width:22px}
+.ch-lb-rank.gold{color:var(--gold)}
+.ch-lb-name{flex:1;font-weight:500}
+.ch-lb-me{color:var(--acc);font-size:10px;font-weight:700;margin-left:4px}
+.ch-lb-sessions{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;color:var(--acc)}
 .land-compare{width:100%;border-collapse:collapse;font-size:12px;overflow:hidden;border-radius:var(--r-sm);border:1px solid var(--border)}
 .land-compare th,.land-compare td{padding:10px 8px;text-align:center;border-bottom:1px solid var(--border)}
 .land-compare th{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;background:var(--s1)}
@@ -872,6 +884,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
         <div class="s-progress-bar"><div class="s-progress-fill" id="ch-progress-fill"></div></div>
         <div id="ch-freeze-info"></div>
       </div>
+      <div class="card coach-promo" onclick="goTo('challenges')" style="background:linear-gradient(135deg,rgba(212,255,0,.08),var(--s1));border-color:rgba(212,255,0,.2)">
+        <div class="cp-ico">🏆</div>
+        <div><div class="cp-title">Défis entre amis</div><div class="cp-sub" id="home-challenges-sub">Crée un défi ou rejoins celui d'un ami</div></div>
+      </div>
       <div class="sh"><h2 class="D">Records</h2><a onclick="goTo('records')">Tout voir →</a></div>
       <div id="home-prs"></div>
       <div class="sh"><h2 class="D">Dernières séances</h2><a onclick="goTo('history')">Tout voir →</a></div>
@@ -1087,6 +1103,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
       <div class="setting-row"><div class="setting-lbl">Objectif</div><div class="setting-val" id="pf-obj">—</div></div>
       <div class="setting-row" onclick="goTo('measurements')"><div class="setting-lbl">Poids &amp; mensurations</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="goTo('badges')"><div class="setting-lbl">Mes badges 🏅</div><div class="setting-val">→</div></div>
+      <div class="setting-row" onclick="goTo('challenges')"><div class="setting-lbl">Défis entre amis 🏆</div><div class="setting-val">→</div></div>
+      <div class="setting-row" id="push-notif-row" onclick="requestPushPermission()" style="display:none"><div class="setting-lbl" id="push-notif-lbl">🔔 Activer les notifications</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="editProfile()"><div class="setting-lbl">Modifier mon profil</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="regenerateProgram()"><div class="setting-lbl">🔄 Régénérer mon programme</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="clearData()"><div class="setting-lbl">Se déconnecter</div><div class="setting-val">—</div></div>
@@ -1129,6 +1147,22 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
   <div class="screen" id="screen-badges">
     <div class="topbar"><div><button onclick="goTo('profile')" style="background:none;border:none;color:var(--t2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;margin-bottom:4px">← Retour</button><h1 class="D">Mes badges</h1><div class="sub">Débloque des récompenses en progressant</div></div></div>
     <div class="scroll"><div class="badge-grid" id="badge-grid"></div></div>
+  </div>
+
+  <!-- DÉFIS ENTRE UTILISATEURS -->
+  <div class="screen" id="screen-challenges">
+    <div class="topbar">
+      <div><button onclick="goTo('home')" style="background:none;border:none;color:var(--t2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;margin-bottom:4px">← Retour</button><h1 class="D">Défis</h1><div class="sub">Défie tes amis et suis leur progression</div></div>
+      <div class="tbr"><button class="btn-sm acc" onclick="openChallengeCreateModal()" style="font-size:12px">+ Créer</button></div>
+    </div>
+    <div class="scroll">
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn-sm" id="ch-tab-mine" onclick="switchChallengeTab('mine')" style="flex:1;background:var(--acc);color:#0a0a0a;border-color:var(--acc)">Mes défis</button>
+        <button class="btn-sm" id="ch-tab-discover" onclick="switchChallengeTab('discover')" style="flex:1">Découvrir</button>
+        <button class="btn-sm" onclick="openChallengeJoinModal()" style="flex:1">🔑 Code</button>
+      </div>
+      <div id="challenges-list"></div>
+    </div>
   </div>
 
   <!-- FLASH BORDS ALARME REPOS -->
@@ -1175,6 +1209,41 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 <!-- RÉCAP HEBDOMADAIRE MODAL -->
 <div class="modal-bg" id="recap-modal" onclick="closeMBg(event,'recap-modal')">
   <div class="modal" id="recap-modal-body"></div>
+</div>
+
+<!-- DÉFIS — MODALS -->
+<div class="modal-bg" id="challenge-create-modal" onclick="closeMBg(event,'challenge-create-modal')">
+  <div class="modal">
+    <div class="sh" style="margin-bottom:14px"><h2 class="D">Nouveau défi</h2></div>
+    <div class="inp-label">Titre du défi</div>
+    <input class="inp" id="ch-title" placeholder="Ex : 20 séances en 60 jours" maxlength="60">
+    <div class="inp-label" style="margin-top:10px">Objectif (nombre de séances)</div>
+    <input class="inp" id="ch-target" type="number" min="1" max="365" value="10">
+    <div class="inp-label" style="margin-top:10px">Durée (jours)</div>
+    <input class="inp" id="ch-duration" type="number" min="1" max="365" value="30">
+    <div style="display:flex;align-items:center;gap:10px;margin:14px 0 6px">
+      <input type="checkbox" id="ch-public" style="width:18px;height:18px">
+      <label for="ch-public" style="font-size:13px;color:var(--t2)">Défi public (visible par tous)</label>
+    </div>
+    <div class="err-msg" id="ch-create-err"></div>
+    <button class="btn-primary" onclick="submitCreateChallenge()" style="margin-top:10px">Créer le défi</button>
+    <button class="btn-outline" onclick="closeMBg(null,'challenge-create-modal')" style="margin-top:8px">Annuler</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="challenge-join-modal" onclick="closeMBg(event,'challenge-join-modal')">
+  <div class="modal">
+    <div class="sh" style="margin-bottom:14px"><h2 class="D">Rejoindre un défi</h2></div>
+    <div class="inp-label">Code du défi (6 caractères)</div>
+    <input class="inp" id="ch-join-code" placeholder="Ex : A1B2C3" maxlength="6" style="text-transform:uppercase;letter-spacing:4px;font-size:20px;font-weight:700;text-align:center">
+    <div class="err-msg" id="ch-join-err"></div>
+    <button class="btn-primary" onclick="submitJoinChallenge()" style="margin-top:12px">Rejoindre</button>
+    <button class="btn-outline" onclick="closeMBg(null,'challenge-join-modal')" style="margin-top:8px">Annuler</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="challenge-detail-modal" onclick="closeMBg(event,'challenge-detail-modal')">
+  <div class="modal" id="challenge-detail-body"></div>
 </div>
 
 <!-- 1RM MODAL -->
@@ -1865,9 +1934,10 @@ function showApp(){
   document.getElementById('app').style.display='flex';
   renderHome();
   buildDefaultSession();
+  setTimeout(maybeSubscribePush,2000);
 }
 
-var SCREENS=['home','log','records','nutrition','history','ai','profile','library','measurements','badges','coach'];
+var SCREENS=['home','log','records','nutrition','history','ai','profile','library','measurements','badges','coach','challenges'];
 function goTo(name){
   if(name!=='coach')stopCoachCamera();
   SCREENS.forEach(function(s){
@@ -1884,6 +1954,7 @@ function goTo(name){
   if(name==='library')renderLibrary();
   if(name==='measurements')renderMeasurements();
   if(name==='badges')renderBadges();
+  if(name==='challenges')renderChallengesScreen();
 }
 
 // ═══════════════════════════════════
@@ -3847,6 +3918,229 @@ async function shareCoachReplay(){
       await navigator.share({url:coachReplayUrl,title:'Mon mouvement FiTrack'});
     }
   }catch(e){if(e.name!=='AbortError')toast('Partage non supporté sur ce navigateur.');}
+}
+
+// ══════════════════════════════════════════════════════════════
+// PUSH NOTIFICATIONS
+// ══════════════════════════════════════════════════════════════
+var VAPID_PUBLIC_KEY='RwpTpf48ZpqXkUVdFZEi7evtw7q7RCSyByxxazXpnVtMHIf_OPKU_stRxJdD3p-V8EHqPjAn7k3GJ0_HXCuS9w';
+
+function urlBase64ToUint8Array(base64String){
+  var padding='='.repeat((4-base64String.length%4)%4);
+  var base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+  var rawData=window.atob(base64);
+  var outputArray=new Uint8Array(rawData.length);
+  for(var i=0;i<rawData.length;++i)outputArray[i]=rawData.charCodeAt(i);
+  return outputArray;
+}
+
+function initPushNotifRow(){
+  var row=document.getElementById('push-notif-row');
+  var lbl=document.getElementById('push-notif-lbl');
+  if(!row||!('PushManager' in window))return;
+  row.style.display='';
+  var perm=Notification.permission;
+  if(perm==='granted'){lbl.textContent='🔔 Notifications activées ✓';row.style.cursor='default';row.onclick=null;}
+  else if(perm==='denied'){lbl.textContent='🔕 Notifications bloquées (à activer dans les réglages)';row.style.cursor='default';row.onclick=null;}
+  else{lbl.textContent='🔔 Activer les notifications push';row.onclick=requestPushPermission;}
+}
+
+async function requestPushPermission(){
+  if(!('PushManager' in window)){toast('Notifications push non supportées sur ce navigateur.');return;}
+  var perm=await Notification.requestPermission();
+  if(perm!=='granted'){toast('Permission refusée. Active les notifications dans les réglages de ton navigateur.');initPushNotifRow();return;}
+  await subscribeToPush();
+  initPushNotifRow();
+  toast('Notifications activées 🔔');
+}
+
+async function subscribeToPush(){
+  try{
+    var reg=await navigator.serviceWorker.ready;
+    var existing=await reg.pushManager.getSubscription();
+    if(existing){await sendSubscriptionToServer(existing);return;}
+    var sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
+    await sendSubscriptionToServer(sub);
+  }catch(e){console.warn('subscribeToPush',e);}
+}
+
+async function sendSubscriptionToServer(sub){
+  var token=sb&&sb.auth?(await sb.auth.getSession())?.data?.session?.access_token:null;
+  if(!token)return;
+  try{
+    await fetch('/api/push-subscribe',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({subscription:sub.toJSON(),action:'subscribe'})
+    });
+  }catch(e){console.warn('sendSubscription',e);}
+}
+
+// Appeler après login pour s'abonner silencieusement si la permission est déjà accordée
+async function maybeSubscribePush(){
+  if(!('PushManager' in window))return;
+  if(Notification.permission==='granted')await subscribeToPush();
+  initPushNotifRow();
+}
+
+// ══════════════════════════════════════════════════════════════
+// DÉFIS ENTRE UTILISATEURS
+// ══════════════════════════════════════════════════════════════
+var challengeTab='mine';
+
+async function challengesApiGet(params){
+  var token=(await sb.auth.getSession())?.data?.session?.access_token;
+  if(!token)return null;
+  var qs=new URLSearchParams(params).toString();
+  var res=await fetch('/api/challenges?'+qs,{headers:{Authorization:'Bearer '+token}});
+  return res.ok?res.json():null;
+}
+
+async function challengesApiPost(body){
+  var token=(await sb.auth.getSession())?.data?.session?.access_token;
+  if(!token)return null;
+  var res=await fetch('/api/challenges',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body)});
+  return res.ok?res.json():null;
+}
+
+function switchChallengeTab(tab){
+  challengeTab=tab;
+  document.getElementById('ch-tab-mine').style.background=tab==='mine'?'var(--acc)':'';
+  document.getElementById('ch-tab-mine').style.color=tab==='mine'?'#0a0a0a':'';
+  document.getElementById('ch-tab-mine').style.borderColor=tab==='mine'?'var(--acc)':'';
+  document.getElementById('ch-tab-discover').style.background=tab==='discover'?'var(--acc)':'';
+  document.getElementById('ch-tab-discover').style.color=tab==='discover'?'#0a0a0a':'';
+  document.getElementById('ch-tab-discover').style.borderColor=tab==='discover'?'var(--acc)':'';
+  renderChallengesList();
+}
+
+var challengesData=null;
+
+async function renderChallengesScreen(){
+  var list=document.getElementById('challenges-list');
+  if(!list)return;
+  list.innerHTML='<div style="text-align:center;color:var(--t3);padding:20px">Chargement...</div>';
+  var data=await challengesApiGet({action:'list'});
+  challengesData=data;
+  renderChallengesList();
+  updateHomeChallengesSub(data);
+}
+
+function updateHomeChallengesSub(data){
+  var el=document.getElementById('home-challenges-sub');
+  if(!el||!data)return;
+  var n=(data.joined||[]).length;
+  el.textContent=n>0?n+' défi'+(n>1?'s':'en cours')+' en cours — voir le classement':'Crée un défi ou rejoins celui d\'un ami';
+}
+
+function renderChallengesList(){
+  var list=document.getElementById('challenges-list');
+  if(!list||!challengesData)return;
+  var items=challengeTab==='mine'?(challengesData.joined||[]):(challengesData.discover||[]);
+  if(!items.length){
+    list.innerHTML='<div style="text-align:center;padding:30px 0"><div style="font-size:32px;margin-bottom:8px">'+(challengeTab==='mine'?'🏆':'🔍')+'</div><div style="color:var(--t2);font-size:13px">'+(challengeTab==='mine'?'Aucun défi en cours.<br>Crée-en un ou rejoins celui d\'un ami avec un code.':'Aucun défi public disponible.')+'</div></div>';
+    return;
+  }
+  var today=new Date().toISOString().slice(0,10);
+  list.innerHTML=items.map(function(c){
+    var ended=c.end_date&&c.end_date<today;
+    var daysLeft=c.end_date?Math.max(0,Math.ceil((new Date(c.end_date)-new Date())/86400000)):null;
+    return '<div class="ch-card" onclick="openChallengeDetail(\''+esc(c.code)+'\')">'
+      +'<div class="ch-card-title">'+esc(c.title)+'</div>'
+      +'<div class="ch-card-meta">Objectif : '+c.target_sessions+' séances · '+(ended?'Terminé':''+daysLeft+' jour'+(daysLeft!==1?'s':'')+' restant'+(daysLeft!==1?'s':''))+'</div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center">'
+      +'<div style="font-size:11px;color:var(--t3)">Code : <span class="ch-card-code">'+esc(c.code)+'</span></div>'
+      +(c.is_public?'<span style="font-size:10px;background:var(--acc-d);color:var(--acc);padding:2px 6px;border-radius:10px;font-weight:700">PUBLIC</span>':'')
+      +'</div></div>';
+  }).join('');
+}
+
+async function openChallengeDetail(code){
+  var body=document.getElementById('challenge-detail-body');
+  if(!body)return;
+  body.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3)">Chargement...</div>';
+  document.getElementById('challenge-detail-modal').classList.add('open');
+  var data=await challengesApiGet({action:'get',code:code});
+  if(!data){body.innerHTML='<p style="color:var(--red)">Erreur de chargement.</p>';return;}
+  var c=data.challenge;
+  var today=new Date().toISOString().slice(0,10);
+  var ended=c.end_date&&c.end_date<today;
+  var daysLeft=c.end_date?Math.max(0,Math.ceil((new Date(c.end_date)-new Date())/86400000)):null;
+  var pct=Math.min(100,Math.round((data.my_sessions||0)/c.target_sessions*100));
+  var lb=data.leaderboard||[];
+  body.innerHTML='<div style="margin-bottom:16px"><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:24px;font-weight:900;margin-bottom:4px">'+esc(c.title)+'</div>'
+    +'<div style="font-size:12px;color:var(--t2)">'+c.start_date+' → '+(c.end_date||'?')+' · '+(ended?'Terminé':''+daysLeft+' jour'+(daysLeft!==1?'s':'')+' restant'+(daysLeft!==1?'s':''))+'</div>'
+    +'<div style="font-size:11px;color:var(--t3);margin-top:4px">Code : <span style="font-family:\'Barlow Condensed\',sans-serif;font-size:15px;font-weight:900;color:var(--acc);letter-spacing:3px">'+esc(c.code)+'</span>'
+    +' <button class="btn-sm" onclick="navigator.clipboard.writeText(\''+esc(c.code)+'\').then(function(){toast(\'Code copié !\');})" style="margin-left:8px">Copier</button></div></div>'
+    +'<div style="margin-bottom:12px"><div style="font-size:11px;color:var(--t2);margin-bottom:4px">Ma progression : '+data.my_sessions+'/'+c.target_sessions+' séances</div>'
+    +'<div class="s-progress-bar"><div class="s-progress-fill" style="width:'+pct+'%"></div></div></div>'
+    +'<div class="ch-leaderboard">'
+    +(lb.length?lb.map(function(l){return '<div class="ch-lb-row"><div class="ch-lb-rank'+(l.rank===1?' gold':'')+'">'+l.rank+'</div><div class="ch-lb-name">'+esc(l.name)+(l.is_me?'<span class="ch-lb-me">MOI</span>':'')+'</div><div class="ch-lb-sessions">'+l.sessions+'</div></div>';}).join(''):'<div style="color:var(--t3);font-size:13px;text-align:center;padding:10px">Aucun participant encore</div>')
+    +'</div>'
+    +(data.is_participant
+      ?'<button class="btn-outline" onclick="leaveChallenge(\''+esc(c.id)+'\',\''+esc(c.code)+'\')" style="margin-top:16px;color:var(--t3);border-color:var(--border)">Quitter ce défi</button>'
+      :'<button class="btn-primary" onclick="joinChallengeById(\''+esc(c.code)+'\')" style="margin-top:16px">Rejoindre ce défi</button>'
+    )
+    +'<button class="btn-outline" onclick="closeMBg(null,\'challenge-detail-modal\')" style="margin-top:8px">Fermer</button>';
+}
+
+function openChallengeCreateModal(){
+  document.getElementById('ch-title').value='';
+  document.getElementById('ch-target').value='10';
+  document.getElementById('ch-duration').value='30';
+  document.getElementById('ch-public').checked=false;
+  document.getElementById('ch-create-err').classList.remove('show');
+  document.getElementById('challenge-create-modal').classList.add('open');
+}
+function openChallengeJoinModal(){
+  document.getElementById('ch-join-code').value='';
+  document.getElementById('ch-join-err').classList.remove('show');
+  document.getElementById('challenge-join-modal').classList.add('open');
+}
+
+async function submitCreateChallenge(){
+  var title=document.getElementById('ch-title').value.trim();
+  var target=parseInt(document.getElementById('ch-target').value)||0;
+  var duration=parseInt(document.getElementById('ch-duration').value)||0;
+  var isPublic=document.getElementById('ch-public').checked;
+  var errEl=document.getElementById('ch-create-err');
+  if(!title||target<1||duration<1){errEl.textContent='Remplis tous les champs.';errEl.classList.add('show');return;}
+  errEl.classList.remove('show');
+  var data=await challengesApiPost({action:'create',title:title,target_sessions:target,duration_days:duration,is_public:isPublic});
+  if(!data||!data.challenge){errEl.textContent='Erreur lors de la création.';errEl.classList.add('show');return;}
+  closeMBg(null,'challenge-create-modal');
+  toast('Défi créé ! Code : '+data.challenge.code);
+  renderChallengesScreen();
+}
+
+async function submitJoinChallenge(){
+  var code=document.getElementById('ch-join-code').value.trim().toUpperCase();
+  var errEl=document.getElementById('ch-join-err');
+  if(code.length<4){errEl.textContent='Entre le code du défi.';errEl.classList.add('show');return;}
+  errEl.classList.remove('show');
+  await joinChallengeById(code);
+}
+
+async function joinChallengeById(code){
+  var data=await challengesApiPost({action:'join',code:code});
+  if(!data||!data.challenge){
+    var errEl=document.getElementById('ch-join-err');
+    if(errEl){errEl.textContent='Code introuvable.';errEl.classList.add('show');}
+    else toast('Code de défi introuvable.');
+    return;
+  }
+  closeMBg(null,'challenge-join-modal');
+  closeMBg(null,'challenge-detail-modal');
+  toast('Défi rejoint ! 🏆');
+  renderChallengesScreen();
+}
+
+async function leaveChallenge(challengeId,code){
+  if(!confirm('Quitter ce défi ?'))return;
+  await challengesApiPost({action:'leave',challenge_id:challengeId});
+  closeMBg(null,'challenge-detail-modal');
+  toast('Défi quitté.');
+  renderChallengesScreen();
 }
 </script>
 </body>

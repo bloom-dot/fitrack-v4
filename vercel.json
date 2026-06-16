@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron-weighing",
+      "schedule": "0 7 * * *"
+    }
+  ]
+}
