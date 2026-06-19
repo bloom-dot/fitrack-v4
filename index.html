@@ -2663,7 +2663,11 @@ function renderProgramCard(){
   var doneToday=sessions.length&&sessions[0].date===todayStr();
   var status=document.getElementById('day-status');
   var startBtn=document.getElementById('home-start-btn');
-  if(startBtn)startBtn.textContent=doneToday?'✅ Voir ma séance':'▶ Démarrer la séance';
+  if(startBtn){
+    if(sStart){startBtn.textContent='▶ Reprendre ma séance';startBtn.style.background='var(--acc)';}
+    else if(doneToday){startBtn.textContent='✅ Voir ma séance';}
+    else{startBtn.textContent='▶ Démarrer la séance';}
+  }
   if(!program){
     lbl.textContent='Séance du jour';name.textContent='Push Day';meta.textContent='4 exercices · ~55 min';
     if(status){status.className='day-status '+(doneToday?'done':'pending');status.textContent=doneToday?'✅ Séance terminée':'● Séance prévue aujourd\'hui';}
