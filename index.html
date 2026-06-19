@@ -223,19 +223,48 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .land-step-n{flex-shrink:0;width:34px;height:34px;border-radius:50%;background:var(--acc-d);border:1px solid rgba(212,255,0,.25);color:var(--acc);font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:center}
 .land-step-title{font-weight:700;font-size:14px;margin-bottom:3px}
 .land-step-desc{font-size:12px;color:var(--t2);line-height:1.6}
+.land-launch-banner{background:linear-gradient(90deg,rgba(212,255,0,.12),rgba(212,255,0,.06));border:1px solid rgba(212,255,0,.3);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:28px}
+.land-launch-banner-ic{font-size:18px;flex-shrink:0}
+.land-launch-banner-txt{font-size:12px;color:var(--text);line-height:1.5}
+.land-launch-banner-txt strong{color:var(--acc)}
 .land-pricing{display:grid;grid-template-columns:1fr;gap:14px}
-@media(min-width:540px){.land-pricing{grid-template-columns:1fr 1fr}}
-.land-price-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:22px;position:relative}
-.land-price-card.featured{border-color:rgba(255,195,64,.35);background:linear-gradient(180deg,var(--gold-d),var(--s1) 60%)}
-.land-price-badge{position:absolute;top:-10px;right:18px;background:var(--gold);color:#0a0a0a;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:4px 10px;border-radius:20px}
-.land-price-name{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;text-transform:uppercase;margin-bottom:4px}
-.land-price-val{font-size:30px;font-weight:900;margin-bottom:2px}
+@media(min-width:480px){.land-pricing{grid-template-columns:1fr 1fr}}
+@media(min-width:700px){.land-pricing{grid-template-columns:1fr 1fr 1fr}}
+.land-price-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:22px;position:relative;display:flex;flex-direction:column}
+.land-price-card.featured{border-color:rgba(212,255,0,.45);background:linear-gradient(180deg,rgba(212,255,0,.07),var(--s1) 60%);box-shadow:0 0 0 1px rgba(212,255,0,.2)}
+.land-price-card.lifetime{border-color:rgba(255,195,64,.4);background:linear-gradient(180deg,rgba(255,195,64,.07),var(--s1) 60%)}
+.land-price-badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--acc);color:#0a0a0a;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:4px 12px;border-radius:20px;white-space:nowrap}
+.land-price-badge.gold{background:var(--gold)}
+.land-price-tier{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--t3);margin-bottom:6px}
+.land-price-name{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;text-transform:uppercase;margin-bottom:8px}
+.land-price-val{font-size:32px;font-weight:900;margin-bottom:2px;line-height:1}
 .land-price-val span{font-size:13px;color:var(--t2);font-weight:500}
-.land-price-period{font-size:11px;color:var(--t2);margin-bottom:16px}
-.land-price-list{display:flex;flex-direction:column;gap:9px;font-size:12px;color:var(--t2);margin-bottom:0}
+.land-price-period{font-size:11px;color:var(--t2);margin-bottom:16px;min-height:16px}
+.land-price-list{display:flex;flex-direction:column;gap:9px;font-size:12px;color:var(--t2);margin-bottom:20px;flex:1}
 .land-price-list li{display:flex;gap:8px;align-items:flex-start;list-style:none}
-.land-price-list li::before{content:'✓';color:var(--acc);font-weight:800;flex-shrink:0}
-.land-price-card.featured .land-price-list li::before{color:var(--gold)}
+.land-price-list li::before{content:'✓';color:var(--t3);font-weight:800;flex-shrink:0}
+.land-price-list li.yes::before{color:var(--acc)}
+.land-price-list li.no{opacity:.4}
+.land-price-list li.no::before{content:'✗';color:var(--t3)}
+.land-price-card.featured .land-price-list li.yes::before{color:var(--acc)}
+.land-price-card.lifetime .land-price-list li.yes::before{color:var(--gold)}
+.land-price-cta{margin-top:auto}
+/* Paywall modal */
+.paywall-modal{position:fixed;inset:0;z-index:500;display:flex;align-items:flex-end;justify-content:center;padding-bottom:var(--safe)}
+.paywall-modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px)}
+.paywall-card{position:relative;background:var(--s1);border:1px solid var(--border);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:28px 20px 32px;text-align:center}
+.paywall-handle{width:36px;height:3px;background:var(--border2);border-radius:2px;margin:0 auto 20px}
+.paywall-ico{font-size:36px;margin-bottom:10px}
+.paywall-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;text-transform:uppercase;margin-bottom:6px}
+.paywall-sub{font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:20px}
+.paywall-perks{display:flex;flex-direction:column;gap:8px;margin-bottom:22px;text-align:left}
+.paywall-perk{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text)}
+.paywall-perk-ic{width:28px;height:28px;border-radius:8px;background:rgba(212,255,0,.1);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.plan-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px}
+.plan-badge.free{background:rgba(255,255,255,.08);color:var(--t2)}
+.plan-badge.pro{background:rgba(212,255,0,.15);color:var(--acc);border:1px solid rgba(212,255,0,.3)}
+.plan-badge.elite{background:rgba(255,195,64,.15);color:var(--gold);border:1px solid rgba(255,195,64,.3)}
+.plan-badge.lifetime{background:linear-gradient(90deg,rgba(255,195,64,.2),rgba(212,255,0,.2));color:var(--gold);border:1px solid rgba(255,195,64,.4)}
 .land-faq-item{border-bottom:1px solid var(--border);padding:16px 0}
 .land-faq-q{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;font-weight:600;font-size:13px}
 .land-faq-arrow{transition:transform .2s;color:var(--t2);flex-shrink:0;font-size:12px}
@@ -642,15 +671,15 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
   <!-- Hero -->
   <div class="land-hero">
-    <div class="land-kicker">Propulsé par l'IA · Accès bêta gratuit</div>
+    <div class="land-kicker">Propulsé par l'IA · Gratuit pour commencer</div>
     <h1 class="land-h1 D">Ton coach sportif <span>tout-en-un</span>, dans ta poche</h1>
     <p class="land-sub">FiTrack te génère un programme personnalisé, suit tes séances et tes records, corrige ta posture par caméra et te concocte un plan repas — avec FitAI, ton assistant IA en français.</p>
     <div class="land-cta-row">
-      <button class="btn-primary" onclick="enterApp('register')">Rejoindre la bêta — Gratuit</button>
+      <button class="btn-primary" onclick="enterApp('register')">Commencer gratuitement</button>
       <button class="btn-outline" onclick="enterApp('login')">J'ai déjà un compte</button>
     </div>
     <div class="land-trust">
-      <div class="land-trust-pill">✓ Sans engagement</div>
+      <div class="land-trust-pill">✓ Sans carte bancaire</div>
       <div class="land-trust-pill">✓ Sans publicité</div>
       <div class="land-trust-pill">✓ Données privées</div>
     </div>
@@ -711,22 +740,74 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <!-- Tarifs -->
   <div class="land-section">
     <div class="land-section-kicker">Tarifs</div>
-    <h2 class="land-h2 D">Un seul abonnement, tout inclus</h2>
-    <p class="land-h2-sub">Pas de version gratuite limitée, pas de fonctionnalités cachées : un tarif simple et accessible pour profiter de toute l'application.</p>
-    <div class="land-pricing" style="grid-template-columns:1fr;max-width:320px;margin:0 auto">
-      <div class="land-price-card featured">
-        <div class="land-price-badge">Sans engagement</div>
-        <div class="land-price-name D">FiTrack</div>
-        <div class="land-price-val">2,99 € <span>/ mois</span></div>
-        <div class="land-price-period">ou 19,99 €/an (presque 2 mois offerts)</div>
+    <h2 class="land-h2 D">Commence gratuitement, évolue quand tu veux</h2>
+    <p class="land-h2-sub">Teste l'app sans carte bancaire. Passe à Pro ou Elite quand tu veux débloquer tout le potentiel de FiTrack.</p>
+
+    <!-- Bannière lancement -->
+    <div class="land-launch-banner">
+      <div class="land-launch-banner-ic">⚡</div>
+      <div class="land-launch-banner-txt"><strong>Offre de lancement — 100 places</strong><br>Accès Pro à vie pour <strong>49 €</strong> une seule fois. Plus jamais d'abonnement.</div>
+    </div>
+
+    <div class="land-pricing">
+      <!-- Gratuit -->
+      <div class="land-price-card">
+        <div class="land-price-tier">Pour commencer</div>
+        <div class="land-price-name D">Gratuit</div>
+        <div class="land-price-val">0 € <span></span></div>
+        <div class="land-price-period">Pour toujours</div>
         <ul class="land-price-list">
-          <li>Programme d'entraînement personnalisé</li>
-          <li>Suivi de séances, records & 1RM</li>
-          <li>Suivi du poids et des mensurations</li>
-          <li>Streaks, badges & historique</li>
-          <li>Coach Mouvement (analyse caméra de tous les exercices)</li>
-          <li>FitAI, ton assistant IA en français</li>
+          <li class="yes">3 séances / semaine</li>
+          <li class="yes">Suivi records & 1RM</li>
+          <li class="yes">Streaks & badges</li>
+          <li class="yes">FitAI — 5 messages / jour</li>
+          <li class="no">Programme sur-mesure IA</li>
+          <li class="no">Coach Mouvement (caméra)</li>
+          <li class="no">Défis & classement</li>
+          <li class="no">Nutrition & plan repas</li>
+          <li class="no">Historique illimité</li>
         </ul>
+        <div class="land-price-cta"><button class="btn-outline" style="width:100%" onclick="enterApp('register')">Créer un compte gratuit</button></div>
+      </div>
+
+      <!-- Pro -->
+      <div class="land-price-card featured">
+        <div class="land-price-badge">Le plus populaire</div>
+        <div class="land-price-tier">Pour progresser</div>
+        <div class="land-price-name D">Pro</div>
+        <div class="land-price-val">4,99 € <span>/ mois</span></div>
+        <div class="land-price-period">ou 39,99 €/an — 2 mois offerts</div>
+        <ul class="land-price-list">
+          <li class="yes">Séances illimitées</li>
+          <li class="yes">Suivi records & 1RM</li>
+          <li class="yes">Streaks & badges</li>
+          <li class="yes">FitAI — 30 messages / jour</li>
+          <li class="yes">Programme sur-mesure IA</li>
+          <li class="yes">Coach Mouvement (caméra)</li>
+          <li class="yes">Défis & classement</li>
+          <li class="yes">Nutrition & plan repas</li>
+          <li class="yes">Historique illimité</li>
+        </ul>
+        <div class="land-price-cta"><button class="btn-primary" style="width:100%" onclick="enterApp('register')">Essayer 7 jours gratuits</button></div>
+      </div>
+
+      <!-- Elite -->
+      <div class="land-price-card lifetime">
+        <div class="land-price-badge gold">⚡ Lancement — 49 €</div>
+        <div class="land-price-tier">Pour les passionnés</div>
+        <div class="land-price-name D">Elite</div>
+        <div class="land-price-val">9,99 € <span>/ mois</span></div>
+        <div class="land-price-period">ou accès à vie — 49 € (offre limitée)</div>
+        <ul class="land-price-list">
+          <li class="yes">Tout ce qui est dans Pro</li>
+          <li class="yes">FitAI — messages illimités</li>
+          <li class="yes">Programme adapté chaque semaine</li>
+          <li class="yes">Export CSV & graphiques avancés</li>
+          <li class="yes">Défis amis + classement global</li>
+          <li class="yes">Accès prioritaire aux nouvelles fonctions</li>
+          <li class="yes">Support direct par message</li>
+        </ul>
+        <div class="land-price-cta"><button class="btn-primary" style="width:100%;background:var(--gold);color:#0a0a0a" onclick="enterApp('register')">Saisir l'offre à vie — 49 €</button></div>
       </div>
     </div>
   </div>
@@ -737,8 +818,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <h2 class="land-h2 D">Tu te demandes...</h2>
     <div style="margin-top:10px">
       <div class="land-faq-item" onclick="toggleFaq(this)">
-        <div class="land-faq-q"><span>Combien ça coûte et puis-je annuler ?</span><span class="land-faq-arrow">▾</span></div>
-        <div class="land-faq-a">FiTrack coûte 2,99 €/mois ou 19,99 €/an, sans engagement : tu peux annuler ton abonnement à tout moment depuis ton profil. Toutes les fonctionnalités (programme, séances, records, Coach Mouvement, FitAI...) sont incluses, il n'y a pas de version gratuite limitée.</div>
+        <div class="land-faq-q"><span>C'est vraiment gratuit ? Quelle est la limite ?</span><span class="land-faq-arrow">▾</span></div>
+        <div class="land-faq-a">Oui, l'offre gratuite est permanente. Elle te donne accès à 3 séances par semaine, le suivi de tes records, tes badges et 5 messages FitAI par jour. Pour débloquer les séances illimitées, le programme sur-mesure, le Coach Mouvement et FitAI sans limite, passe à Pro (4,99 €/mois) ou Elite (9,99 €/mois). Tu peux annuler à tout moment.</div>
       </div>
       <div class="land-faq-item" onclick="toggleFaq(this)">
         <div class="land-faq-q"><span>Mes données sont-elles privées ?</span><span class="land-faq-arrow">▾</span></div>
@@ -762,10 +843,11 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <!-- CTA final -->
   <div class="land-final-cta">
     <h2 class="land-h2 D">Prêt à commencer ?</h2>
-    <p class="land-h2-sub">Rejoins FiTrack pour 2,99 €/mois et obtiens ton programme personnalisé en quelques minutes.</p>
+    <p class="land-h2-sub">Crée ton compte gratuitement en 2 minutes. Aucune carte bancaire requise.</p>
     <div class="land-cta-row">
-      <button class="btn-primary" onclick="enterApp('register')">Créer mon compte</button>
+      <button class="btn-primary" onclick="enterApp('register')">Commencer gratuitement</button>
     </div>
+    <div style="margin-top:14px;font-size:11px;color:var(--t3)">⚡ Offre à vie Elite — 49 € · <button onclick="enterApp('register')" style="background:none;border:none;color:var(--gold);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">En profiter avant qu'il ne soit trop tard</button></div>
   </div>
 
   <div class="land-footer">
@@ -1168,13 +1250,15 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <div class="pf-hdr">
         <div class="pf-avatar" id="pf-av">FT</div>
         <div class="pf-name" id="pf-name">FiTrack User</div>
-        <div class="pf-tag">✦ Membre actif</div>
+        <div class="pf-tag" id="pf-plan-badge"><span class="plan-badge free">Gratuit</span></div>
       </div>
       <div class="pf-stats">
         <div class="pstat"><div class="pstat-val" id="pf-s">0</div><div class="pstat-lbl">Séances</div></div>
         <div class="pstat"><div class="pstat-val" id="pf-p">0</div><div class="pstat-lbl">Records</div></div>
         <div class="pstat"><div class="pstat-val" id="pf-st">0</div><div class="pstat-lbl">Streak 🔥</div></div>
       </div>
+      <!-- Plan actuel -->
+      <div id="pf-plan-section" style="margin:0 0 4px"></div>
       <div class="sh" style="margin-top:0"><h2 class="D">Paramètres</h2></div>
       <div class="setting-row"><div class="setting-lbl">Programme actif</div><div class="setting-val" id="pf-prog">—</div></div>
       <div class="setting-row"><div class="setting-lbl">Niveau</div><div class="setting-val" id="pf-level">—</div></div>
@@ -1265,6 +1349,25 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <button class="fab" id="nav-log" onclick="startSessionFromHome()" aria-label="Démarrer ou reprendre une séance">
     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
+</div>
+
+<!-- PAYWALL MODAL -->
+<div id="paywall-modal" style="display:none" class="paywall-modal">
+  <div class="paywall-modal-bg" onclick="closePaywall()"></div>
+  <div class="paywall-card">
+    <div class="paywall-handle"></div>
+    <div class="paywall-ico" id="paywall-ico">🔒</div>
+    <div class="paywall-title D" id="paywall-title">Fonctionnalité Pro</div>
+    <div class="paywall-sub" id="paywall-sub">Cette fonctionnalité est réservée aux membres Pro et Elite.</div>
+    <div class="paywall-perks">
+      <div class="paywall-perk"><div class="paywall-perk-ic">♾️</div><span>Séances <strong>illimitées</strong></span></div>
+      <div class="paywall-perk"><div class="paywall-perk-ic">🧠</div><span>FitAI — <strong>30 messages/jour</strong></span></div>
+      <div class="paywall-perk"><div class="paywall-perk-ic">📷</div><span>Coach Mouvement <strong>illimité</strong></span></div>
+      <div class="paywall-perk"><div class="paywall-perk-ic">📈</div><span>Programme <strong>sur-mesure IA</strong></span></div>
+    </div>
+    <button class="btn-primary" style="width:100%;margin-bottom:10px" onclick="closePaywall();goTo('profile')">Voir les forfaits →</button>
+    <button class="btn-outline" style="width:100%;padding:10px" onclick="closePaywall()">Continuer en gratuit</button>
+  </div>
 </div>
 
 <!-- EXERCISE PICKER MODAL -->
@@ -2028,6 +2131,7 @@ function startSessionFromHome(){
     openSessionDetail(0);
     return;
   }
+  if(!canStartSession())return;
   goTo('log');
   startSessionTimer();
 }
@@ -3102,12 +3206,45 @@ function exportHistoryCSV(){
 // ═══════════════════════════════════
 // RENDER PROFILE
 // ═══════════════════════════════════
+// ═══ PLAN / PAYWALL ═══
+var USER_PLAN='free'; // 'free' | 'pro' | 'elite' | 'lifetime'
+var PLAN_LABELS={free:'Gratuit',pro:'Pro',elite:'Elite',lifetime:'Elite à vie'};
+var PLAN_LIMITS={free:{sessionsPerWeek:3,aiMsgsPerDay:5},pro:{sessionsPerWeek:999,aiMsgsPerDay:30},elite:{sessionsPerWeek:999,aiMsgsPerDay:999},lifetime:{sessionsPerWeek:999,aiMsgsPerDay:999}};
+function isPro(){return USER_PLAN==='pro'||USER_PLAN==='elite'||USER_PLAN==='lifetime';}
+function isElite(){return USER_PLAN==='elite'||USER_PLAN==='lifetime';}
+function showPaywall(feature,ico,title,sub){
+  var m=document.getElementById('paywall-modal');if(!m)return;
+  document.getElementById('paywall-ico').textContent=ico||'🔒';
+  document.getElementById('paywall-title').textContent=title||'Fonctionnalité Pro';
+  document.getElementById('paywall-sub').textContent=sub||'Passe à Pro pour débloquer cette fonctionnalité.';
+  m.style.display='flex';
+}
+function closePaywall(){var m=document.getElementById('paywall-modal');if(m)m.style.display='none';}
+function canStartSession(){
+  if(isPro())return true;
+  var now=new Date(),mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));
+  var monStr=mon.toISOString().slice(0,10),sunStr=new Date(mon.getTime()+6*86400000).toISOString().slice(0,10);
+  var weekCount=sessions.filter(function(s){return s.date>=monStr&&s.date<=sunStr;}).length;
+  if(weekCount>=3){showPaywall('sessions','🏋️','Limite atteinte','Tu as effectué 3 séances cette semaine. Passe à Pro pour un entraînement illimité.');return false;}
+  return true;
+}
+function renderPlanSection(){
+  var sec=document.getElementById('pf-plan-section');if(!sec)return;
+  var badge=document.getElementById('pf-plan-badge');
+  if(badge)badge.innerHTML='<span class="plan-badge '+USER_PLAN+'">'+PLAN_LABELS[USER_PLAN]+'</span>';
+  if(isPro()){
+    sec.innerHTML='<div style="background:rgba(212,255,0,.07);border:1px solid rgba(212,255,0,.2);border-radius:12px;padding:14px 16px;margin-bottom:8px"><div style="font-size:12px;font-weight:700;color:var(--acc);margin-bottom:4px">'+PLAN_LABELS[USER_PLAN]+' — Actif</div><div style="font-size:11px;color:var(--t2)">Séances illimitées · FitAI '+(isElite()?'illimité':'30 msgs/jour')+'</div></div>';
+  }else{
+    sec.innerHTML='<div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer" onclick="showPaywall(\'plan\',\'⚡\',\'Passe à Pro\',\'Débloque les séances illimitées, FitAI boosté et le Coach Mouvement.\')"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px">Plan gratuit · 3 séances/sem.</div><div style="font-size:11px;color:var(--t2)">Passe à Pro pour tout débloquer</div></div><div style="background:var(--acc);color:#0a0a0a;font-size:10px;font-weight:800;padding:5px 10px;border-radius:8px;white-space:nowrap">Passer à Pro →</div></div></div>';
+  }
+}
 function renderProfile(){
   var pk=Object.keys(prs);
   var name=DB.g('user_name','FiTrack User');
   var initials=name.split(' ').map(function(n){return n[0]||'';}).slice(0,2).join('').toUpperCase()||'FT';
   var av=document.getElementById('pf-av'),nm=document.getElementById('pf-name');
   if(av)av.textContent=initials;if(nm)nm.textContent=name;
+  renderPlanSection();
   var s=document.getElementById('pf-s'),p=document.getElementById('pf-p'),st=document.getElementById('pf-st'),ob=document.getElementById('pf-obj');
   if(s)s.textContent=sessions.length;if(p)p.textContent=pk.length;if(st)st.textContent=streak.count;
   if(ob&&userProfile){var objMap={cut:'Perte de poids',bulk:'Prise de masse',recomp:'Recomposition',maintain:'Maintien',strength:'Force pure'};ob.textContent=objMap[userProfile.obj]||'—';}
