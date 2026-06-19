@@ -1196,6 +1196,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
           <optgroup label="Jambes">
             <option value="Squat barre">Squat barre</option>
             <option value="Squat gobelet">Squat gobelet</option>
+            <option value="Belt squat">Belt squat</option>
             <option value="Leg press">Leg press</option>
             <option value="Fentes marchées">Fentes marchées</option>
             <option value="Romanian Deadlift">Romanian Deadlift</option>
@@ -1557,6 +1558,10 @@ var EX_DB=[
   {name:"Superman",pr:3,muscle:"Lombaires · Fessiers",cat:"Dos",level:"beginner",equip:["gym","home_dumbbells","home_bodyweight"],injury:[],anim:"plank",desc:"Renforcement doux des lombaires et fessiers, idéal pour la santé du dos.",steps:["Allongé sur le ventre, bras tendus devant","Lever simultanément bras, buste et jambes","Contracter fessiers et lombaires en haut","Redescendre lentement et contrôlé"]},
   {name:"Good morning",pr:1,muscle:"Ischios · Lombaires",cat:"Jambes",level:"advanced",equip:["gym"],injury:["dos"],anim:"deadlift",desc:"Exercice avancé pour la chaîne postérieure. Charge légère et technique stricte indispensables.",steps:["Barre sur le haut du dos comme un squat","Genoux légèrement fléchis et fixes","Hip hinge : buste vers l'avant, dos plat","Revenir en poussant les hanches vers l'avant"]},
   {name:"Chaise isométrique",pr:3,muscle:"Quadriceps",cat:"Jambes",level:"beginner",equip:["gym","home_dumbbells","home_bodyweight"],injury:["genou"],anim:"squat",desc:"Gainage statique des quadriceps, dos contre un mur.",steps:["Dos plaqué contre un mur","Descendre jusqu'à cuisses parallèles au sol","Genoux à 90°, dos bien droit contre le mur","Maintenir la position le temps indiqué"]},
+  {name:"Vélo stationnaire",pr:3,muscle:"Cardio · Jambes",cat:"Cardio",level:"beginner",equip:["gym","cardio"],injury:["genou"],anim:"squat",desc:"Cardio à faible impact. Régle la résistance selon ton objectif : endurance (faible) ou puissance (élevée).",steps:["Régler la hauteur de selle (genou légèrement fléchi en bas)","Garder le dos droit, mains légèrement posées sur le guidon","Pédaler à cadence régulière selon la résistance choisie","Surveiller ta fréquence cardiaque cible"]},
+  {name:"Tapis roulant",pr:3,muscle:"Cardio · Full body",cat:"Cardio",level:"beginner",equip:["gym","cardio"],injury:["genou","dos"],anim:"squat",desc:"Marche rapide, jogging ou course. Adapte la vitesse et l'inclinaison à ton niveau.",steps:["Démarrer à vitesse lente pour t'échauffer","Augmenter progressivement la vitesse ou l'inclinaison","Garder le regard droit devant, bras naturellement balancés","Réduire la vitesse progressivement en fin de séance"]},
+  {name:"Vélo elliptique",pr:3,muscle:"Cardio · Full body",cat:"Cardio",level:"beginner",equip:["gym","cardio"],injury:[],anim:"squat",desc:"Cardio sans impact articulaire. Travail simultané des bras et des jambes.",steps:["Monter sur les pédales, saisir les poignées mobiles","Pousser et tirer les bras en rythme avec les jambes","Varier la résistance pour maintenir l'effort","Garder le buste droit, ne pas se pencher sur le guidon"]},
+  {name:"Belt squat",pr:2,muscle:"Quadriceps · Fessiers",cat:"Jambes",level:"intermediate",equip:["gym"],injury:["dos"],anim:"squat",desc:"Squat lesté à la ceinture. Charge les jambes sans contrainte sur le dos ni les épaules, idéal en cas de douleur lombaire ou d'épaule.",steps:["Passer la ceinture autour des hanches, chaîne accrochée au bas","Monter sur les plateformes ou step, pieds à largeur d'épaules","Descendre en pliant genoux et hanches comme un squat classique","Remonter en poussant le sol, dos bien droit tout au long du mouvement"]},
 ];
 
 var GROUND='<line x1="10" y1="92" x2="110" y2="92" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".12"/>';
@@ -1809,7 +1814,7 @@ function setObj(v,el){OB.data.obj=v;document.querySelectorAll('#ob-content .pill
 function buildOBPage4b(){
   var c=document.getElementById('ob-content');
   var levels=[{v:'beginner',l:'Débutant',s:'Moins de 6 mois de pratique régulière'},{v:'intermediate',l:'Intermédiaire',s:'6 mois à 2 ans, technique maîtrisée'},{v:'advanced',l:'Avancé',s:'2+ ans, entraînement structuré régulier'}];
-  var equips=[{v:'gym',l:'Salle de sport',s:'Accès à machines, poulies, barres, haltères'},{v:'home_dumbbells',l:'Maison — haltères',s:'Haltères / kettlebells, peu ou pas de machines'},{v:'home_bodyweight',l:'Poids du corps',s:'Aucun matériel, exercices au poids du corps'}];
+  var equips=[{v:'gym',l:'Salle de sport',s:'Accès à machines, poulies, barres, haltères'},{v:'home_dumbbells',l:'Maison — haltères',s:'Haltères / kettlebells, peu ou pas de machines'},{v:'home_bodyweight',l:'Poids du corps',s:'Aucun matériel, exercices au poids du corps'},{v:'cardio',l:'Cardio (vélo / tapis / elliptique)',s:'Vélo stationnaire, tapis roulant, elliptique'}];
   var injuries=[{v:'epaule',l:'Épaule'},{v:'genou',l:'Genou'},{v:'dos',l:'Dos / lombaires'},{v:'poignet',l:'Poignet'},{v:'aucune',l:'Aucune'}];
   if(!OB.data.injuries)OB.data.injuries=[];
   c.innerHTML='<div style="margin-bottom:18px"><div class="inp-label">Votre niveau</div><div style="display:flex;flex-direction:column;gap:8px">'+levels.map(function(o){
@@ -4065,7 +4070,7 @@ var COACH_EX_TYPE={
   'Tirage horizontal':'pull-horizontal','Tirage poulie basse':'pull-horizontal','Rowing haltères':'pull-horizontal','Face pull':'pull-horizontal',
   'Overhead Press':'press-overhead',
   'Élévations latérales':'lateral-raise','Élévations frontales':'lateral-raise',
-  'Squat barre':'squat','Squat gobelet':'squat',
+  'Squat barre':'squat','Squat gobelet':'squat','Belt squat':'squat',
   'Leg press':'machine-knee','Leg curl':'machine-knee',
   'Fentes marchées':'lunge',
   'Hip thrust':'hip-thrust',
@@ -4082,6 +4087,13 @@ function computeCoachFeedback(lm){
   var s=pickCoachSide(lm);
   var p={sh:lm[s.sh],hip:lm[s.hip],knee:lm[s.knee],ankle:lm[s.ankle],elb:lm[s.elb],wr:lm[s.wr],foot:lm[s.foot]};
   if(!p.sh||!p.hip||!p.knee||!p.ankle)return;
+  var MIN_VIS=0.45;
+  if((p.sh.visibility||0)<MIN_VIS||(p.hip.visibility||0)<MIN_VIS){
+    setCoachFormState(false);
+    var now=Date.now();
+    if(now-coachLastFeedback>2000){showCoachFeedback('Positionne-toi bien face à la caméra pour être détecté',true);coachLastFeedback=now;}
+    return;
+  }
   var type=COACH_EX_TYPE[coachExercise]||'squat';
   var cfg=COACH_TYPES[type];
   var r=cfg.calc(p);
