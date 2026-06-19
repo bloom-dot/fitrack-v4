@@ -42,7 +42,7 @@
   --red:#ff5252; --red-d:rgba(255,82,82,.1);
   --green:#52e87a; --green-d:rgba(82,232,122,.1);
   --r:14px; --r-sm:9px;
-  --nav:60px; --safe:env(safe-area-inset-bottom,0px);
+  --nav:68px; --safe:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
@@ -84,13 +84,16 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .ib:active{transform:scale(.9)}
 
 /* ═══ BOTTOM NAV ═══ */
-.nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(10,10,10,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);height:calc(var(--nav) + var(--safe));padding-bottom:var(--safe);display:flex;align-items:center;justify-content:space-around}
+.nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(12,12,12,.97);backdrop-filter:blur(24px);border-top:1px solid rgba(255,255,255,.07);height:calc(var(--nav) + var(--safe));padding-bottom:var(--safe);display:flex;align-items:center;justify-content:space-around}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:6px 4px}
-.ni-ic{color:var(--acc);transition:all .2s;display:flex;align-items:center;justify-content:center}
-.ni-ic svg{width:21px;height:21px;display:block;transition:transform .2s}
-.ni-lb{font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;transition:all .2s}
+.ni{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex:1;min-width:0;padding:10px 4px 6px;cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.ni::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:2px;background:var(--acc);border-radius:0 0 2px 2px;transition:width .2s}
+.ni.on::before{width:28px}
+.ni-ic{transition:all .2s;display:flex;align-items:center;justify-content:center}
+.ni-ic svg{width:22px;height:22px;display:block;stroke:var(--t3);transition:stroke .2s}
+.ni-lb{font-size:10px;font-weight:600;color:var(--t3);letter-spacing:.2px;transition:color .2s;white-space:nowrap}
+.ni.on .ni-ic svg{stroke:var(--acc)}
 .ni.on .ni-lb{color:var(--acc)}
-.ni.on .ni-ic svg{transform:scale(1.3)}
 
 /* ═══ CARDS ═══ */
 .card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px}
