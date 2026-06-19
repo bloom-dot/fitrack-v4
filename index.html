@@ -143,7 +143,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 @keyframes ld-spin{to{transform:rotate(360deg)}}
 
 /* ═══ AUTH SCREENS ═══ */
-.auth-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:32px 20px;background:var(--bg)}
+.auth-wrap{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100dvh;padding:48px 20px 40px;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch}
 .auth-logo{font-family:'Barlow Condensed',sans-serif;font-size:48px;font-weight:900;color:var(--acc);letter-spacing:-1px;margin-bottom:6px}
 .auth-tagline{font-size:13px;color:var(--t2);margin-bottom:40px;text-align:center}
 .auth-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:24px;width:100%;max-width:380px}
@@ -2171,13 +2171,18 @@ function lastPerf(name){
 function addExBlock(name,muscle,sugWeight,sugReps,nbSets){
   exCtr++;var id='ex-'+exCtr;
   var container=document.getElementById('ex-list');
-  var ex=prs[name];var sug='';var est=0;
+  var ex=prs[name];var sug='';var sugR='';var est=0;
   if(ex&&ex.weight){est=ex.est1RM||calc1RM(ex.weight,ex.reps);}
-  if(sugWeight)sug=sugWeight;else if(est)sug=round25(est*0.80);
-  var muscleLine=esc(muscle);
-  if(sugWeight)muscleLine+=' · <span style="color:var(--acc)">Suggestion : '+sugWeight+' kg'+(sugReps?' × '+sugReps:'')+'</span>';
   var last=lastPerf(name);
+  if(sugWeight){sug=sugWeight;sugR=sugReps||'';}
+  else if(last&&last.sets&&last.sets.length){
+    // Pré-remplir avec la dernière performance (poids et reps)
+    var bestSet=last.sets.reduce(function(a,b){return (b.kg*b.reps>a.kg*a.reps)?b:a;},last.sets[0]);
+    sug=bestSet.kg;sugR=bestSet.reps;
+  }else if(est){sug=round25(est*0.80);}
+  var muscleLine=esc(muscle);
   if(last)muscleLine+='<br><span style="color:var(--t2)">Dernière fois ('+last.date+') : '+last.sets.map(function(s){return s.kg+'×'+s.reps;}).join(', ')+'</span>';
+  if(sug&&sugR)muscleLine+=' · <span style="color:var(--acc)">Pré-rempli : '+sug+' kg × '+sugR+' reps</span>';
   var block=document.createElement('div');
   block.className='ex-block';block.id=id;block.dataset.name=name;block.dataset.muscle=muscle||'—';block.dataset.est=est;
   block.innerHTML='<div class="ex-block-hdr"><div><div class="ex-block-name">'+esc(name)+'</div><div class="ex-block-muscle">'+muscleLine+'</div></div>'
@@ -2185,7 +2190,7 @@ function addExBlock(name,muscle,sugWeight,sugReps,nbSets){
     +'<div class="sets-wrap" id="sets-'+id+'"><div class="sets-hdr"><span>#</span><span>Poids kg</span><span>Reps</span><span>Vol.</span><span>✓</span></div></div>';
   container.appendChild(block);
   var n=nbSets||3;
-  for(var i=0;i<n;i++)addSetRow(id,sug,sugReps||'');
+  for(var i=0;i<n;i++)addSetRow(id,sug,sugR||'');
   addSetBtn(id);
   updateSessionProgress();
 }
