@@ -1463,8 +1463,8 @@ async function doForgot(){
   btn.textContent='Lien envoyé ✓';btn.disabled=false;
 }
 async function socialAuth(p){
-  if(p==='Apple'){toast('Connexion Apple bientôt disponible.');return;}
-  await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin}});
+  var provider=p==='Apple'?'apple':'google';
+  await sb.auth.signInWithOAuth({provider:provider,options:{redirectTo:window.location.origin}});
 }
 
 // Détermine quel écran afficher après une connexion réussie :
