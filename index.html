@@ -265,6 +265,23 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .plan-badge.pro{background:rgba(212,255,0,.15);color:var(--acc);border:1px solid rgba(212,255,0,.3)}
 .plan-badge.elite{background:rgba(255,195,64,.15);color:var(--gold);border:1px solid rgba(255,195,64,.3)}
 .plan-badge.lifetime{background:linear-gradient(90deg,rgba(255,195,64,.2),rgba(212,255,0,.2));color:var(--gold);border:1px solid rgba(255,195,64,.4)}
+/* ═══ CARDIO ═══ */
+.cardio-modal{position:fixed;inset:0;z-index:500;display:flex;align-items:flex-end;justify-content:center}
+.cardio-modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px)}
+.cardio-card{position:relative;background:var(--bg);border:1px solid var(--border);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 20px calc(24px + var(--safe));overflow-y:auto;max-height:90vh}
+.cardio-handle{width:36px;height:3px;background:var(--border2);border-radius:2px;margin:0 auto 18px}
+.cardio-type-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px}
+.cardio-type-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:10px;border:1px solid var(--border);background:var(--s1);cursor:pointer;font-size:10px;font-weight:600;color:var(--t2);-webkit-tap-highlight-color:transparent;transition:all .15s}
+.cardio-type-btn.on{border-color:var(--acc);background:rgba(212,255,0,.1);color:var(--acc)}
+.cardio-type-btn span{font-size:22px;line-height:1}
+.cardio-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.cardio-field{display:flex;flex-direction:column;gap:5px}
+.cardio-field label{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.4px}
+.cardio-ressenti{display:flex;gap:8px;margin-bottom:20px}
+.cardio-ressenti-btn{flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--s1);font-size:18px;cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent;transition:all .15s}
+.cardio-ressenti-btn.on{border-color:var(--acc);background:rgba(212,255,0,.1)}
+.hist-row-cardio{background:rgba(82,232,122,.05);border-color:rgba(82,232,122,.2)}
+.cardio-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:#52e87a;background:rgba(82,232,122,.12);padding:2px 7px;border-radius:10px;margin-bottom:3px}
 .land-faq-item{border-bottom:1px solid var(--border);padding:16px 0}
 .land-faq-q{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;font-weight:600;font-size:13px}
 .land-faq-arrow{transition:transform .2s;color:var(--t2);flex-shrink:0;font-size:12px}
@@ -1038,6 +1055,11 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
           <div class="sh"><h2 class="D">Séances de la semaine</h2></div>
           <div id="hw-sessions"></div>
         </div>
+        <!-- Bouton cardio -->
+        <div style="padding:0 14px 6px">
+          <button class="btn-outline" style="width:100%;padding:11px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openCardioModal()">🏃 Ajouter une activité cardio</button>
+        </div>
+        <div id="home-cardio-today" style="padding:0 14px"></div>
         <div style="height:80px"></div>
       </div>
 
@@ -1112,7 +1134,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
   <!-- HISTORY -->
   <div class="screen" id="screen-history">
-    <div class="topbar"><div><h1 class="D">Historique</h1><div class="sub" id="hist-count">0 séances</div></div><button class="btn-outline" style="width:auto;padding:8px 14px;font-size:11px" onclick="exportHistoryCSV()">⬇ Export CSV</button></div>
+    <div class="topbar"><div><h1 class="D">Historique</h1><div class="sub" id="hist-count">0 séances</div></div><div style="display:flex;gap:8px"><button class="btn-outline" style="width:auto;padding:8px 12px;font-size:13px" onclick="openCardioModal()" title="Ajouter cardio">🏃</button><button class="btn-outline" style="width:auto;padding:8px 12px;font-size:11px" onclick="exportHistoryCSV()">⬇ CSV</button></div></div>
     <div class="scroll">
       <div class="week-chart"><div class="wc-title D">Volume hebdo</div><div class="wc-sub">Kg soulevés par jour</div><div style="position:relative;height:90px"><canvas id="vol-chart" role="img" aria-label="Graphique volume hebdomadaire"></canvas></div><div id="hist-compare" style="margin-top:10px;font-size:12px;color:var(--t2)"></div></div>
       <div class="rec-filter" id="hist-filter">
@@ -1350,6 +1372,51 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <button class="fab" id="nav-log" onclick="startSessionFromHome()" aria-label="Démarrer ou reprendre une séance">
     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
+</div>
+
+<!-- CARDIO MODAL -->
+<div id="cardio-modal" style="display:none" class="cardio-modal">
+  <div class="cardio-modal-bg" onclick="closeCardioModal()"></div>
+  <div class="cardio-card">
+    <div class="cardio-handle"></div>
+    <div class="sh" style="margin-top:0"><h2 class="D">Activité cardio</h2></div>
+    <div class="inp-label" style="margin-bottom:8px">Type d'activité</div>
+    <div class="cardio-type-grid" id="cardio-type-grid">
+      <div class="cardio-type-btn on" onclick="setCardioType('course',this)"><span>🏃</span>Course</div>
+      <div class="cardio-type-btn" onclick="setCardioType('velo',this)"><span>🚴</span>Vélo</div>
+      <div class="cardio-type-btn" onclick="setCardioType('elliptique',this)"><span>⚙️</span>Elliptique</div>
+      <div class="cardio-type-btn" onclick="setCardioType('natation',this)"><span>🏊</span>Natation</div>
+      <div class="cardio-type-btn" onclick="setCardioType('marche',this)"><span>🚶</span>Marche</div>
+    </div>
+    <div class="cardio-fields">
+      <div class="cardio-field">
+        <label>Durée</label>
+        <div style="display:flex;align-items:center;gap:4px">
+          <input class="inp" id="cardio-min" type="number" min="0" max="999" placeholder="00" style="text-align:center;padding:8px 4px;width:52px;flex:none">
+          <span style="color:var(--t2);font-weight:700">min</span>
+          <input class="inp" id="cardio-sec" type="number" min="0" max="59" placeholder="00" style="text-align:center;padding:8px 4px;width:52px;flex:none">
+          <span style="color:var(--t2);font-weight:700">sec</span>
+        </div>
+      </div>
+      <div class="cardio-field">
+        <label>Distance <span style="font-weight:400;text-transform:none;letter-spacing:0">(optionnel)</span></label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input class="inp" id="cardio-dist" type="number" min="0" step="0.1" placeholder="0.0" style="text-align:center">
+          <span style="color:var(--t2);font-weight:700">km</span>
+        </div>
+      </div>
+    </div>
+    <div class="inp-label" style="margin-bottom:8px">Ressenti</div>
+    <div class="cardio-ressenti" id="cardio-ressenti">
+      <div class="cardio-ressenti-btn" onclick="setCardioRessenti(1,this)">😴</div>
+      <div class="cardio-ressenti-btn" onclick="setCardioRessenti(2,this)">😐</div>
+      <div class="cardio-ressenti-btn on" onclick="setCardioRessenti(3,this)">💪</div>
+      <div class="cardio-ressenti-btn" onclick="setCardioRessenti(4,this)">🔥</div>
+      <div class="cardio-ressenti-btn" onclick="setCardioRessenti(5,this)">⚡</div>
+    </div>
+    <div id="cardio-cal-preview" style="font-size:12px;color:var(--t2);margin-bottom:16px;text-align:center"></div>
+    <button class="btn-primary" style="width:100%" onclick="saveCardio()">Enregistrer l'activité</button>
+  </div>
 </div>
 
 <!-- PAYWALL MODAL -->
@@ -2747,6 +2814,7 @@ function renderHome(){
   var now=new Date();
   var el=document.getElementById('home-date');if(el)el.textContent=days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()];
   updateHomeAvatar();
+  renderCardioToday();
   var mn=new Date().toISOString().slice(0,7);
   var mSess=sessions.filter(function(s){return s.date&&s.date.startsWith(mn);});
   var totPRs=sessions.reduce(function(a,s){return a+(s.newPRs?s.newPRs.length:0);},0);
@@ -3177,15 +3245,17 @@ function renderHistory(){
     }
   }
   var list=document.getElementById('hist-list');if(!list)return;
-  if(!sessions.length){list.innerHTML='<div class="empty"><div class="empty-ico">📋</div><p>Aucune séance enregistrée.</p></div>';return;}
-  var filtered=sessions;var idxMap=sessions.map(function(_,i){return i;});
-  if(histFilter!=='all'){
-    var cutoff=Date.now()-Number(histFilter)*86400000;
-    var pairs=sessions.map(function(s,i){return {s:s,i:i};}).filter(function(p){return new Date(p.s.date).getTime()>=cutoff;});
-    filtered=pairs.map(function(p){return p.s;});idxMap=pairs.map(function(p){return p.i;});
-  }
-  if(!filtered.length){list.innerHTML='<div class="empty"><div class="empty-ico">📋</div><p>Aucune séance sur cette période.</p></div>';return;}
-  list.innerHTML=filtered.map(function(s,fi){var i=idxMap[fi];var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row" onclick="openSessionDetail('+i+')"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+esc(s.name)+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+' · '+(s.exercises?s.exercises.reduce(function(a,e){return a+e.sets.length;},0):0)+' séries</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';}).join('');
+  var cutoff=histFilter!=='all'?Date.now()-Number(histFilter)*86400000:0;
+  var allEntries=[];
+  sessions.forEach(function(s,i){if(!cutoff||new Date(s.date).getTime()>=cutoff)allEntries.push({type:'session',s:s,i:i,date:s.date||''});});
+  cardioSessions.forEach(function(c){if(!cutoff||new Date(c.date).getTime()>=cutoff)allEntries.push({type:'cardio',c:c,date:c.date||''});});
+  allEntries.sort(function(a,b){return b.date.localeCompare(a.date);});
+  if(!allEntries.length){list.innerHTML='<div class="empty"><div class="empty-ico">📋</div><p>Aucune activité sur cette période.</p></div>';return;}
+  list.innerHTML=allEntries.map(function(e){
+    if(e.type==='cardio')return cardioRow(e.c,true);
+    var s=e.s;var i=e.i;var d=s.date?s.date.split('-'):['','',''];
+    return '<div class="hist-row" onclick="openSessionDetail('+i+')"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+esc(s.name)+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+' · '+(s.exercises?s.exercises.reduce(function(a,e2){return a+e2.sets.length;},0):0)+' séries</div>'+(s.newPRs&&s.newPRs.length?'<span class="pr-badge">🏆 '+s.newPRs.length+' PR</span>':'')+'</div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg vol.</div></div></div>';
+  }).join('');
 }
 
 // ─── Export CSV de l'historique ───
@@ -3211,6 +3281,82 @@ function exportHistoryCSV(){
 // ═══════════════════════════════════
 // RENDER PROFILE
 // ═══════════════════════════════════
+// ═══ CARDIO ═══
+var cardioSessions=DB.g('cardioSessions',[]);
+var cardioType='course',cardioRessenti=3;
+var CARDIO_META={course:{ico:'🏃',label:'Course',cal:70},velo:{ico:'🚴',label:'Vélo',cal:40},elliptique:{ico:'⚙️',label:'Elliptique',cal:55},natation:{ico:'🏊',label:'Natation',cal:80},marche:{ico:'🚶',label:'Marche',cal:55}};
+function openCardioModal(){
+  cardioType='course';cardioRessenti=3;
+  document.querySelectorAll('.cardio-type-btn').forEach(function(b,i){b.classList.toggle('on',i===0);});
+  document.querySelectorAll('.cardio-ressenti-btn').forEach(function(b,i){b.classList.toggle('on',i===2);});
+  var m=document.getElementById('cardio-min'),s=document.getElementById('cardio-sec'),d=document.getElementById('cardio-dist');
+  if(m)m.value='';if(s)s.value='';if(d)d.value='';
+  document.getElementById('cardio-cal-preview').textContent='';
+  document.getElementById('cardio-modal').style.display='flex';
+  [m,s,d].forEach(function(el){if(el)el.oninput=updateCardioCalPreview;});
+}
+function closeCardioModal(){document.getElementById('cardio-modal').style.display='none';}
+function setCardioType(t,el){
+  cardioType=t;
+  document.querySelectorAll('.cardio-type-btn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+  updateCardioCalPreview();
+}
+function setCardioRessenti(v,el){
+  cardioRessenti=v;
+  document.querySelectorAll('.cardio-ressenti-btn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+}
+function updateCardioCalPreview(){
+  var dist=parseFloat((document.getElementById('cardio-dist')||{}).value)||0;
+  var min=parseInt((document.getElementById('cardio-min')||{}).value)||0;
+  var sec=parseInt((document.getElementById('cardio-sec')||{}).value)||0;
+  var el=document.getElementById('cardio-cal-preview');if(!el)return;
+  var meta=CARDIO_META[cardioType]||CARDIO_META.course;
+  var cal=dist>0?Math.round(dist*meta.cal):min>0?Math.round((min+sec/60)*meta.cal*0.12):0;
+  el.textContent=cal>0?('~'+cal+' kcal estimées'):'';
+}
+function saveCardio(){
+  var min=parseInt((document.getElementById('cardio-min')||{}).value)||0;
+  var sec=parseInt((document.getElementById('cardio-sec')||{}).value)||0;
+  var dist=parseFloat((document.getElementById('cardio-dist')||{}).value)||0;
+  if(!min&&!sec){toast('Indique au moins la durée');return;}
+  var meta=CARDIO_META[cardioType]||CARDIO_META.course;
+  var cal=dist>0?Math.round(dist*meta.cal):Math.round((min+sec/60)*meta.cal*0.12);
+  var entry={id:Date.now(),date:todayStr(),type:cardioType,min:min,sec:sec,dist:dist,ressenti:cardioRessenti,cal:cal,_cardio:true};
+  cardioSessions.unshift(entry);
+  DB.s('cardioSessions',cardioSessions);
+  closeCardioModal();
+  toast(meta.ico+' Activité enregistrée !');
+  renderHome();
+  renderHistory();
+}
+function cardioRow(c,showDelete){
+  var meta=CARDIO_META[c.type]||CARDIO_META.course;
+  var d=(c.date||'').split('-');
+  var dur=(c.min||0)+'min'+(c.sec>0?' '+(c.sec<10?'0':'')+c.sec+'s':'');
+  return '<div class="hist-row hist-row-cardio" style="position:relative">'
+    +'<div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div>'
+    +'<div class="hist-sep"></div>'
+    +'<div class="hist-info"><div class="cardio-tag">'+meta.ico+' Cardio</div><div class="hist-name">'+meta.label+'</div>'
+    +'<div class="hist-meta">'+dur+(c.dist>0?' · '+c.dist+' km':'')+(c.cal>0?' · ~'+c.cal+' kcal':'')+'</div></div>'
+    +'<div class="hist-vol"><div class="hist-vol-n" style="font-size:18px">'+['😴','😐','💪','🔥','⚡'][c.ressenti-1]+'</div><div class="hist-vol-l">ressenti</div></div>'
+    +(showDelete?'<button onclick="deleteCardio(\''+c.id+'\')" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--t3);font-size:16px;cursor:pointer">×</button>':'')
+    +'</div>';
+}
+function deleteCardio(id){
+  cardioSessions=cardioSessions.filter(function(c){return c.id!=id;});
+  DB.s('cardioSessions',cardioSessions);
+  renderHistory();renderHome();
+  toast('Activité supprimée');
+}
+function renderCardioToday(){
+  var today=todayStr();
+  var todayCardio=cardioSessions.filter(function(c){return c.date===today;});
+  var el=document.getElementById('home-cardio-today');if(!el)return;
+  el.innerHTML=todayCardio.map(function(c){return cardioRow(c,true);}).join('');
+}
+
 // ═══ PLAN / PAYWALL ═══
 var USER_PLAN='free'; // 'free' | 'pro' | 'elite' | 'lifetime'
 var PLAN_LABELS={free:'Gratuit',pro:'Pro',elite:'Elite',lifetime:'Elite à vie'};
