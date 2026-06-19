@@ -71,7 +71,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .quick-tile:active{border-color:var(--acc);background:var(--acc-d)}
 .quick-tile-ic{font-size:22px;line-height:1}
 .quick-tile-lb{font-size:10px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.3px;text-align:center}
-.fab{position:fixed;bottom:calc(var(--nav) - 22px + var(--safe));left:50%;transform:translateX(-50%);width:52px;height:52px;border-radius:50%;background:var(--acc);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0a0a0a;z-index:50;box-shadow:0 4px 18px rgba(212,255,0,.3);transition:transform .15s}
+.fab{position:fixed;bottom:calc(var(--safe) + (var(--nav) - 52px)/2);left:50%;transform:translateX(-50%);width:52px;height:52px;border-radius:50%;background:var(--acc);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0a0a0a;z-index:50;box-shadow:0 4px 18px rgba(212,255,0,.3);transition:transform .15s}
 .fab:active{transform:translateX(-50%) scale(.93)}
 .fab.on{background:var(--acc);box-shadow:0 4px 18px rgba(212,255,0,.5)}
 .nav-fab-spacer{pointer-events:none;opacity:0}
@@ -868,10 +868,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         <h1 class="D" style="font-size:22px;line-height:1">FiTrack</h1>
         <div style="font-size:11px;color:var(--t2);margin-top:1px" id="home-date"></div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <div class="ib" onclick="goTo('library')" role="button" aria-label="Bibliothèque" title="Bibliothèque"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
-        <div class="home-avatar" id="home-avatar" onclick="goTo('profile')" role="button" aria-label="Profil" title="Profil">F</div>
-      </div>
+      <div class="home-avatar" id="home-avatar" onclick="goTo('profile')" role="button" aria-label="Profil" title="Profil">F</div>
     </div>
     <!-- Onglets contextuels -->
     <div class="home-tabs">
