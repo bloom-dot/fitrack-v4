@@ -86,14 +86,14 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 /* ═══ BOTTOM NAV ═══ */
 .nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(12,12,12,.97);backdrop-filter:blur(24px);border-top:1px solid rgba(255,255,255,.07);height:calc(var(--nav) + var(--safe));padding-bottom:var(--safe);display:flex;align-items:center;justify-content:space-around}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:6px 4px}
-.ni{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex:1;min-width:0;padding:10px 4px 6px;cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.ni::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:2px;background:var(--acc);border-radius:0 0 2px 2px;transition:width .2s}
-.ni.on::before{width:28px}
-.ni-ic{transition:all .2s;display:flex;align-items:center;justify-content:center}
-.ni-ic svg{width:22px;height:22px;display:block;stroke:var(--t3);transition:stroke .2s}
-.ni-lb{font-size:10px;font-weight:600;color:var(--t3);letter-spacing:.2px;transition:color .2s;white-space:nowrap}
+.ni{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex:1;min-width:0;padding:8px 4px 6px;cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.ni-pill{display:flex;align-items:center;justify-content:center;width:48px;height:28px;border-radius:14px;background:transparent;transition:background .2s}
+.ni.on .ni-pill{background:rgba(212,255,0,.15)}
+.ni-ic{display:flex;align-items:center;justify-content:center}
+.ni-ic svg{width:20px;height:20px;display:block;stroke:var(--t3);transition:stroke .2s}
 .ni.on .ni-ic svg{stroke:var(--acc)}
-.ni.on .ni-lb{color:var(--acc)}
+.ni-lb{font-size:10px;font-weight:600;color:var(--t3);letter-spacing:.1px;transition:color .2s;white-space:nowrap}
+.ni.on .ni-lb{color:var(--acc);font-weight:700}
 
 /* ═══ CARDS ═══ */
 .card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px}
@@ -1340,11 +1340,11 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
   <!-- NAV -->
   <nav class="nav">
-    <div class="ni on" id="nav-home" onclick="goTo('home')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg></div><div class="ni-lb">Accueil</div></div>
-    <div class="ni" id="nav-records" onclick="goTo('records')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/></svg></div><div class="ni-lb">Records</div></div>
+    <div class="ni on" id="nav-home" onclick="goTo('home')"><div class="ni-pill"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg></div></div><div class="ni-lb">Accueil</div></div>
+    <div class="ni" id="nav-records" onclick="goTo('records')"><div class="ni-pill"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/></svg></div></div><div class="ni-lb">Records</div></div>
     <div class="ni nav-fab-spacer" aria-hidden="true"></div>
-    <div class="ni" id="nav-history" onclick="goTo('history')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><div class="ni-lb">Historique</div></div>
-    <div class="ni" id="nav-ai" onclick="goTo('ai')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></div><div class="ni-lb">FitAI</div></div>
+    <div class="ni" id="nav-history" onclick="goTo('history')"><div class="ni-pill"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div></div><div class="ni-lb">Historique</div></div>
+    <div class="ni" id="nav-ai" onclick="goTo('ai')"><div class="ni-pill"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></div></div><div class="ni-lb">FitAI</div></div>
   </nav>
   <!-- FAB Logger -->
   <button class="fab" id="nav-log" onclick="startSessionFromHome()" aria-label="Démarrer ou reprendre une séance">
@@ -2096,7 +2096,7 @@ function showApp(){
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('ob-screen').style.display='none';
   document.getElementById('app').style.display='flex';
-  renderHome();
+  goTo('home');
   buildDefaultSession();
   setTimeout(maybeSubscribePush,2000);
 }
