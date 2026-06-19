@@ -613,6 +613,12 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .coach-replay{display:none;margin-top:12px}
 .coach-replay video{width:100%;border-radius:var(--r-sm);display:block;background:#000}
 .coach-tip{font-size:11px;color:var(--t2);text-align:center;line-height:1.5;margin-top:4px}
+.coach-stat-big .cs-val{font-size:36px}
+.coach-hist-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:6px}
+.coach-hist-score{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;width:44px;text-align:center;flex-shrink:0}
+.coach-hist-info{flex:1;min-width:0}
+.coach-hist-ex{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.coach-hist-meta{font-size:11px;color:var(--t2);margin-top:1px}
 
 /* ═══ AI SCREEN ═══ */
 .ai-orb{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--acc),#6a7800);box-shadow:0 0 24px rgba(212,255,0,.3);animation:orb-pulse 2s ease-in-out infinite;flex-shrink:0}
@@ -1255,14 +1261,32 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         </button>
         <div class="coach-feedback" id="coach-feedback"></div>
       </div>
-      <button class="btn-primary" id="coach-toggle-btn" onclick="toggleCoachCamera()">📷 Démarrer la caméra</button>
-      <button class="btn-outline coach-rec-btn" id="coach-rec-btn" onclick="toggleCoachRecording()" style="display:none">🔴 Enregistrer la vidéo</button>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn-primary" id="coach-toggle-btn" onclick="toggleCoachCamera()" style="flex:2">📷 Démarrer la caméra</button>
+        <button class="btn-outline coach-rec-btn" id="coach-rec-btn" onclick="toggleCoachRecording()" style="display:none;flex:1">🔴 Rec</button>
+      </div>
+      <!-- Stats principales -->
       <div class="coach-stats" id="coach-stats" style="margin-top:12px;display:none">
+        <div class="coach-stat coach-stat-big"><div class="cs-val acc" id="coach-reps">0</div><div class="cs-lbl">Répétitions</div></div>
+        <div class="coach-stat coach-stat-big"><div class="cs-val" id="coach-score">--</div><div class="cs-lbl">Score /100</div></div>
         <div class="coach-stat"><div class="cs-val" id="coach-angle-1">--°</div><div class="cs-lbl" id="coach-angle-1-lbl">Angle</div></div>
         <div class="coach-stat"><div class="cs-val" id="coach-angle-2">--°</div><div class="cs-lbl" id="coach-angle-2-lbl">Angle</div></div>
       </div>
+      <!-- Barre de fatigue -->
+      <div id="coach-fatigue-wrap" style="display:none;margin-top:8px;padding:10px 12px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r-sm)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:11px;font-weight:600;color:var(--t2)">Qualité des reps</span>
+          <span id="coach-fatigue-label" style="font-size:11px;font-weight:700;color:var(--acc)"></span>
+        </div>
+        <div style="background:var(--s2);border-radius:4px;height:6px;overflow:hidden">
+          <div id="coach-fatigue-bar" style="height:100%;background:var(--acc);border-radius:4px;transition:width .4s,background .4s;width:100%"></div>
+        </div>
+        <div id="coach-last-rep" style="font-size:11px;color:var(--t3);margin-top:6px;text-align:center"></div>
+      </div>
       <div class="coach-replay" id="coach-replay"></div>
-      <div class="coach-tip" id="coach-tip">Choisis ton exercice dans la liste ci-dessus : le coach analyse maintenant tous les exercices de la bibliothèque avec des repères adaptés à chaque mouvement. Place ton téléphone de profil (vue de côté), à environ 2 mètres, pour que la caméra voie tout ton corps. Le squelette est <span style="color:var(--red);font-weight:700">rouge</span> en position incorrecte et passe au <span style="color:var(--green);font-weight:700">vert</span> avec un son quand le mouvement est bien réalisé — pratique si tu ne peux pas regarder l'écran. Pour certains exercices (isolation, gainage), l'analyse reste indicative. Tout tourne sur ton téléphone, rien n'est envoyé sur internet.</div>
+      <!-- Historique des scores -->
+      <div id="coach-history-section" style="margin-top:12px"></div>
+      <div class="coach-tip" id="coach-tip" style="margin-top:8px">Place ton téléphone de profil à ~2 m. Le squelette devient <span style="color:var(--green);font-weight:700">vert</span> + bip quand la position est bonne. Les reps sont comptées automatiquement.</div>
     </div>
   </div>
 
@@ -3888,6 +3912,120 @@ function dismissPwaModal(){
 var coachExercise='Tractions',coachStream=null,coachPose=null,coachRunning=false,coachLastFeedback=0,coachFacing='environment';
 var coachFormGood=false,coachLastBeep=0,coachAudioCtx=null;
 var coachRecorder=null,coachRecChunks=[],coachRecording=false,coachReplayUrl=null;
+// Rep counter & scoring
+var coachReps=0,coachRepPhase='top',coachRepScores=[],coachCurrentRepAngles=[];
+var coachHistory=DB.g('coachHistory',[]);
+function resetCoachSession(){
+  coachReps=0;coachRepPhase='top';coachRepScores=[];coachCurrentRepAngles=[];
+  var r=document.getElementById('coach-reps');if(r)r.textContent='0';
+  var s=document.getElementById('coach-score');if(s)s.textContent='--';
+  var fw=document.getElementById('coach-fatigue-wrap');if(fw)fw.style.display='none';
+  var lr=document.getElementById('coach-last-rep');if(lr)lr.textContent='';
+}
+function coachRepScore(a1,a2,type){
+  // Score 0-100 based on how well angles match ideal for exercise type
+  var ideal={
+    'squat':{a1:{target:90,range:15},'a2':{target:60,range:20}},
+    'hinge':{a1:{target:90,range:25}},
+    'hip-thrust':{a1:{target:170,range:10}},
+    'lunge':{a1:{target:90,range:15}},
+    'pull-vertical':{a1:{target:70,range:20}},
+    'pull-horizontal':{a1:{target:65,range:20}},
+    'push-horizontal':{a1:{target:80,range:20}},
+    'press-overhead':{a1:{target:170,range:10}},
+    'curl':{a1:{target:40,range:20}},
+    'triceps-ext':{a1:{target:160,range:15}},
+    'core-plank':{a1:{target:175,range:10}},
+    'crunch':{a1:{target:100,range:20}},
+    'leg-raise':{a1:{target:90,range:20}},
+    'lateral-raise':{a1:{target:85,range:15}},
+    'wall-sit':{a1:{target:90,range:10}},
+    'machine-knee':{a1:{target:90,range:20}},
+    'calf':{a1:{target:165,range:10}}
+  };
+  var cfg=ideal[type];if(!cfg||!cfg.a1)return 80;
+  var dev=Math.abs(a1-cfg.a1.target);
+  var score=Math.max(0,Math.round(100-dev/cfg.a1.range*40));
+  return Math.min(100,score);
+}
+function updateRepCounter(good,a1,a2){
+  var type=COACH_EX_TYPE[coachExercise]||'squat';
+  if(good){
+    coachCurrentRepAngles.push({a1:a1,a2:a2});
+    if(coachRepPhase==='top'){coachRepPhase='bottom';}
+  } else {
+    if(coachRepPhase==='bottom'){
+      // Rep completed
+      coachReps++;
+      var avgA1=coachCurrentRepAngles.reduce(function(s,x){return s+x.a1;},0)/(coachCurrentRepAngles.length||1);
+      var score=coachRepScore(avgA1,a2,type);
+      coachRepScores.push(score);
+      coachCurrentRepAngles=[];
+      coachRepPhase='top';
+      // Update UI
+      var rel=document.getElementById('coach-reps');if(rel)rel.textContent=coachReps;
+      var avgScore=Math.round(coachRepScores.reduce(function(s,x){return s+x;},0)/coachRepScores.length);
+      var sel=document.getElementById('coach-score');
+      if(sel){sel.textContent=avgScore;sel.style.color=avgScore>=80?'var(--acc)':avgScore>=60?'var(--gold)':'var(--red)';}
+      updateFatigueBar();
+      // Last rep feedback
+      var lrEl=document.getElementById('coach-last-rep');
+      if(lrEl&&coachRepScores.length>1){
+        var prev=coachRepScores[coachRepScores.length-2];
+        var delta=score-prev;
+        lrEl.textContent='Rep '+coachReps+' : '+score+'/100'+(delta!==0?' ('+(delta>0?'+':'')+delta+' vs précédente)':'');
+        lrEl.style.color=delta>=0?'var(--acc)':'var(--gold)';
+      }
+      // Auto-launch rest timer if set likely done (10+ reps or manual)
+      if(coachReps>0&&coachReps%5===0){
+        toast('💪 '+coachReps+' reps ! Score moyen : '+avgScore+'/100');
+      }
+    }
+  }
+}
+function updateFatigueBar(){
+  var fw=document.getElementById('coach-fatigue-wrap');if(!fw)return;
+  if(coachRepScores.length<2){fw.style.display='none';return;}
+  fw.style.display='block';
+  var recent=coachRepScores.slice(-4);
+  var avg=Math.round(recent.reduce(function(s,x){return s+x;},0)/recent.length);
+  var bar=document.getElementById('coach-fatigue-bar');
+  var lbl=document.getElementById('coach-fatigue-label');
+  if(bar){bar.style.width=avg+'%';bar.style.background=avg>=80?'var(--acc)':avg>=60?'var(--gold)':'var(--red)';}
+  // Fatigue trend
+  if(coachRepScores.length>=3){
+    var last3=coachRepScores.slice(-3);
+    var trend=last3[2]-last3[0];
+    if(lbl){
+      if(trend<=-10){lbl.textContent='⚠ Fatigue détectée';lbl.style.color='var(--red)';}
+      else if(trend>=5){lbl.textContent='📈 Progression';lbl.style.color='var(--acc)';}
+      else{lbl.textContent='Score '+avg+'/100';lbl.style.color='var(--t2)';}
+    }
+    if(trend<=-15&&'speechSynthesis' in window){
+      var u=new SpeechSynthesisUtterance('Attention, ta forme se dégrade. Pense à faire une pause.');
+      u.lang='fr-FR';u.rate=1.1;window.speechSynthesis.cancel();window.speechSynthesis.speak(u);
+    }
+  }
+}
+function saveCoachSession(){
+  if(coachReps===0||coachRepScores.length===0)return;
+  var avg=Math.round(coachRepScores.reduce(function(s,x){return s+x;},0)/coachRepScores.length);
+  coachHistory.unshift({date:todayStr(),exercise:coachExercise,reps:coachReps,score:avg});
+  if(coachHistory.length>50)coachHistory=coachHistory.slice(0,50);
+  DB.s('coachHistory',coachHistory);
+  renderCoachHistory();
+}
+function renderCoachHistory(){
+  var sec=document.getElementById('coach-history-section');if(!sec)return;
+  var last=coachHistory.slice(0,5);
+  if(!last.length){sec.innerHTML='';return;}
+  sec.innerHTML='<div class="sh" style="margin-top:4px"><h2 class="D" style="font-size:14px">Historique technique</h2></div>'
+    +last.map(function(h){
+      var col=h.score>=80?'var(--acc)':h.score>=60?'var(--gold)':'var(--red)';
+      var d=(h.date||'').split('-');
+      return '<div class="coach-hist-row"><div class="coach-hist-score" style="color:'+col+'">'+h.score+'</div><div class="coach-hist-info"><div class="coach-hist-ex">'+esc(h.exercise)+'</div><div class="coach-hist-meta">'+h.reps+' reps · '+getMonShort(d[1])+' '+d[2]+'</div></div><div style="font-size:10px;font-weight:700;color:'+col+'">/100</div></div>';
+    }).join('');
+}
 var COACH_CONNECTIONS=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
 
 function coachSetExercise(v){
@@ -3898,6 +4036,8 @@ function coachSetExercise(v){
   document.getElementById('coach-angle-2-lbl').textContent=cfg.a2lbl;
   document.getElementById('coach-angle-1').textContent='--°';
   document.getElementById('coach-angle-2').textContent='--°';
+  resetCoachSession();
+  renderCoachHistory();
 }
 
 function loadCoachScript(src){
@@ -3932,6 +4072,8 @@ async function toggleCoachCamera(){
     document.getElementById('coach-switch-btn').style.display='flex';
     document.getElementById('coach-rec-btn').style.display='block';
     coachSetExercise(coachExercise);
+    resetCoachSession();
+    renderCoachHistory();
     coachRunning=true;
     btn.textContent='⏹ Arrêter la caméra';
     coachLoop();
@@ -3978,6 +4120,7 @@ async function coachLoop(){
 
 function stopCoachCamera(){
   if(!coachRunning&&!coachStream)return;
+  saveCoachSession();
   coachRunning=false;
   if(coachRecording&&coachRecorder)coachRecorder.stop();
   if(coachStream){coachStream.getTracks().forEach(function(t){t.stop();});coachStream=null;}
@@ -4253,6 +4396,7 @@ function computeCoachFeedback(lm){
   document.getElementById('coach-angle-1').textContent=Math.round(r.a1)+(cfg.a1suffix||'°');
   document.getElementById('coach-angle-2').textContent=Math.round(r.a2)+(cfg.a2suffix||'°');
   setCoachFormState(r.good);
+  updateRepCounter(r.good,r.a1,r.a2);
   var now=Date.now();
   if(now-coachLastFeedback<1200)return;
   showCoachFeedback(r.msg[0],r.msg[1]);
@@ -4305,16 +4449,35 @@ function deleteCoachReplay(){
 }
 async function shareCoachReplay(){
   if(!coachReplayUrl)return;
+  var score=coachRepScores.length?Math.round(coachRepScores.reduce(function(s,x){return s+x;},0)/coachRepScores.length):'--';
+  var text='💪 '+coachReps+' reps de '+coachExercise+' — Score technique : '+score+'/100\nAnalysé par FiTrack Coach Mouvement 📱\nfitrack-v4.vercel.app';
   try{
     var resp=await fetch(coachReplayUrl);
     var blob=await resp.blob();
-    var file=new File([blob],'coach-mouvement.webm',{type:'video/webm'});
+    // Essaie MP4 d'abord (compatible WhatsApp), sinon WebM
+    var mime=blob.type||'video/webm';
+    var ext=mime.includes('mp4')?'mp4':'webm';
+    var file=new File([blob],'fitrack-coach.'+ext,{type:mime});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:'Mon mouvement FiTrack',text:'Regarde mon exécution analysée par Coach Mouvement 💪'});
+      await navigator.share({files:[file],title:'FiTrack — Coach Mouvement',text:text});
+    } else if(navigator.share){
+      await navigator.share({title:'FiTrack — Coach Mouvement',text:text,url:'https://fitrack-v4.vercel.app'});
     } else {
-      await navigator.share({url:coachReplayUrl,title:'Mon mouvement FiTrack'});
+      // Fallback : copier le texte
+      await navigator.clipboard.writeText(text);
+      toast('Texte copié — colle-le dans WhatsApp 📋');
     }
-  }catch(e){if(e.name!=='AbortError')toast('Partage non supporté sur ce navigateur.');}
+  }catch(e){
+    if(e.name!=='AbortError'){
+      // WhatsApp bloque les fichiers WebM — on partage le texte seul
+      try{
+        await navigator.share({title:'FiTrack — Coach Mouvement',text:text,url:'https://fitrack-v4.vercel.app'});
+      }catch(e2){
+        if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Texte copié — colle-le dans WhatsApp 📋');}
+        else{toast('Télécharge la vidéo puis partage-la manuellement.');}
+      }
+    }
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
