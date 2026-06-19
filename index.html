@@ -59,6 +59,22 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .scroll{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:0 16px calc(var(--nav) + var(--safe) + 20px)}
 .scroll::-webkit-scrollbar{display:none}
 
+/* ═══ HOME B ═══ */
+.home-topbar{padding:48px 18px 12px;flex-shrink:0;display:flex;align-items:flex-end;justify-content:space-between}
+.home-avatar{width:34px;height:34px;border-radius:50%;background:var(--acc-d);border:1.5px solid rgba(212,255,0,.4);color:var(--acc);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;text-transform:uppercase}
+.home-tabs{display:flex;gap:6px;padding:0 14px 12px;flex-shrink:0}
+.home-tab{padding:6px 14px;border-radius:20px;border:1px solid var(--border2);background:var(--s2);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
+.home-tab.on{background:var(--acc-d);border-color:rgba(212,255,0,.35);color:var(--acc)}
+.home-session-card{margin:0 14px 12px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.quick-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 14px 10px}
+.quick-tile{background:var(--s1);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 4px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;transition:border-color .15s}
+.quick-tile:active{border-color:var(--acc);background:var(--acc-d)}
+.quick-tile-ic{font-size:22px;line-height:1}
+.quick-tile-lb{font-size:10px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.3px;text-align:center}
+.fab{position:fixed;bottom:calc(var(--nav) - 22px + var(--safe));left:50%;transform:translateX(-50%);width:52px;height:52px;border-radius:50%;background:var(--acc);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0a0a0a;z-index:50;box-shadow:0 4px 18px rgba(212,255,0,.3);transition:transform .15s}
+.fab:active{transform:translateX(-50%) scale(.93)}
+.fab.on{background:var(--acc);box-shadow:0 4px 18px rgba(212,255,0,.5)}
+.nav-fab-spacer{pointer-events:none;opacity:0}
 /* ═══ TOPBAR ═══ */
 .topbar{padding:48px 18px 16px;flex-shrink:0;display:flex;align-items:flex-end;justify-content:space-between}
 .topbar h1{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;letter-spacing:-.3px;text-transform:uppercase}
@@ -846,55 +862,114 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
   <!-- HOME -->
   <div class="screen on" id="screen-home">
-    <div class="topbar"><div><h1 class="D">FiTrack</h1><div class="sub" id="home-date"></div></div><div class="tbr"><div class="ib" onclick="goTo('library')" role="button" aria-label="Bibliothèque d'exercices" title="Bibliothèque d'exercices"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><div class="ib" onclick="goTo('profile')" role="button" aria-label="Profil" title="Profil"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-3.9 3.6-7 8-7s8 3.1 8 7"/></svg></div></div></div>
-    <div class="scroll">
-      <div class="banner">
-        <div class="day-status" id="day-status"></div>
-        <div class="banner-date" id="next-label">Séance du jour</div>
-        <div class="banner-title D" id="next-name">Push Day</div>
-        <div class="banner-meta" id="next-meta">4 exercices · ~55 min</div>
-        <div style="display:flex;gap:10px;margin-top:14px">
-          <button class="btn-primary" id="home-start-btn" style="flex:1" onclick="startSessionFromHome()">▶ Démarrer la séance</button>
-          <button class="btn-outline" style="width:auto;flex:none;padding:13px 16px" onclick="openProgramModal()">📅 Programme</button>
+    <!-- Topbar B -->
+    <div class="home-topbar">
+      <div>
+        <h1 class="D" style="font-size:22px;line-height:1">FiTrack</h1>
+        <div style="font-size:11px;color:var(--t2);margin-top:1px" id="home-date"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="ib" onclick="goTo('library')" role="button" aria-label="Bibliothèque" title="Bibliothèque"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+        <div class="home-avatar" id="home-avatar" onclick="goTo('profile')" role="button" aria-label="Profil" title="Profil">F</div>
+      </div>
+    </div>
+    <!-- Onglets contextuels -->
+    <div class="home-tabs">
+      <button class="home-tab on" id="htab-today" onclick="switchHomeTab('today')">Aujourd'hui</button>
+      <button class="home-tab" id="htab-week" onclick="switchHomeTab('week')">Semaine</button>
+      <button class="home-tab" id="htab-history" onclick="switchHomeTab('history')">Historique</button>
+    </div>
+    <div class="scroll" id="home-scroll">
+
+      <!-- TAB : Aujourd'hui -->
+      <div id="htab-content-today">
+        <!-- Carte séance -->
+        <div class="home-session-card">
+          <div class="day-status" id="day-status"></div>
+          <div style="font-size:11px;color:var(--t2);margin-bottom:4px" id="next-label">Séance du jour</div>
+          <div class="banner-title D" id="next-name" style="font-size:22px;margin-bottom:2px">Push Day</div>
+          <div style="font-size:12px;color:var(--t2);margin-bottom:14px" id="next-meta">4 exercices · ~55 min</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-primary" id="home-start-btn" style="flex:1;padding:12px" onclick="startSessionFromHome()">▶ Démarrer la séance</button>
+            <button class="btn-outline" style="width:auto;flex:none;padding:12px 14px" onclick="openProgramModal()">📅</button>
+          </div>
         </div>
-      </div>
-      <div class="card daily-msg" id="daily-msg" style="display:none">
-        <div class="dm-ico">🤖</div>
-        <div class="dm-text" id="daily-msg-text"></div>
-      </div>
-      <div class="card coach-promo" onclick="goTo('coach')">
-        <div class="cp-ico">🎥</div>
-        <div><div class="cp-title">Coach Mouvement IA</div><div class="cp-sub">Analyse ta technique en direct via la caméra — ton avantage exclusif FiTrack</div></div>
-      </div>
-      <div class="card" id="weight-reminder" style="display:none;border:1px solid rgba(212,255,0,.3);background:var(--acc-d)">
-        <div style="font-size:13px;color:var(--t2)">📏 <span style="color:var(--acc);font-weight:600">Pesée hebdomadaire</span><br>Pense à enregistrer ton poids cette semaine pour garder un suivi précis et adapter ta nutrition.</div>
-        <div style="display:flex;gap:10px;margin-top:10px">
-          <button class="btn-primary" style="flex:1" onclick="goTo('measurements')">Enregistrer mon poids</button>
-          <button class="btn-outline" style="width:auto;flex:none;padding:13px 16px" onclick="snoozeWeightReminder()">Plus tard</button>
+        <!-- Rappel pesée -->
+        <div id="weight-reminder" style="display:none;margin:0 14px 10px;padding:12px 14px;background:var(--acc-d);border:1px solid rgba(212,255,0,.3);border-radius:var(--r)">
+          <div style="font-size:12px;color:var(--t2)">📏 <span style="color:var(--acc);font-weight:600">Pesée hebdomadaire</span> — Enregistre ton poids pour adapter ta nutrition.</div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn-primary" style="flex:1;padding:10px;font-size:13px" onclick="goTo('measurements')">Enregistrer</button>
+            <button class="btn-outline" style="flex:none;padding:10px 14px;font-size:13px" onclick="snoozeWeightReminder()">Plus tard</button>
+          </div>
         </div>
-      </div>
-      <div class="stat-grid">
-        <div class="stat-card"><div class="stat-val acc" id="h-seances">0</div><div class="stat-lbl">Séances ce mois</div></div>
-        <div class="stat-card"><div class="stat-val gold" id="h-prs">0</div><div class="stat-lbl">Records battus</div></div>
-        <div class="stat-card"><div class="stat-val" id="h-vol" style="font-size:20px">0</div><div class="stat-lbl">Volume total kg</div></div>
-        <div class="stat-card"><div class="stat-val" id="h-streak" style="color:#ff9900">0🔥</div><div class="stat-lbl">Streak</div></div>
-      </div>
-      <div class="card challenge-card" id="challenge-card">
-        <div class="ch-head">
-          <div class="ch-title">🎯 Défi de la semaine</div>
-          <div class="ch-count" id="ch-count">0/3 séances</div>
+        <!-- Message FitAI -->
+        <div class="card daily-msg" id="daily-msg" style="display:none;margin:0 14px 10px">
+          <div class="dm-ico">🤖</div>
+          <div class="dm-text" id="daily-msg-text"></div>
         </div>
-        <div class="s-progress-bar"><div class="s-progress-fill" id="ch-progress-fill"></div></div>
-        <div id="ch-freeze-info"></div>
+        <!-- 4 tuiles accès rapide -->
+        <div class="quick-tiles">
+          <div class="quick-tile" onclick="goTo('coach')">
+            <div class="quick-tile-ic">🎥</div>
+            <div class="quick-tile-lb">Coach IA</div>
+          </div>
+          <div class="quick-tile" onclick="goTo('challenges')">
+            <div class="quick-tile-ic">🏆</div>
+            <div class="quick-tile-lb">Défis</div>
+          </div>
+          <div class="quick-tile" onclick="goTo('records')">
+            <div class="quick-tile-ic">🥇</div>
+            <div class="quick-tile-lb">Records</div>
+          </div>
+          <div class="quick-tile" onclick="goTo('nutrition')">
+            <div class="quick-tile-ic">🥗</div>
+            <div class="quick-tile-lb">Nutrition</div>
+          </div>
+        </div>
+        <!-- Défi semaine compact -->
+        <div class="card challenge-card" id="challenge-card" style="margin:0 14px 10px">
+          <div class="ch-head">
+            <div class="ch-title">🎯 Défi de la semaine</div>
+            <div class="ch-count" id="ch-count">0/3 séances</div>
+          </div>
+          <div class="s-progress-bar"><div class="s-progress-fill" id="ch-progress-fill"></div></div>
+          <div id="ch-freeze-info"></div>
+        </div>
+        <!-- Stats mini -->
+        <div class="stat-grid" style="margin:0 14px 10px">
+          <div class="stat-card"><div class="stat-val acc" id="h-seances">0</div><div class="stat-lbl">Séances mois</div></div>
+          <div class="stat-card"><div class="stat-val gold" id="h-prs">0</div><div class="stat-lbl">Records</div></div>
+          <div class="stat-card"><div class="stat-val" id="h-vol" style="font-size:20px">0</div><div class="stat-lbl">Volume kg</div></div>
+          <div class="stat-card"><div class="stat-val" id="h-streak" style="color:#ff9900">0🔥</div><div class="stat-lbl">Streak</div></div>
+        </div>
+        <div style="height:80px"></div>
       </div>
-      <div class="card coach-promo" onclick="goTo('challenges')" style="background:linear-gradient(135deg,rgba(212,255,0,.08),var(--s1));border-color:rgba(212,255,0,.2)">
-        <div class="cp-ico">🏆</div>
-        <div><div class="cp-title">Défis entre amis</div><div class="cp-sub" id="home-challenges-sub">Crée un défi ou rejoins celui d'un ami</div></div>
+
+      <!-- TAB : Semaine -->
+      <div id="htab-content-week" style="display:none">
+        <div style="padding:14px">
+          <div class="sh" style="margin-top:0"><h2 class="D">Cette semaine</h2></div>
+          <div class="stat-grid" style="margin:0 0 14px">
+            <div class="stat-card"><div class="stat-val acc" id="hw-seances">0</div><div class="stat-lbl">Séances</div></div>
+            <div class="stat-card"><div class="stat-val" id="hw-vol" style="font-size:20px">0</div><div class="stat-lbl">Volume kg</div></div>
+          </div>
+          <div class="sh"><h2 class="D">Séances de la semaine</h2></div>
+          <div id="hw-sessions"></div>
+        </div>
+        <div style="height:80px"></div>
       </div>
-      <div class="sh"><h2 class="D">Records</h2><a onclick="goTo('records')">Tout voir →</a></div>
-      <div id="home-prs"></div>
-      <div class="sh"><h2 class="D">Dernières séances</h2><a onclick="goTo('history')">Tout voir →</a></div>
-      <div id="home-hist"></div>
+
+      <!-- TAB : Historique -->
+      <div id="htab-content-history" style="display:none">
+        <div style="padding:14px">
+          <div class="sh" style="margin-top:0"><h2 class="D">Dernières séances</h2><a onclick="goTo('history')">Tout voir →</a></div>
+          <div id="home-hist"></div>
+          <div class="sh"><h2 class="D">Records récents</h2><a onclick="goTo('records')">Tout voir →</a></div>
+          <div id="home-prs"></div>
+        </div>
+        <div style="height:80px"></div>
+      </div>
+
     </div>
   </div>
 
@@ -1181,12 +1256,15 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   <!-- NAV -->
   <nav class="nav">
     <div class="ni on" id="nav-home" onclick="goTo('home')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg></div><div class="ni-lb">Accueil</div></div>
-    <div class="ni" id="nav-log" onclick="goTo('log')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg></div><div class="ni-lb">Logger</div></div>
     <div class="ni" id="nav-records" onclick="goTo('records')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/></svg></div><div class="ni-lb">Records</div></div>
-    <div class="ni" id="nav-nutrition" onclick="goTo('nutrition')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div><div class="ni-lb">Nutrition</div></div>
+    <div class="ni nav-fab-spacer" aria-hidden="true"></div>
     <div class="ni" id="nav-history" onclick="goTo('history')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><div class="ni-lb">Historique</div></div>
     <div class="ni" id="nav-ai" onclick="goTo('ai')"><div class="ni-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></div><div class="ni-lb">FitAI</div></div>
   </nav>
+  <!-- FAB Logger -->
+  <button class="fab" id="nav-log" onclick="goTo('log')" aria-label="Logger une séance">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
 </div>
 
 <!-- EXERCISE PICKER MODAL -->
@@ -1924,7 +2002,8 @@ function goTo(name){
   });
   var sc=document.getElementById('screen-'+name);if(sc)sc.classList.add('on');
   var n=document.getElementById('nav-'+name);if(n)n.classList.add('on');
-  if(name==='home')renderHome();
+  var fab=document.getElementById('nav-log');if(fab)fab.style.display=name==='home'?'flex':'none';
+  if(name==='home'){renderHome();switchHomeTab('today');}
   if(name==='records')renderRecords('all');
   if(name==='history')renderHistory();
   if(name==='nutrition')renderNutrition();
@@ -2524,11 +2603,41 @@ async function syncStreakToSupabase(){
 // ═══════════════════════════════════
 // RENDER HOME
 // ═══════════════════════════════════
+function switchHomeTab(tab){
+  ['today','week','history'].forEach(function(t){
+    document.getElementById('htab-'+t).classList.toggle('on',t===tab);
+    document.getElementById('htab-content-'+t).style.display=t===tab?'block':'none';
+  });
+  if(tab==='week')renderHomeWeek();
+}
+function renderHomeWeek(){
+  var now=new Date();
+  var mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));
+  var monStr=mon.toISOString().slice(0,10);
+  var sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  var sunStr=sun.toISOString().slice(0,10);
+  var week=sessions.filter(function(s){return s.date>=monStr&&s.date<=sunStr;});
+  var vol=week.reduce(function(a,s){return a+(s.totalVolume||0);},0);
+  var ws=document.getElementById('hw-seances'),wv=document.getElementById('hw-vol');
+  if(ws)ws.textContent=week.length;
+  if(wv)wv.textContent=vol>9999?Math.round(vol/1000)+'k':vol;
+  var hw=document.getElementById('hw-sessions');
+  if(hw){
+    if(!week.length){hw.innerHTML='<div class="empty"><div class="empty-ico">📋</div><p>Aucune séance cette semaine.</p></div>';}
+    else{hw.innerHTML=week.map(function(s,i){var idx=sessions.indexOf(s);var d=s.date?s.date.split('-'):['','',''];return '<div class="hist-row" onclick="openSessionDetail('+idx+')"><div class="hist-date"><div class="hist-day">'+(d[2]||'—')+'</div><div class="hist-mon">'+getMonShort(d[1])+'</div></div><div class="hist-sep"></div><div class="hist-info"><div class="hist-name">'+esc(s.name)+'</div><div class="hist-meta">'+(s.exercises?s.exercises.length:0)+' exercices · '+fmtDur(s.duration)+'</div></div><div class="hist-vol"><div class="hist-vol-n">'+(s.totalVolume>9999?Math.round(s.totalVolume/1000)+'k':(s.totalVolume||0))+'</div><div class="hist-vol-l">kg</div></div></div>';}).join('');}
+  }
+}
+function updateHomeAvatar(){
+  var av=document.getElementById('home-avatar');if(!av)return;
+  var name=(userProfile&&userProfile.name)||'';
+  av.textContent=name?name.charAt(0).toUpperCase():'F';
+}
 function renderHome(){
   var days=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
   var months=['jan','fév','mar','avr','mai','juin','juil','août','sep','oct','nov','déc'];
   var now=new Date();
   var el=document.getElementById('home-date');if(el)el.textContent=days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()];
+  updateHomeAvatar();
   var mn=new Date().toISOString().slice(0,7);
   var mSess=sessions.filter(function(s){return s.date&&s.date.startsWith(mn);});
   var totPRs=sessions.reduce(function(a,s){return a+(s.newPRs?s.newPRs.length:0);},0);
