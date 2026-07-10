@@ -71,6 +71,7 @@ node -e "var fs=require('fs');var src=fs.readFileSync('index.html','utf8');var m
 3. **Lancement commercial** : `BETA_MODE=false`, brancher Stripe (rien n'existe), plans Gratuit/Pro 4,99 €/Elite 9,99 € déjà dans le code et la landing. Placeholders légaux à remplir (SIRET, adresse) dans mentions-legales.html et cgv.html.
 4. **Réactiver le conseil IA coach** (endpoint `coach-vision.js` prêt) si l'utilisateur redemande du feedback VLM.
 5. ~~Committer + pousser le travail récent sur git.~~ ✅ Fait (checkpoint `28df8d3`, 2026-07-10).
+6. **Quota vision par utilisateur/jour** (`scan-vision.js` + `coach-vision.js`) — DÉCISION UTILISATEUR : à ajouter **une fois les tests de l'app terminés**, pas avant (le coach doit rester libre pendant les tests). Fix propre = compteur DB dédié (nouvelle RPC type `increment_ai_usage`, bucket séparé du chat). Plafond de taille image (1,5 Mo) déjà en place depuis l'audit du 2026-07-10.
 
 ## Mémoire persistante
 
