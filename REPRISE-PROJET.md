@@ -37,7 +37,7 @@ node -e "var fs=require('fs');var src=fs.readFileSync('index.html','utf8');var m
 - `api/` : `chat.js` (Mistral, quota 30 msgs/j/user), `scan-vision.js` (Groq llama-4-scout : produit depuis photo, renvoie macros), `coach-vision.js` (conseil technique depuis image de la pire rep — **endpoint prêt mais plus appelé côté client** depuis le retour arrière du coach), `challenges.js`, push, delete-account, cron.
 - Env Vercel : `MISTRAL_API_KEY`, `GROQ_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`, `CRON_SECRET`.
 - `diag.html` — page de diagnostic MediaPipe/CSP/caméra (à faire ouvrir sur le téléphone en cas de problème caméra).
-- Git : repo local avec historique ; dernier commit ancien — **beaucoup de travail non commité** (option : committer un point d'étape).
+- Git : remote `github.com/bloom-dot/fitrack-v4` (branche `main`, à jour). Dernier checkpoint poussé le 2026-07-10 (`28df8d3` : Coach Mouvement + scanner Yuka + nutrition Yazio + refonte UX). `__pycache__`/`*.pyc` ignorés.
 
 ## Ce qui a été fait récemment (juillet 2026)
 
@@ -63,7 +63,7 @@ node -e "var fs=require('fs');var src=fs.readFileSync('index.html','utf8');var m
 2. **Voix mascottes option 2** : vraies voix distinctes pré-générées en MP3 (ElevenLabs/OpenAI TTS, phrases fixes → assets locaux, zéro coût runtime). Utilisateur intéressé.
 3. **Lancement commercial** : `BETA_MODE=false`, brancher Stripe (rien n'existe), plans Gratuit/Pro 4,99 €/Elite 9,99 € déjà dans le code et la landing. Placeholders légaux à remplir (SIRET, adresse) dans mentions-legales.html et cgv.html.
 4. **Réactiver le conseil IA coach** (endpoint `coach-vision.js` prêt) si l'utilisateur redemande du feedback VLM.
-5. Committer + pousser le travail récent sur git.
+5. ~~Committer + pousser le travail récent sur git.~~ ✅ Fait (checkpoint `28df8d3`, 2026-07-10).
 
 ## Mémoire persistante
 
