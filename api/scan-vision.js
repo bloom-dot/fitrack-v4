@@ -55,6 +55,10 @@ export default async function handler(request) {
   if (!image || typeof image !== "string" || image.length < 100) {
     return jsonError("Image manquante ou invalide", 400, allowedOrigin);
   }
+  // Plafond de taille (base64) — évite l'envoi de payloads géants à Groq (coût/DoS)
+  if (image.length > 1500000) {
+    return jsonError("Image trop volumineuse", 413, allowedOrigin);
+  }
   const safeMime = (mime === "image/png" || mime === "image/webp") ? mime : "image/jpeg";
 
   const groqKey = (process.env.GROQ_API_KEY || "").trim();

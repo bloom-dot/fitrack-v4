@@ -5071,7 +5071,7 @@ function computeDailyMessage(){
     var days=d?Math.floor((today-new Date(d))/86400000):0;
     if(days>worstDays){worstDays=days;worst=cat;}
   });
-  if(worst&&worstDays>=7)return 'Ça fait <b>'+worstDays+' jours</b> que tu n\'as pas travaillé : <b>'+worst+'</b>. Pense à l\'inclure bientôt !';
+  if(worst&&worstDays>=7)return 'Ça fait <b>'+worstDays+' jours</b> que tu n\'as pas travaillé : <b>'+esc(worst)+'</b>. Pense à l\'inclure bientôt !';
   var plateau=detectPlateau();
   if(plateau)return plateau;
   return null;
@@ -5086,7 +5086,7 @@ function detectPlateau(){
     var data=exNames[name];if(data.length<3)return;
     var maxes=data.slice(0,4).map(function(d){var m=0;(d.sets||[]).forEach(function(s){if(s.kg>m)m=s.kg;});return m;});
     var allSame=maxes.every(function(v){return v===maxes[0]&&v>0;});
-    if(allSame&&maxes.length>=3)found='<b>'+name+'</b> stagne à <b>'+maxes[0]+' kg</b> depuis '+maxes.length+' séances. Essaie un drop set, du tempo lent, ou augmente de 1.25 kg.';
+    if(allSame&&maxes.length>=3)found='<b>'+esc(name)+'</b> stagne à <b>'+maxes[0]+' kg</b> depuis '+maxes.length+' séances. Essaie un drop set, du tempo lent, ou augmente de 1.25 kg.';
   });
   return found;
 }
@@ -7354,7 +7354,7 @@ async function sendAI(){
   if(todayMsgs>=limit){
     appendMsg('usr',msg);
     inp.value='';
-    appendMsg('bot','Tu as utilisé tes <b>'+limit+' messages gratuits</b> aujourd\'hui.\n\nPasse en Pro pour 30 messages/jour.');
+    appendMsg('bot','Tu as utilisé tes **'+limit+' messages gratuits** aujourd\'hui.\n\nPasse en **Pro** pour 30 messages/jour.');
     setTimeout(function(){showPaywall('ai');},1000);
     return;
   }
