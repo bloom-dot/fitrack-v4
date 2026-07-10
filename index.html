@@ -1947,6 +1947,7 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
     <div id="debrief-photo-preview" style="display:none;margin:10px 0;position:relative">
       <img id="debrief-photo-img" style="width:100%;max-height:160px;object-fit:cover;border-radius:var(--r-sm)">
       <div onclick="clearSharePhoto()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.7);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px">✕</div>
+      <div style="font-size:11px;color:var(--green);margin-top:6px;text-align:center">✓ Enregistrée dans Profil › Photos de progression</div>
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn-primary" style="flex:2" onclick="closeDebrief()">Continuer</button>
@@ -3629,6 +3630,26 @@ function lastPerf(name){
   }
   return null;
 }
+// Poids de corps courant : dernière pesée enregistrée, sinon poids du profil
+function currentBodyweight(){
+  if(typeof measurements!=='undefined'&&measurements&&measurements.length){
+    for(var i=measurements.length-1;i>=0;i--){if(measurements[i]&&measurements[i].weight)return measurements[i].weight;}
+  }
+  var p=(typeof userProfile!=='undefined'&&userProfile)?userProfile:((typeof OB!=='undefined'&&OB.data)?OB.data:{});
+  return p.poids||0;
+}
+// Remplit les champs "Poids kg" vides d'un exercice avec le poids du corps (exos au PDC : pompes, tractions, dips…)
+function fillBodyweight(bid){
+  var bw=currentBodyweight();
+  if(!bw){toast('Renseigne d\'abord ton poids dans ton profil');return;}
+  var wrap=document.getElementById('sets-'+bid);if(!wrap)return;
+  var rows=wrap.querySelectorAll('.set-row');var n=0;
+  for(var i=0;i<rows.length;i++){
+    var kgInp=rows[i].querySelector('.set-inp');
+    if(kgInp&&!kgInp.value){kgInp.value=bw;kgInp.classList.remove('sug');onSetInp(kgInp);n++;}
+  }
+  toast(n?'Poids du corps ('+bw+' kg) appliqué — ajoute du lest si besoin':'Séries déjà remplies');
+}
 function addExBlock(name,muscle,sugWeight,sugReps,nbSets,cat){
   exCtr++;var id='ex-'+exCtr;
   var container=document.getElementById('ex-list');
@@ -3655,7 +3676,7 @@ function addExBlock(name,muscle,sugWeight,sugReps,nbSets,cat){
     ?'<span>#</span><span>Durée (min)</span><span>Dist. (km)</span><span>Info</span><span>✓</span><span></span>'
     :'<span>#</span><span>Poids kg</span><span>Reps</span><span class="tip" data-tip="Volume = poids × reps. Plus il est haut, plus tu progresses.">Vol.</span><span>✓</span><span></span>';
   block.innerHTML='<div class="ex-block-hdr"><div><div class="ex-block-name">'+esc(name)+'</div><div class="ex-block-muscle">'+muscleLine+'</div></div>'
-    +'<div class="ex-block-acts">'+(est?'<div class="rm-badge-btn tip" data-tip="1RM = le poids max que tu peux soulever 1 fois. Sert à calculer tes charges." id="rmb-'+id+'" onclick="openRMModal(\''+escAttr(name)+'\','+est+')">1RM ~'+est+' kg</div>':'')+' <div class="ex-del" onclick="document.getElementById(\''+id+'\').remove();toast(\'Exercice retiré\');updateSessionProgress()">✕</div></div></div>'
+    +'<div class="ex-block-acts">'+(isCardio?'':'<div class="rm-badge-btn tip" data-tip="Poids du corps : remplit le champ Poids avec ton poids corporel. Ajoute du lest ensuite si tu es lesté (dips/tractions lestés)." onclick="fillBodyweight(\''+id+'\')">＋PDC</div> ')+(est?'<div class="rm-badge-btn tip" data-tip="1RM = le poids max que tu peux soulever 1 fois. Sert à calculer tes charges." id="rmb-'+id+'" onclick="openRMModal(\''+escAttr(name)+'\','+est+')">1RM ~'+est+' kg</div>':'')+' <div class="ex-del" onclick="document.getElementById(\''+id+'\').remove();toast(\'Exercice retiré\');updateSessionProgress()">✕</div></div></div>'
     +'<div class="sets-wrap" id="sets-'+id+'"><div class="sets-hdr">'+hdr+'</div></div>'
     +(planCan('notes')?'<input class="inp ex-note" placeholder="Note (ex: épaule gênée, bonne sensation…)" style="margin-top:6px;font-size:12px;padding:8px 10px">':'<div class="ex-note-lock" onclick="showPaywall(\'notes\')" style="margin-top:6px;font-size:11px;color:var(--t3);cursor:pointer">🔒 Notes d\'exercice — Pro</div>');
   container.appendChild(block);
@@ -4204,14 +4225,17 @@ function pickSharePhoto(cb){
   inp.onchange=function(){
     if(!inp.files||!inp.files[0]){if(cb)cb();return;}
     var reader=new FileReader();
+    var pickedFile=inp.files[0];
     reader.onload=function(e){
       sharePhotoData=e.target.result;
       var prev=document.getElementById('debrief-photo-preview');
       var img=document.getElementById('debrief-photo-img');
       if(prev&&img){img.src=sharePhotoData;prev.style.display='block';}
+      // Enregistre aussi la photo dans "Photos de progression" (profil) pour la retrouver plus tard
+      if(typeof uploadProgressPhoto==='function'){uploadProgressPhoto(pickedFile);}
       if(cb)cb();
     };
-    reader.readAsDataURL(inp.files[0]);
+    reader.readAsDataURL(pickedFile);
   };
   inp.click();
 }
@@ -4802,6 +4826,12 @@ function programWeekNum(){
 }
 // Une semaine sur 6 est une semaine de décharge (deload) : -1 série, charges allégées
 function isDeloadWeek(){return programWeekNum()%6===0;}
+// Infos sur la prochaine semaine de décharge (deload arrive toutes les 6 semaines)
+function nextDeloadInfo(){
+  var wk=programWeekNum();
+  var inWeeks=(6-(wk%6))%6; // 0 = c'est cette semaine
+  return {week:wk,inWeeks:inWeeks,deloadWeek:wk+inWeeks};
+}
 function buildDefaultSession(force){
   var list=document.getElementById('ex-list');if(!list)return;list.innerHTML='';exCtr=0;
   resetSessionTimerUI();
@@ -4835,6 +4865,13 @@ function buildDefaultSession(force){
         var b=document.createElement('div');b.id='deload-banner';b.className='card';b.style.cssText='margin-bottom:12px;border:1px solid rgba(212,255,0,.3);background:var(--acc-d);font-size:12px;color:var(--t2)';
         b.innerHTML='<span style="color:var(--acc);font-weight:600">💤 Semaine de récupération (deload)</span><br>Charges allégées et 1 série en moins cette semaine pour favoriser la récupération.';
         list.parentNode.insertBefore(b,list);
+      }else{
+        var nd=nextDeloadInfo();
+        if(nd.inWeeks>0){
+          var nb=document.createElement('div');nb.id='deload-banner';nb.className='card';nb.style.cssText='margin-bottom:12px;font-size:11px;color:var(--t2);text-align:center';
+          nb.innerHTML='🗓️ Semaine '+nd.week+' du programme · Prochaine semaine de récupération : <b style="color:var(--acc)">S'+nd.deloadWeek+'</b> (dans '+nd.inWeeks+' semaine'+(nd.inWeeks>1?'s':'')+').';
+          list.parentNode.insertBefore(nb,list);
+        }
       }
       d.exercises.forEach(function(e){
         var ref=EX_DB.find(function(x){return x.name===e.name;});
@@ -6425,9 +6462,31 @@ function renderNutrition(){
       {ico:'w',ti:'💧',t:'Hydratation — '+(Math.round(waterL/100)/10)+' L/jour',txt:'Ajouter <strong>500 ml par heure d\'effort.</strong> L\'hydratation impacte directement la force et la récupération.'}
     ].map(function(a){return '<div class="advice-item"><div class="adv-ico '+a.ico+'">'+a.ti+'</div><div><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px">'+a.t+'</div><div class="adv-txt">'+a.txt+'</div></div></div>';}).join('')
     +'</div>'
-    +'<div class="card"><div class="sh" style="margin-top:0;margin-bottom:10px"><h2 class="D" style="font-size:15px">Projection 12 semaines</h2></div>'
-    +[0,2,4,6,8,10,12].map(function(w){var ww=Math.round((p.poids+w*delta)*10)/10;var diff=Math.round((ww-p.poids)*10)/10;var range=Math.abs(12*delta)||1;var pct=Math.round(Math.abs(w*delta)/range*85+5);return '<div class="tl-row"><span class="tl-wk">S'+w+(w===0?' ▶':'')+'</span><div class="tl-bg"><div class="tl-fill" style="width:'+pct+'%"></div></div><span class="tl-v">'+ww+' kg</span><span class="tl-d">'+(diff===0?'départ':diff>0?'+'+diff+' kg':diff+' kg')+'</span></div>';}).join('')
-    +'</div>'
+    +(function(){
+        var wa=(typeof weeklyAvgWeights==='function')?weeklyAvgWeights():[];
+        var hasData=wa.length>0;
+        var startW=hasData?wa[0].avg:p.poids;
+        var lastIdx=hasData?wa.length-1:0;
+        var curW=hasData?wa[lastIdx].avg:p.poids;
+        var disp=[0,2,4,6,8,10,12];
+        var markW=disp.reduce(function(best,w){return Math.abs(w-lastIdx)<Math.abs(best-lastIdx)?w:best;},0);
+        var range=Math.abs(12*delta)||Math.max(1,Math.abs(curW-startW)||1);
+        var rows=disp.map(function(w){
+          var real=hasData&&w<=lastIdx;
+          var ww=real?wa[w].avg:Math.round((curW+(w-lastIdx)*delta)*10)/10;
+          var diff=Math.round((ww-startW)*10)/10;
+          var pct=Math.round(Math.min(1,Math.abs(diff)/range)*80+5);
+          var cur=(w===markW);
+          var col=real?'':'color:var(--t2)';
+          return '<div class="tl-row"><span class="tl-wk" style="'+col+'">S'+w+(cur?' ▶':'')+'</span><div class="tl-bg"><div class="tl-fill" style="width:'+pct+'%'+(real?'':';opacity:.5')+'"></div></div><span class="tl-v" style="'+col+'">'+ww+' kg</span><span class="tl-d">'+(diff===0?(w===0?'départ':'—'):diff>0?'+'+diff+' kg':diff+' kg')+'</span></div>';
+        }).join('');
+        var cap=hasData
+          ?'Réel jusqu\'à <b>S'+markW+'</b> (d\'après tes pesées), projection ensuite selon ton objectif.'
+          :'Projection théorique selon ton objectif. Enregistre ton poids chaque semaine (onglet Progrès) pour voir ton évolution réelle ici.';
+        return '<div class="card"><div class="sh" style="margin-top:0;margin-bottom:10px"><h2 class="D" style="font-size:15px">Évolution &amp; projection 12 sem.</h2></div>'
+          +'<div style="font-size:11px;color:var(--t2);margin-bottom:10px">'+cap+'</div>'
+          +rows+'</div>';
+    })()
     +'<div class="card"><button class="btn-primary" onclick="sendQP(\'Génère un plan repas hebdomadaire de '+surplus+' kcal avec '+protG+'g protéines, '+carbG+'g glucides, '+fatG+'g lipides\')">🥗 Générer mon plan repas avec FitAI</button></div>';
 
   scroll.innerHTML=html;

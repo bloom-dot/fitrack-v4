@@ -1,0 +1,8 @@
+.claude
+__pycache__
+*.pyc
+.git
+CONTEXT-FITRACK.md
+FITRACK_BRIEF_FABLE.md
+REPRISE-PROJET.md
+CLAUDE.md

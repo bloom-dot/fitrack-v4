@@ -41,6 +41,13 @@ node -e "var fs=require('fs');var src=fs.readFileSync('index.html','utf8');var m
 
 ## Ce qui a été fait récemment (juillet 2026)
 
+### Corrections 4 retours utilisateur (2026-07-10, shell-28)
+- **Poids du corps** : bouton `＋PDC` dans l'en-tête de chaque exercice (`fillBodyweight`) → remplit les champs Poids vides avec le poids de corps (`currentBodyweight` = dernière pesée sinon poids profil). Corrige le bug où une série sans poids était jetée par `finishSession` (`if(kg&&reps)`). Ajout de lest possible ensuite.
+- **Projection 12 sem.** : ne part plus d'un S0 figé. Utilise `weeklyAvgWeights()` → affiche le **réel** jusqu'à la dernière pesée (▶ sur la semaine courante), projection ensuite. Titre → « Évolution & projection 12 sem. » + légende.
+- **Deload visible** : `nextDeloadInfo()` + bandeau sur l'écran séance annonçant « Prochaine semaine de récupération : Sx (dans N sem.) » les semaines hors deload. (Deload = 1 sem/6, inchangé.)
+- **Photo fin de séance** : désormais **aussi sauvée** dans Profil › Photos de progression (`pickSharePhoto` → `uploadProgressPhoto`), plus seulement pour l'image de partage. Mention « ✓ Enregistrée » dans le debrief.
+- **`.vercelignore` ajouté** : exclut `.claude`, `__pycache__`, `*.pyc`, docs `.md`. ⚠️ **Sans ça le déploiement Vercel échouait** (erreur build vide juste après « Downloading files » — les fichiers du skill ui-ux-pro-max cassaient le build).
+
 ### Coach Mouvement
 - Squelette rouge→vert temps réel (MediaPipe), bip position, compteur de reps fiabilisé (anti-scintillement 3 frames, min 4 frames tenues, 1,2 s entre reps), score /100 (angle secondaire pondéré 30 %), barre fatigue, replay vidéo + partage.
 - **Voix par mascotte** (`MASCOT_VOICE`) : pitch/débit/phrases signature par personnage (Kuma grave-lent → Chimp aigu-rapide), salutation au lancement, file d'attente vocale (plus de phrases coupées), résumé vocal de fin de séance.
