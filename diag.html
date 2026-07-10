@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>FiTrack — Diagnostic</title>
+<style>
+body{margin:0;background:#0a0a0a;color:#eee;font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:20px;line-height:1.5}
+h1{font-size:20px;margin:0 0 4px}
+.sub{color:#888;font-size:12px;margin-bottom:18px}
+.row{background:#151515;border:1px solid #2a2a2a;border-radius:10px;padding:12px 14px;margin-bottom:8px;font-size:14px}
+.row b{display:block;font-size:12px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.ok{color:#52e87a;font-weight:700}
+.ko{color:#ff5252;font-weight:700}
+.wait{color:#ffc340}
+.err{font-size:11px;color:#ff8a8a;word-break:break-all;margin-top:4px}
+#send{margin-top:14px;font-size:12px;color:#888;text-align:center}
+</style>
+</head>
+<body>
+<h1>🔬 Diagnostic FiTrack</h1>
+<div class="sub">Fais une capture d'écran de cette page une fois tous les tests terminés.</div>
+<div class="row"><b>Appareil</b><span id="t-ua">...</span></div>
+<div class="row"><b>1. WebAssembly disponible</b><span id="t-wa" class="wait">test...</span></div>
+<div class="row"><b>2. Compilation WASM autorisée (politique de sécurité)</b><span id="t-csp" class="wait">test...</span><div class="err" id="e-csp"></div></div>
+<div class="row"><b>3. API caméra présente</b><span id="t-cam" class="wait">test...</span></div>
+<div class="row"><b>4. Chargement du script MediaPipe (CDN)</b><span id="t-cdn" class="wait">test...</span><div class="err" id="e-cdn"></div></div>
+<div class="row"><b>5. Initialisation du modèle d'analyse</b><span id="t-init" class="wait">test...</span><div class="err" id="e-init"></div></div>
+<div class="row"><b>6. Première analyse d'image</b><span id="t-res" class="wait">test...</span><div class="err" id="e-res"></div></div>
+<div id="send">Envoie la capture dans la conversation.</div>
+<script>
+function set(id,ok,txt,err){
+  var el=document.getElementById('t-'+id);
+  el.className=ok?'ok':'ko';
+  el.textContent=txt;
+  if(err){var e=document.getElementById('e-'+id);if(e)e.textContent=String(err).slice(0,220);}
+}
+document.getElementById('t-ua').textContent=navigator.userAgent;
+
+// 1. WebAssembly présent
+var hasWA=typeof WebAssembly!=='undefined';
+set('wa',hasWA,hasWA?'✓ OUI':'✗ NON');
+
+// 2. Compilation WASM sous la CSP de prod
+try{
+  new WebAssembly.Module(new Uint8Array([0,97,115,109,1,0,0,0]));
+  set('csp',true,'✓ AUTORISÉE');
+}catch(e){
+  set('csp',false,'✗ BLOQUÉE',e&&e.message);
+}
+
+// 3. Caméra
+var hasCam=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+set('cam',hasCam,hasCam?'✓ PRÉSENTE':'✗ ABSENTE');
+
+// 4-6. MediaPipe complet
+var t0=Date.now();
+var s=document.createElement('script');
+s.src='https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js';
+s.crossOrigin='anonymous';
+s.onload=function(){
+  set('cdn',true,'✓ CHARGÉ ('+(Date.now()-t0)+' ms)');
+  try{
+    var p=new Pose({locateFile:function(f){return 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/'+f;}});
+    p.setOptions({modelComplexity:1,smoothLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
+    var fired=false;
+    p.onResults(function(){
+      if(fired)return;fired=true;
+      set('res',true,'✓ OK ('+(Date.now()-t0)+' ms) — le coach peut fonctionner sur cet appareil');
+    });
+    var init=p.initialize?p.initialize():Promise.resolve();
+    init.then(function(){
+      set('init',true,'✓ OK ('+(Date.now()-t0)+' ms)');
+      var cv=document.createElement('canvas');cv.width=320;cv.height=240;
+      cv.getContext('2d').fillRect(0,0,320,240);
+      function pump(){
+        if(fired)return;
+        p.send({image:cv}).catch(function(e){set('res',false,'✗ ÉCHEC envoi',e);});
+        setTimeout(pump,600);
+      }
+      pump();
+      setTimeout(function(){if(!fired)set('res',false,'✗ AUCUN RÉSULTAT après 25 s');},25000);
+    }).catch(function(e){
+      set('init',false,'✗ ÉCHEC',e&&(e.message||e));
+      set('res',false,'—');
+    });
+  }catch(e){
+    set('init',false,'✗ ÉCHEC création',e&&e.message);
+    set('res',false,'—');
+  }
+};
+s.onerror=function(){
+  set('cdn',false,'✗ ÉCHEC de chargement (réseau ou blocage)');
+  set('init',false,'—');set('res',false,'—');
+};
+document.head.appendChild(s);
+</script>
+</body>
+</html>

@@ -109,7 +109,7 @@ export default async function handler(request) {
       const { type_id, week_key, score, friend_code } = body;
       if (!type_id || !week_key || score == null) return jsonError("Champs manquants", 400);
       const scoreNum = parseFloat(score);
-      if (isNaN(scoreNum) || scoreNum < 0) return jsonError("Score invalide", 400);
+      if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100000 || !isFinite(scoreNum)) return jsonError("Score invalide", 400);
 
       // Vérifier si un score existe déjà — ne mettre à jour que si meilleur
       let qs = `user_id=eq.${userId}&challenge_type_id=eq.${encodeURIComponent(type_id)}&week_key=eq.${encodeURIComponent(week_key)}`;

@@ -21,8 +21,7 @@ export default async function handler(request) {
   const token = auth.replace(/^Bearer\s+/i, "").trim();
   if (!token) return jsonError("Non authentifié", 401);
 
-  const serviceKey = (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) ||
-    request.headers.get("x-supabase-service-role");
+  const serviceKey = (typeof process !== "undefined" && process.env?.SUPABASE_SERVICE_ROLE_KEY) || "";
   if (!serviceKey) return jsonError("Config manquante", 500);
 
   // Vérifier l'identité de l'utilisateur
@@ -33,8 +32,11 @@ export default async function handler(request) {
   const userData = await userRes.json();
   const userId = userData.id;
 
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body) return jsonError("Corps JSON invalide", 400);
   const { subscription, action } = body;
+
+  if (action !== "subscribe" && action !== "unsubscribe") return jsonError("Action invalide", 400);
 
   if (action === "unsubscribe") {
     await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?user_id=eq.${userId}&endpoint=eq.${encodeURIComponent(subscription?.endpoint || "")}`, {

@@ -1,5 +1,5 @@
 // Service worker FiTrack — cache app shell + gestion notifications push
-const CACHE_NAME = 'fitrack-v4-shell-2';
+const CACHE_NAME = 'fitrack-v4-shell-27';
 const APP_SHELL = [
   './',
   './index.html',
@@ -30,11 +30,14 @@ self.addEventListener('fetch', function(event) {
   if (event.request.method !== 'GET') return;
   var url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/')) return;
   if (url.search) { event.respondWith(fetch(event.request)); return; }
   event.respondWith(
     fetch(event.request).then(function(res) {
-      var resClone = res.clone();
-      caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, resClone); });
+      if(res.ok){
+        var resClone = res.clone();
+        caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, resClone); });
+      }
       return res;
     }).catch(function() {
       return caches.match(event.request).then(function(cached) {

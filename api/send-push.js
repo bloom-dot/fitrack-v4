@@ -31,6 +31,9 @@ export default async function handler(req, res) {
 
   const { user_id, title, body, url } = req.body;
   if (!user_id) return res.status(400).json({ error: "user_id requis" });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user_id)) {
+    return res.status(400).json({ error: "user_id invalide" });
+  }
 
   const supabase = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
   const { data: subs } = await supabase

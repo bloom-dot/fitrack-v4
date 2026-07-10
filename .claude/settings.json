@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$json = $input | ConvertFrom-Json; $file = $json.tool_input.file_path; if ($file -like '*fitrack*') { Set-Location 'C:\\Users\\ferna\\Downloads\\fitrack'; vercel --prod --yes 2>&1 | Select-Object -Last 5 }",
+            "shell": "powershell",
+            "async": true,
+            "statusMessage": "Déploiement Vercel en cours...",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}
