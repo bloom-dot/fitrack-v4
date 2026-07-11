@@ -5926,13 +5926,13 @@ function _tryGroqVision(vid,status){
     }).then(function(r){return r.json();}).then(function(d){
       clearTimeout(tid);
       _barcodeVisionBusy=false;
-      if(d.error||!d.name){
-        fail('Produit non reconnu — rapproche-toi ou saisis le code');
+      if(d.error||!d.food_name||d.is_food===false){
+        fail('Aliment non reconnu — rapproche-toi et recadre l\'assiette');
         return;
       }
       _barcodeFlash();
       if(navigator.vibrate)navigator.vibrate(60);
-      if(status)status.textContent='✓ Produit identifié par IA !';
+      if(status)status.textContent='✓ Aliment identifié par IA !';
       _renderGroqResult(d);
     }).catch(function(){
       clearTimeout(tid);
@@ -5941,22 +5941,43 @@ function _tryGroqVision(vid,status){
   }).catch(function(){fail();});
 }
 
+// Rendu de l'estimation IA (schéma riche : poids estimé, confiance, macros, alternatives).
+// Groq renvoie des TOTAUX pour estimated_weight_g → on convertit en valeurs /100 g
+// pour réutiliser _foodCardHTML + addBarcodeFood (qui raisonnent en /100 g).
 function _renderGroqResult(d){
   var res=document.getElementById('barcode-result');
   if(!res)return;
-  if(d.isFood){
-    var name=d.name+(d.brand?' ('+d.brand+')':'');
-    res.innerHTML=_foodCardHTML({name:name,cal:d.calories||0,prot:d.protein||0,carb:d.carbs||0,fat:d.fat||0,img:'',ns:'',ai:true});
-    res.style.display='block';
-  } else {
+  var name=d.food_name||'';
+  var m=d.macros||{};
+  var isFood=(d.is_food!==false)&&!!name&&((d.calories||0)>0||(m.protein_g||m.carbs_g||m.fat_g));
+  if(!isFood){
     res.innerHTML='<div style="background:var(--s2);border-radius:8px;padding:10px">'
-      +'<div style="font-size:10px;color:var(--acc);font-weight:700;margin-bottom:4px">✨ IDENTIFIÉ PAR IA</div>'
-      +'<div style="font-weight:700;font-size:13px">'+esc(d.name)+'</div>'
-      +(d.brand?'<div style="font-size:11px;color:var(--t2);margin-top:2px">'+esc(d.brand)+'</div>':'')
-      +'<div style="font-size:11px;color:var(--t2);margin-top:6px;font-style:italic">Produit non alimentaire — pas de données nutritionnelles.</div>'
+      +'<div style="font-size:10px;color:var(--acc);font-weight:700;margin-bottom:4px">✨ ANALYSE IA</div>'
+      +'<div style="font-size:12px;color:var(--t2);font-style:italic">Aucun aliment reconnu sur l\'image. Recadre le plat, rapproche-toi, ou utilise le scan code-barres / la recherche.</div>'
       +'</div>';
     res.style.display='block';
+    return;
   }
+  var w=Math.max(1,Math.round(d.estimated_weight_g||100));
+  var per=function(v){return Math.round((v||0)/w*100*10)/10;};
+  var cal100=Math.round((d.calories||0)/w*100);
+  var portions=[{label:w+' g (estimé)',val:w}];
+  if(w!==100)portions.push({label:'100 g',val:100});
+  res.innerHTML=_foodCardHTML({
+    name:name,
+    cal:cal100,
+    prot:per(m.protein_g),
+    carb:per(m.carbs_g),
+    fat:per(m.fat_g),
+    unit:'g',
+    qty0:w,
+    ai:true,
+    confidence:d.confidence_score,
+    raw:d.is_raw_ingredient,
+    alternatives:d.alternatives,
+    portions:portions
+  });
+  res.style.display='block';
 }
 
 function stopBarcodeCamera(){
@@ -6040,8 +6061,13 @@ function _foodCardHTML(o){
   h+='<div style="display:flex;gap:12px;align-items:center">';
   if(o.img)h+='<img src="'+esc(o.img)+'" style="width:56px;height:56px;object-fit:contain;border-radius:10px;background:#fff;flex-shrink:0">';
   h+='<div style="flex:1;min-width:0">';
-  if(o.ai)h+='<div style="font-size:10px;color:var(--acc);font-weight:700;letter-spacing:.5px;margin-bottom:2px">✨ ESTIMATION IA</div>';
-  h+='<div style="font-weight:700;font-size:14px;line-height:1.3">'+esc(o.name)+'</div>';
+  if(o.ai){
+    var confTxt=(o.confidence!=null&&isFinite(o.confidence))?' · '+Math.round(o.confidence*100)+'% sûr':'';
+    h+='<div style="font-size:10px;color:var(--acc);font-weight:700;letter-spacing:.5px;margin-bottom:2px">✨ ESTIMATION IA'+confTxt+'</div>';
+  }
+  h+='<div style="font-weight:700;font-size:14px;line-height:1.3">'+esc(o.name)
+    +(o.raw?' <span style="font-size:9px;font-weight:700;color:var(--green);border:1px solid var(--green);border-radius:5px;padding:1px 5px;vertical-align:middle">Ingrédient brut</span>':'')
+    +'</div>';
   if(o.ns&&NS_COLORS[o.ns]){
     h+='<div style="display:inline-flex;align-items:center;gap:5px;margin-top:4px">'
       +'<span style="width:18px;height:18px;border-radius:5px;background:'+NS_COLORS[o.ns]+';color:#0a0a0a;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">'+o.ns.toUpperCase()+'</span>'
@@ -6090,7 +6116,17 @@ function _foodCardHTML(o){
       +mrow('Fibres',mi.fib,'g',3,6,true)
       +'</div></div>';
   }
-  if(o.ai)h+='<div style="font-size:10px;color:var(--t2);margin-top:6px;font-style:italic">Valeurs estimées par IA — vérifie l\'étiquette.</div>';
+  // Alternatives suggérées par l'IA (aliments plus sains / proches)
+  if(o.alternatives&&o.alternatives.length){
+    h+='<div style="margin-top:10px">'
+      +'<div style="font-size:10px;color:var(--t2);font-weight:600;margin-bottom:5px">💡 Alternatives</div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+      +o.alternatives.map(function(a){
+        return '<span style="font-size:11px;color:var(--t2);background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:4px 10px">'+esc(a)+'</span>';
+      }).join('')
+      +'</div></div>';
+  }
+  if(o.ai)h+='<div style="font-size:10px;color:var(--t2);margin-top:8px;font-style:italic">Valeurs estimées par IA — ajuste la quantité et vérifie si besoin.</div>';
   h+='</div>';
   return h;
 }
