@@ -1113,6 +1113,17 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
     </div>
     <div class="scroll" id="home-scroll">
 
+      <!-- Bannière d'installation (proéminente, sans passer par le menu du navigateur) -->
+      <div id="home-install-banner" style="display:none;margin:0 14px 12px;padding:12px 14px;background:linear-gradient(135deg,var(--acc-d),rgba(212,255,0,.05));border:1px solid rgba(212,255,0,.3);border-radius:14px;align-items:center;gap:12px">
+        <div style="font-size:24px;flex-shrink:0">📲</div>
+        <div style="flex:1;min-width:0" onclick="homeInstallTap()">
+          <div style="font-weight:700;font-size:13px">Installer FiTrack</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:1px" id="home-install-sub">Accès en 1 tap depuis ton écran d'accueil</div>
+        </div>
+        <button class="btn-sm acc" style="flex-shrink:0" onclick="homeInstallTap()">Installer</button>
+        <button onclick="dismissHomeInstall()" aria-label="Fermer" style="background:none;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0 2px;flex-shrink:0">✕</button>
+      </div>
+
       <!-- TAB : Aujourd'hui -->
       <div id="htab-content-today">
         <!-- Mascotte -->
@@ -7551,6 +7562,7 @@ function isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.M
 window.addEventListener('beforeinstallprompt',function(e){
   e.preventDefault();
   deferredPwaPrompt=e;
+  updateHomeInstallBanner(); // bascule la bannière en mode "install 1 tap"
   maybeShowPwaModal();
 });
 
@@ -7587,9 +7599,14 @@ function _applyPwaModal(ctx){
   }else if(ctx==='inapp'){
     txt.innerHTML="Tu as ouvert FiTrack dans le navigateur intégré d'une autre app (Instagram, WhatsApp, Messages, Gmail…). L'installation n'y est pas possible.<br><br><b>Ouvre ce lien dans ton vrai navigateur</b> : touche le menu <b>⋯</b> (souvent en haut à droite) puis <b>« Ouvrir dans le navigateur »</b> (Safari ou Chrome), puis reviens sur cette page.";
   }else if(ctx==='ios-safari'){
-    txt.innerHTML="Pour installer FiTrack sur iPhone : touche le bouton <b>Partager</b> (le carré avec une flèche ⬆︎, en bas de Safari), puis choisis <b>« Sur l'écran d'accueil »</b>.";
+    txt.innerHTML="<div style='display:flex;flex-direction:column;gap:9px;text-align:left'>"
+      +"<div style='color:var(--text)'>Ajoute FiTrack en 3 gestes :</div>"
+      +"<div><b>1.</b> Touche <b>Partager</b> <span style='display:inline-block;border:1px solid var(--border2);border-radius:5px;padding:0 5px'>⬆︎</span> (barre du bas de Safari)</div>"
+      +"<div><b>2.</b> Fais défiler et choisis <b>« Sur l'écran d'accueil »</b></div>"
+      +"<div><b>3.</b> Touche <b>Ajouter</b> — c'est fait ✅</div>"
+      +"</div>";
   }else if(ctx==='ios-other'){
-    txt.innerHTML="Sur iPhone, l'installation ne fonctionne que depuis <b>Safari</b>. Ouvre <b>fitrack-v4.vercel.app</b> dans Safari, puis Partager ⬆︎ → <b>« Sur l'écran d'accueil »</b>.";
+    txt.innerHTML="Sur iPhone, l'installation ne marche que depuis <b>Safari</b>.<br><br>Ouvre <b>fitrack-v4.vercel.app</b> dans <b>Safari</b>, puis : Partager <span style='display:inline-block;border:1px solid var(--border2);border-radius:5px;padding:0 5px'>⬆︎</span> → <b>« Sur l'écran d'accueil »</b> → <b>Ajouter</b>.";
   }else{ // generic Android / desktop
     txt.innerHTML="Ouvre le menu de ton navigateur (⋮) puis choisis <b>« Installer l'application »</b> ou <b>« Ajouter à l'écran d'accueil »</b>.";
   }
@@ -7606,6 +7623,7 @@ function initPwaInstallPrompt(){
   var row=document.getElementById('pwa-install-row');
   if(isStandalone()){ if(row)row.style.display='none'; return; }
   if(row)row.style.display='';   // accès manuel toujours dispo tant que pas installée
+  updateHomeInstallBanner();     // bannière proéminente sur l'accueil
   var dismissed=DB.g('pwaPromptDismissed',0);
   if(Date.now()-dismissed<7*24*60*60*1000)return;
   var ctx=_pwaContext();
@@ -7621,6 +7639,37 @@ function maybeShowPwaModal(){
   if(Date.now()-dismissed<7*24*60*60*1000)return;
   setTimeout(function(){ _applyPwaModal('android-ready'); document.getElementById('pwa-modal').classList.add('open'); },2500);
 }
+// Bannière d'accueil : accès install proéminent, sans menu du navigateur.
+function homeInstallTap(){
+  if(deferredPwaPrompt){doPwaInstall();return;} // Android : invite native en 1 tap
+  openPwaModal();                               // iOS / navigateur intégré / autre : aide guidée
+}
+function dismissHomeInstall(){
+  DB.s('homeInstallHidden',1);
+  var b=document.getElementById('home-install-banner');if(b)b.style.display='none';
+}
+function updateHomeInstallBanner(){
+  var b=document.getElementById('home-install-banner');if(!b)return;
+  if(isStandalone()||DB.g('homeInstallHidden',0)){b.style.display='none';return;}
+  var ctx=_pwaContext();
+  if(ctx==='installed'){b.style.display='none';return;}
+  var sub=document.getElementById('home-install-sub');
+  if(sub){
+    if(ctx==='android-ready')sub.textContent="Installe-la en 1 tap sur ton écran d'accueil";
+    else if(ctx==='inapp')sub.textContent="Ouvre dans ton navigateur pour l'installer — touche ici";
+    else if(ctx==='ios-safari')sub.textContent="2 gestes via le bouton Partager — touche ici";
+    else if(ctx==='ios-other')sub.textContent="Ouvre dans Safari pour l'installer — touche ici";
+    else sub.textContent="Ajoute-la à ton écran d'accueil — touche ici";
+  }
+  b.style.display='flex';
+}
+// App installée : on masque bannière + entrée réglages, et on retient l'état.
+window.addEventListener('appinstalled',function(){
+  DB.s('homeInstallHidden',1);
+  var b=document.getElementById('home-install-banner');if(b)b.style.display='none';
+  var row=document.getElementById('pwa-install-row');if(row)row.style.display='none';
+  try{toast('FiTrack installée ✓');}catch(e){}
+});
 async function doPwaInstall(){
   if(!deferredPwaPrompt){document.getElementById('pwa-modal').classList.remove('open');return;}
   deferredPwaPrompt.prompt();
