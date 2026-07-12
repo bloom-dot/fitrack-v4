@@ -1532,6 +1532,7 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
       <div class="setting-row" onclick="goTo('challenges')"><div class="setting-lbl">Défis entre amis 🏆</div><div class="setting-val">→</div></div>
       <div class="setting-row" id="push-notif-row" onclick="requestPushPermission()" style="display:none"><div class="setting-lbl" id="push-notif-lbl">🔔 Activer les notifications</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="editProfile()"><div class="setting-lbl">Modifier mon profil</div><div class="setting-val">→</div></div>
+      <div class="setting-row" id="pwa-install-row" style="display:none" onclick="openPwaModal()"><div class="setting-lbl">📲 Installer l'application</div><div class="setting-val">→</div></div>
       <div class="setting-row" onclick="toggleSimpleUI()"><div class="setting-lbl">🔍 Affichage simplifié (gros textes)</div><div class="setting-val" id="simple-ui-val">—</div></div>
       <div class="setting-row" onclick="regenerateProgram()"><div class="setting-lbl">🔄 Régénérer mon programme</div><div class="setting-val">→</div></div>
       <div class="setting-row" id="biometric-setting" style="display:none" onclick="toggleBiometric()"><div class="setting-lbl">Face ID / Touch ID</div><div class="setting-val" id="biometric-setting-val">—</div></div>
@@ -7553,31 +7554,72 @@ window.addEventListener('beforeinstallprompt',function(e){
   maybeShowPwaModal();
 });
 
-// iOS Safari : pas d'API d'installation -> on affiche des instructions.
-// On affiche aussi un message si l'app est déjà "installable" mais que
-// l'événement beforeinstallprompt n'a pas (encore) été reçu.
-function initPwaInstallPrompt(){
-  if(isStandalone())return; // déjà installée / ouverte depuis l'écran d'accueil
-  var dismissed=DB.g('pwaPromptDismissed',0);
-  var weekMs=7*24*60*60*1000;
-  if(Date.now()-dismissed<weekMs)return;
-  if(isIOS()){
-    setTimeout(function(){
-      document.getElementById('pwa-modal-text').textContent="Pour installer FiTrack : appuie sur le bouton Partager (carré avec une flèche) en bas de Safari, puis choisis \"Sur l'écran d'accueil\".";
-      document.getElementById('pwa-install-btn').style.display='none';
-      document.getElementById('pwa-modal').classList.add('open');
-    },2500);
+// Détection du navigateur intégré d'une autre app (Instagram, WhatsApp, Messages,
+// Gmail…). Dans ces webviews, l'installation PWA est IMPOSSIBLE (ni beforeinstallprompt
+// sur Android, ni "Ajouter à l'écran d'accueil" sur iOS). C'est la cause n°1 quand on
+// partage le lien : l'utilisateur l'ouvre dans l'app de messagerie, pas dans son navigateur.
+function isIOSSafari(){
+  var ua=navigator.userAgent||'';
+  return isIOS() && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|FBAN|FBAV|Instagram|Line\/|Messenger|GSA/i.test(ua);
+}
+function isInAppBrowser(){
+  var ua=navigator.userAgent||'';
+  if(/FBAN|FBAV|Instagram|Line\/|Messenger|Snapchat|Twitter|WhatsApp|WeChat|MicroMessenger|TikTok|Pinterest|LinkedInApp|GSA/i.test(ua))return true;
+  // iOS : webview intégrée = WebKit sans le token "Safari" et sans Chrome/Firefox iOS
+  if(isIOS() && /AppleWebKit/i.test(ua) && !/Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua) && !window.navigator.standalone)return true;
+  return false;
+}
+// Choisit le message d'installation adapté à l'appareil / navigateur
+function _pwaContext(){
+  if(isStandalone())return 'installed';
+  if(deferredPwaPrompt)return 'android-ready';   // Chrome/Android a émis beforeinstallprompt
+  if(isInAppBrowser())return 'inapp';
+  if(isIOS())return isIOSSafari()?'ios-safari':'ios-other';
+  return 'generic';                               // Android sans event / desktop
+}
+function _applyPwaModal(ctx){
+  var txt=document.getElementById('pwa-modal-text');
+  var btn=document.getElementById('pwa-install-btn');
+  btn.style.display='none';
+  if(ctx==='android-ready'){
+    txt.textContent="Ajoute FiTrack à ton écran d'accueil pour y accéder en un tap, comme une vraie application.";
+    btn.style.display='block';
+  }else if(ctx==='inapp'){
+    txt.innerHTML="Tu as ouvert FiTrack dans le navigateur intégré d'une autre app (Instagram, WhatsApp, Messages, Gmail…). L'installation n'y est pas possible.<br><br><b>Ouvre ce lien dans ton vrai navigateur</b> : touche le menu <b>⋯</b> (souvent en haut à droite) puis <b>« Ouvrir dans le navigateur »</b> (Safari ou Chrome), puis reviens sur cette page.";
+  }else if(ctx==='ios-safari'){
+    txt.innerHTML="Pour installer FiTrack sur iPhone : touche le bouton <b>Partager</b> (le carré avec une flèche ⬆︎, en bas de Safari), puis choisis <b>« Sur l'écran d'accueil »</b>.";
+  }else if(ctx==='ios-other'){
+    txt.innerHTML="Sur iPhone, l'installation ne fonctionne que depuis <b>Safari</b>. Ouvre <b>fitrack-v4.vercel.app</b> dans Safari, puis Partager ⬆︎ → <b>« Sur l'écran d'accueil »</b>.";
+  }else{ // generic Android / desktop
+    txt.innerHTML="Ouvre le menu de ton navigateur (⋮) puis choisis <b>« Installer l'application »</b> ou <b>« Ajouter à l'écran d'accueil »</b>.";
   }
-  // Pour Android/Chrome, on attend l'event beforeinstallprompt (cf. ci-dessus)
+}
+// Accès MANUEL (depuis Paramètres) : ignore le délai de 7 jours, montre toujours l'aide adaptée.
+function openPwaModal(){
+  var ctx=_pwaContext();
+  if(ctx==='installed'){toast('FiTrack est déjà installée ✓');return;}
+  _applyPwaModal(ctx);
+  document.getElementById('pwa-modal').classList.add('open');
+}
+// Popup AUTO au lancement (respecte le "ne plus afficher pendant 7 jours").
+function initPwaInstallPrompt(){
+  var row=document.getElementById('pwa-install-row');
+  if(isStandalone()){ if(row)row.style.display='none'; return; }
+  if(row)row.style.display='';   // accès manuel toujours dispo tant que pas installée
+  var dismissed=DB.g('pwaPromptDismissed',0);
+  if(Date.now()-dismissed<7*24*60*60*1000)return;
+  var ctx=_pwaContext();
+  // iOS et navigateur intégré ne recevront JAMAIS beforeinstallprompt → on affiche l'aide directement
+  if(ctx==='ios-safari'||ctx==='ios-other'||ctx==='inapp'){
+    setTimeout(function(){ _applyPwaModal(ctx); document.getElementById('pwa-modal').classList.add('open'); },2500);
+  }
+  // Android/Chrome : on attend l'event beforeinstallprompt (→ maybeShowPwaModal)
 }
 function maybeShowPwaModal(){
+  if(isStandalone())return;
   var dismissed=DB.g('pwaPromptDismissed',0);
-  var weekMs=7*24*60*60*1000;
-  if(Date.now()-dismissed<weekMs)return;
-  setTimeout(function(){
-    document.getElementById('pwa-install-btn').style.display='block';
-    document.getElementById('pwa-modal').classList.add('open');
-  },2500);
+  if(Date.now()-dismissed<7*24*60*60*1000)return;
+  setTimeout(function(){ _applyPwaModal('android-ready'); document.getElementById('pwa-modal').classList.add('open'); },2500);
 }
 async function doPwaInstall(){
   if(!deferredPwaPrompt){document.getElementById('pwa-modal').classList.remove('open');return;}
