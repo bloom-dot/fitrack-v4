@@ -5716,10 +5716,23 @@ function openBarcodeScanner(){
   var status=document.getElementById('barcode-scan-status');
   if(status){status.style.display='';status.textContent='Activation caméra...';}
 
-  // Chemin 1 : getUserMedia + BarcodeDetector natif (Chrome/Android/Edge)
-  if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&('BarcodeDetector' in window)){
-    _startNativeScanner(feed,status);
-  // Chemin 2 : Html5Qrcode (Safari, Firefox, anciens navigateurs)
+  if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+    // Chemin 1 : BarcodeDetector natif (Chrome/Android/Edge) — accéléré OS, on n'y touche pas
+    if('BarcodeDetector' in window){
+      _startNativeScanner(feed,status);
+    } else {
+      // Chemin 2 : iPhone/Safari & co → moteur zxing-wasm (bien plus fiable que Html5Qrcode).
+      // Repli sur Html5Qrcode si le module WASM ne se charge pas.
+      if(status)status.textContent='Préparation du scanner…';
+      _ensureZxing().then(function(ok){
+        var modal=document.getElementById('barcode-modal');
+        if(!modal||!modal.classList.contains('open'))return; // scanner fermé entre-temps
+        if(ok)_startZxingScanner(feed,status);
+        else if(typeof Html5Qrcode!=='undefined')_startHtml5QrScan(feed,status);
+        else _barcodeError(feed,'Scanner non disponible sur cet appareil.');
+      });
+    }
+  // Chemin 3 : très vieux navigateurs sans getUserMedia
   } else if(typeof Html5Qrcode!=='undefined'){
     _startHtml5QrScan(feed,status);
   } else {
@@ -5830,6 +5843,80 @@ function _startHtml5QrScan(feed,status){
     })
     .catch(function(){_barcodeError(feed,'Caméra inaccessible.\nSaisis le code manuellement ci-dessous.');});
   }catch(e){_barcodeError(feed,'Erreur scanner.\nSaisis le code manuellement ci-dessous.');}
+}
+
+// ─── Moteur zxing-wasm (iPhone/Safari & navigateurs sans BarcodeDetector) ───
+// Chargé à la demande (module ESM depuis jsdelivr, déjà autorisé par la CSP).
+// import() est encapsulé dans un new Function pour ne pas gêner la validation de syntaxe.
+var _zxImport=null;
+function _ensureZxing(){
+  if(window._zxingReady)return window._zxingReady;
+  if(!_zxImport){try{_zxImport=new Function('u','return import(u);');}catch(e){return Promise.resolve(false);}}
+  window._zxingReady=_zxImport('https://cdn.jsdelivr.net/npm/zxing-wasm@2/+esm').then(function(mod){
+    var read=mod&&(mod.readBarcodes||(mod.default&&mod.default.readBarcodes));
+    if(typeof read!=='function')throw new Error('readBarcodes introuvable');
+    window._zxingRead=function(img){
+      return read(img,{tryHarder:true,formats:['EAN-13','EAN-8','UPC-A','UPC-E'],maxNumberOfSymbols:1});
+    };
+    return true;
+  }).catch(function(){window._zxingRead=null;return false;});
+  return window._zxingReady;
+}
+function _startZxingScanner(feed,status){
+  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080},advanced:[{focusMode:'continuous'}]}})
+  .then(function(stream){
+    _barcodeStream=stream;
+    var vid=document.createElement('video');
+    vid.srcObject=stream;vid.setAttribute('playsinline','');vid.muted=true;
+    feed.appendChild(vid);
+    vid.play().then(function(){
+      if(status)status.textContent='Cadre le code-barres dans le cadre';
+      var cropCanvas=document.createElement('canvas');
+      var cropCtx=cropCanvas.getContext('2d',{willReadFrequently:true});
+      _armVisionFallback();
+      var frameNo=0,busy=false,lastT=0;
+      function loop(ts){
+        if(!_barcodeStream)return;
+        _barcodeRaf=requestAnimationFrame(loop);
+        if(busy||!window._zxingRead)return;
+        if(ts-lastT<90)return; // ~11 fps (laisse le temps au décodage)
+        lastT=ts;
+        var vw=vid.videoWidth,vh=vid.videoHeight;if(!vw||!vh)return;
+        frameNo++;
+        // Alterne : 2 frames sur 3 = zone du viseur (précision), 1 sur 3 = image
+        // complète (rattrape un cadrage approximatif). Aligné au centre ~40% du viseur.
+        var sw,sh,sx,sy;
+        if(frameNo%3===0){sw=vw;sh=vh;sx=0;sy=0;}
+        else{sw=Math.round(vw*0.92);sh=Math.round(vh*0.55);sx=Math.round((vw-sw)/2);sy=Math.max(0,Math.round(vh*0.40-sh/2));}
+        var scale=Math.min(1,1400/sw); // sous-échantillonne pour la vitesse (large suffit pour un EAN)
+        cropCanvas.width=Math.round(sw*scale);cropCanvas.height=Math.round(sh*scale);
+        cropCtx.drawImage(vid,sx,sy,sw,sh,0,0,cropCanvas.width,cropCanvas.height);
+        var img;try{img=cropCtx.getImageData(0,0,cropCanvas.width,cropCanvas.height);}catch(e){return;}
+        busy=true;
+        window._zxingRead(img).then(function(res){
+          var hit=(res&&res.length)?res[0]:null;
+          _onDecodeResult(hit&&hit.text?hit.text:null,status);
+        }).catch(function(){}).finally(function(){busy=false;});
+      }
+      _barcodeRaf=requestAnimationFrame(loop);
+    }).catch(function(){_barcodeError(feed,'Impossible de lire la caméra.');});
+  }).catch(function(err){
+    var msg=(err&&err.name==='NotAllowedError')
+      ?'Accès caméra refusé.\nAutorise-le dans les réglages du navigateur puis réessaie.'
+      :'Caméra non disponible.\nSaisis le code manuellement ci-dessous.';
+    _barcodeError(feed,msg);
+  });
+}
+// Traitement commun d'un code décodé (natif ou zxing)
+function _onDecodeResult(v,status){
+  if(!v||_barcodeCooldown||v===_barcodeLastCode)return;
+  _clearVisionFallback();
+  _barcodeLastCode=v;_barcodeCooldown=true;
+  _barcodeFlash();
+  if(navigator.vibrate)navigator.vibrate(60);
+  if(status)status.textContent='✓ Code détecté !';
+  searchBarcode(v);
+  setTimeout(function(){_barcodeCooldown=false;},3000);
 }
 
 // ─── Fallback IA (Groq Vision) : après 8s sans code détecté ───
