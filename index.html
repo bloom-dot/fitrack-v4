@@ -757,9 +757,9 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
 .scanner-title{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.7)}
 .scanner-cbtn{width:42px;height:42px;border-radius:50%;background:rgba(10,10,10,.5);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .scanner-cbtn:active{background:rgba(212,255,0,.25)}
-.barcode-overlay{position:absolute;top:0;right:0;bottom:34%;left:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;pointer-events:none;z-index:3}
+.barcode-overlay{position:absolute;top:0;right:0;bottom:20%;left:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;pointer-events:none;z-index:3}
 /* Cadre épuré façon Yazio : fenêtre arrondie, extérieur assombri (spotlight) */
-.barcode-aim{width:74%;max-width:300px;height:230px;position:relative;border-radius:26px;border:2px solid rgba(255,255,255,.92);box-shadow:0 0 0 100vmax rgba(0,0,0,.5);pointer-events:none;transition:border-color .25s ease}
+.barcode-aim{width:86%;max-width:360px;height:180px;position:relative;border-radius:22px;border:2px solid rgba(255,255,255,.92);box-shadow:0 0 0 100vmax rgba(0,0,0,.5);pointer-events:none;transition:border-color .25s ease}
 #barcode-scan-status{max-width:88%;background:rgba(10,10,10,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.14);padding:9px 18px;color:#fff;font-size:13px;font-weight:500;text-align:center;border-radius:22px;line-height:1.45;white-space:pre-line}
 #scanner-sheet{position:absolute;left:0;right:0;bottom:0;background:var(--s1);border-radius:22px 22px 0 0;padding:12px 16px calc(16px + var(--safe));max-height:62%;overflow-y:auto;z-index:5;box-shadow:0 -10px 34px rgba(0,0,0,.55)}
 #barcode-modal.no-cam #barcode-cam-wrap{display:none}
@@ -5756,8 +5756,8 @@ function _startNativeScanner(feed,status){
         frameNo++;
         var target;
         if(frameNo%2===1){
-          var sw=Math.round(vw*0.80),sh=Math.round(vh*0.35);
-          var sx=Math.round((vw-sw)/2),sy=Math.max(0,Math.round(vh*0.33-sh/2));
+          var sw=Math.round(vw*0.90),sh=Math.round(vh*0.50);
+          var sx=Math.round((vw-sw)/2),sy=Math.max(0,Math.round(vh*0.40-sh/2));
           cropCanvas.width=sw;cropCanvas.height=sh;
           cropCtx.drawImage(vid,sx,sy,sw,sh,0,0,sw,sh);
           target=cropCanvas;
@@ -5803,9 +5803,12 @@ function _startHtml5QrScan(feed,status){
       });
     }
     var cfg={
-      fps:30,
-      // Grande zone de décodage (85% x 40%) alignée sur le viseur plein écran
-      qrbox:function(w,h){return {width:Math.round(w*0.85),height:Math.round(h*0.4)};},
+      // fps bas : à 30, l'iPhone sature (décodage ZXing par frame) et rate des codes.
+      // 10 laisse le temps à chaque décodage → détection plus fiable.
+      fps:10,
+      // Zone de décodage large et généreuse (92% x 60%), centrée comme le qrbox lib,
+      // pour tolérer un cadrage imparfait (le code n'a pas à être pile au centre).
+      qrbox:function(w,h){return {width:Math.round(w*0.92),height:Math.round(h*0.6)};},
       disableFlip:true, // pas de 2e passe en miroir → ~2x plus rapide
       experimentalFeatures:{useBarCodeDetectorIfSupported:true},
       videoConstraints:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}}
