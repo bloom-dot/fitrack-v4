@@ -211,13 +211,6 @@ body.simple-ui .inp,body.simple-ui .btn-sm,body.simple-ui .pill{font-size:15px}
 body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{font-size:15px}
 .modal-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 18px}
 
-/* ═══ ÉCRAN DE CHARGEMENT ═══ */
-#loading-screen{position:fixed;top:0;right:0;bottom:0;left:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);transition:opacity .4s ease}
-#loading-screen.hide{opacity:0;pointer-events:none}
-.ld-logo{font-family:'Barlow Condensed',sans-serif;font-size:52px;font-weight:900;color:var(--acc);letter-spacing:-1px}
-.ld-tagline{font-size:13px;color:var(--t2);text-align:center;max-width:280px;line-height:1.5}
-.ld-spinner{width:26px;height:26px;border:3px solid var(--s3);border-top-color:var(--acc);border-radius:50%;animation:ld-spin .7s linear infinite;margin-top:6px}
-@keyframes ld-spin{to{transform:rotate(360deg)}}
 
 /* ═══ AUTH SCREENS ═══ */
 .auth-wrap{position:fixed;top:0;right:0;bottom:0;left:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:48px 20px 60px;background:var(--bg);box-sizing:border-box}
@@ -801,11 +794,6 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
 <body>
 
 <!-- ══════════════ CHARGEMENT ══════════════ -->
-<div id="loading-screen">
-  <h1 class="ld-logo">FiTrack</h1>
-  <p class="ld-tagline">L'application de suivi sportif tout-en-un : programmes, séances, records, nutrition et plan repas généré par l'IA FitAI.</p>
-  <div class="ld-spinner"></div>
-</div>
 
 <!-- ══════════════ LANDING (page d'accueil / présentation) ══════════════ -->
 <div id="landing-screen" style="display:none">

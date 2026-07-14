@@ -1,5 +1,5 @@
 // Service worker FiTrack — cache app shell + gestion notifications push
-const CACHE_NAME = 'fitrack-v4-shell-34';
+const CACHE_NAME = 'fitrack-v4-shell-35';
 const APP_SHELL = [
   './',
   './index.html',
