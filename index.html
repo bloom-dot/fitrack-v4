@@ -5704,11 +5704,13 @@ var _barcodeLastCode=null;
 var _barcodeCooldown=false;
 var _barcodeVisionTimer=null;
 var _barcodeVisionBusy=false;
+var _visionAutoCount=0;      // nb d'analyses IA auto déjà lancées (borne les retries/coûts)
+var VISION_AUTO_MAX=2;
 
 function openBarcodeScanner(){
   document.getElementById('barcode-result').style.display='none';
   document.getElementById('barcode-manual').value='';
-  _barcodeLastCode=null;_barcodeCooldown=false;
+  _barcodeLastCode=null;_barcodeCooldown=false;_visionAutoCount=0;
   document.getElementById('barcode-modal').classList.add('open');
   _startBarcodeLineAnim();
   _torchOn=false;
@@ -5839,8 +5841,16 @@ function _startHtml5QrScan(feed,status){
 // ─── Fallback IA (Groq Vision) : après 8s sans code détecté ───
 function _armVisionFallback(){
   _clearVisionFallback();
+  // Borne les analyses IA automatiques (coût + évite de relancer l'IA en boucle
+  // toutes les 8s quand la caméra ne vise pas un aliment). Le bouton ✨ manuel reste dispo.
+  if(_visionAutoCount>=VISION_AUTO_MAX){
+    var st=document.getElementById('barcode-scan-status');
+    if(st&&st.style.display!=='none')st.textContent='Pas de code-barres ? Touche ✨ ou saisis-le en bas.';
+    return;
+  }
   _barcodeVisionTimer=setTimeout(function(){
     if(_barcodeLastCode)return;
+    _visionAutoCount++;
     triggerVisionScan();
   },8000);
 }
@@ -5995,6 +6005,7 @@ function _barcodeApiCall(url,cb){
 
 function searchBarcode(code){
   if(!code||code.trim().length<4)return;
+  _clearVisionFallback(); // Bug: sinon une analyse IA se déclenche 8s après et écrase la fiche produit
   var c=code.trim();
   var res=document.getElementById('barcode-result');
   res.innerHTML='<div style="text-align:center;color:var(--t2);font-size:12px;padding:8px">Recherche du produit...</div>';
@@ -6126,15 +6137,23 @@ function bcSetQty(v,btn){
     b.style.color=on?'var(--acc)':'var(--t2)';
   });
 }
+// Lit la quantité saisie de façon tolérante : accepte la virgule, et si le champ
+// est vide/0/invalide, retombe sur la quantité par défaut (qty0) au lieu de 100 en dur.
+function _bcReadQty(){
+  var i=document.getElementById('barcode-qty');if(!i)return 100;
+  var v=parseFloat(String(i.value).replace(',','.'));
+  if(!isFinite(v)||v<=0)v=parseFloat(i.getAttribute('value'))||100;
+  return Math.max(1,Math.round(v));
+}
 function bcQty(d){
   var i=document.getElementById('barcode-qty');if(!i)return;
-  i.value=Math.max(1,(parseInt(i.value)||100)+d);
+  i.value=Math.max(1,_bcReadQty()+d);
   _bcUpdateKcal();
 }
 function _bcUpdateKcal(){
   var i=document.getElementById('barcode-qty'),el=document.getElementById('bc-kcal-live');
   if(!i||!el)return;
-  el.textContent=Math.round((window._bcCal100||0)*(parseInt(i.value)||100)/100);
+  el.textContent=Math.round((window._bcCal100||0)*_bcReadQty()/100);
 }
 function _renderFoodResult(p){
   var res=document.getElementById('barcode-result');
@@ -6224,7 +6243,7 @@ function _renderBeautyResult(p){
 }
 
 function addBarcodeFood(name,cal100,p100,c100,f100,unit){
-  var qty=parseInt(document.getElementById('barcode-qty').value)||100;
+  var qty=_bcReadQty();
   var ratio=qty/100;
   // per100 conservé → l'entrée reste rééditable proprement (changement de quantité)
   addFoodEntry({name:name,calories:Math.round(cal100*ratio),protein:Math.round(p100*ratio*10)/10,carbs:Math.round(c100*ratio*10)/10,fat:Math.round(f100*ratio*10)/10,qty:qty,unit:unit||'g',per100:{cal:cal100,p:p100,c:c100,f:f100}});
@@ -6259,6 +6278,7 @@ function toggleBarcodeTorch(){
 
 // ─── Recherche d'aliment par nom (Open Food Facts + aliments perso) ───
 var _nutSearchT=null;
+var _nutSearchCtrl=null;
 function nutSearchInput(v){
   if(_nutSearchT)clearTimeout(_nutSearchT);
   _nutSearchT=setTimeout(function(){nutSearch(v);},450);
@@ -6267,6 +6287,8 @@ function nutSearch(q){
   q=(q||'').trim();
   var box=document.getElementById('nut-search-results');
   if(!box)return;
+  // Annule toute requête précédente encore en vol (évite l'affichage de résultats périmés)
+  if(_nutSearchCtrl){try{_nutSearchCtrl.abort();}catch(e){}_nutSearchCtrl=null;}
   if(q.length<3){box.style.display='none';box.innerHTML='';return;}
   box.style.display='block';
   // Aliments perso d'abord (locaux, instantanés)
@@ -6275,12 +6297,13 @@ function nutSearch(q){
     return '<div onclick="quickAddFood(\''+escAttr(c.name)+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px"><span>🧑‍🍳 '+esc(c.name)+'</span><span style="color:var(--acc);font-weight:600;font-size:12px">'+c.calories+' kcal · +</span></div>';
   }).join('');
   box.innerHTML=localHtml+'<div style="padding:10px;text-align:center;color:var(--t2);font-size:12px">Recherche...</div>';
-  var ctrl=new AbortController();
+  var ctrl=new AbortController();_nutSearchCtrl=ctrl;
   var tid=setTimeout(function(){ctrl.abort();},8000);
   fetch('https://world.openfoodfacts.org/cgi/search.pl?action=process&search_terms='+encodeURIComponent(q)+'&search_simple=1&json=1&page_size=8&fields=code,product_name,product_name_fr,brands,nutriments,image_small_url,nutriscore_grade,serving_quantity,serving_size,product_quantity,product_quantity_unit,quantity,categories_tags',{signal:ctrl.signal})
     .then(function(r){return r.json();})
     .then(function(d){
       clearTimeout(tid);
+      if(ctrl!==_nutSearchCtrl)return; // une recherche plus récente a pris le relais
       var prods=(d&&d.products||[]).filter(function(p){return (p.product_name_fr||p.product_name)&&p.nutriments&&(p.nutriments['energy-kcal_100g']!=null||p.nutriments['energy-kcal_serving']!=null);});
       if(!prods.length&&!local.length){box.innerHTML='<div style="padding:12px;text-align:center;color:var(--t2);font-size:12px">Aucun résultat — essaie le scan ou « Décrire un repas »</div>';return;}
       window._nutSearchProds=prods;
@@ -6295,8 +6318,10 @@ function nutSearch(q){
           +'</div>';
       }).join('');
     })
-    .catch(function(){
+    .catch(function(e){
       clearTimeout(tid);
+      if(e&&e.name==='AbortError')return;      // annulée par une frappe plus récente
+      if(ctrl!==_nutSearchCtrl)return;
       box.innerHTML=localHtml||'<div style="padding:12px;text-align:center;color:var(--t2);font-size:12px">Recherche indisponible (hors ligne ?)</div>';
     });
 }
