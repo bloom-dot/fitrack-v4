@@ -2930,6 +2930,37 @@ function exAllowed(e){
   if(inj.length&&inj.indexOf('aucune')===-1&&e.injury&&e.injury.some(function(i){return inj.indexOf(i)!==-1;}))return false;
   return true;
 }
+// Temps de repos indicatif (s) selon l'objectif — influe sur la charge soutenable
+function restForObj(obj){return {strength:180,bulk:120,recomp:90,maintain:90,cut:60}[obj]||90;}
+// Meilleur 1RM estimé d'un exercice à partir des records + de tout l'historique de séances
+function bestEst1RM(name){
+  var best=0;
+  var p=prs&&prs[name];
+  if(p){ if(p.est1RM)best=p.est1RM; else if(p.weight&&p.reps)best=calc1RM(p.weight,p.reps); }
+  (sessions||[]).forEach(function(s){
+    (s.exercises||[]).forEach(function(e){
+      if(e.name===name&&e.sets)e.sets.forEach(function(st){
+        if(st.kg&&st.reps){var e1=calc1RM(st.kg,st.reps);if(e1>best)best=e1;}
+      });
+    });
+  });
+  return best;
+}
+// Poids cible de départ pour un exercice, calculé depuis l'historique (1RM estimé),
+// les reps visées, le nombre de séries et le repos. 0 si aucun historique.
+function estimateTargetWeight(name,reps,sets,restSec){
+  var oneRM=bestEst1RM(name);
+  if(!oneRM)return 0;
+  var range=parseRepsRange(reps);
+  var r=range[1]||range[0]||10;          // borne haute des reps → charge plus conservatrice
+  var w=oneRM/(1+r/30);                  // Epley inverse : charge pour r reps
+  w*=0.92;                               // marge de départ (soutenable sur plusieurs séries)
+  if(sets>=4)w*=0.97;                    // plus de séries → fatigue cumulée → un peu plus léger
+  if(sets>=5)w*=0.96;
+  if(restSec>=150)w*=1.03;               // repos long → soutient mieux la charge
+  else if(restSec<=60)w*=0.95;           // repos court → un peu plus léger
+  return round25(w);
+}
 function generateProgram(){
   var trainDays=(OB.data.trainDays&&OB.data.trainDays.length)?OB.data.trainDays.slice():['Lundi','Mercredi','Vendredi'];
   trainDays.sort(function(a,b){return WEEK_ORDER.indexOf(a)-WEEK_ORDER.indexOf(b);});
@@ -2962,17 +2993,27 @@ function generateProgram(){
     exos=orderByPriority(exos);
     return {day:trainDays[i],type:type,label:SPLIT_LABELS[type],exercises:exos};
   });
+  // Pré-remplit les poids cibles d'après l'historique (records + séances passées),
+  // les reps/séries du schéma et le repos lié à l'objectif.
+  var restSec=restForObj(OB.data.obj);
+  days.forEach(function(d){
+    d.exercises.forEach(function(e){
+      var ref=EX_DB.find(function(x){return x.name===e.name;});
+      e.topStreak=0;
+      if(ref&&ref.cat==='Cardio'){e.targetWeight=0;return;}
+      e.targetWeight=estimateTargetWeight(e.name,e.reps,e.sets,restSec);
+    });
+  });
   var end=new Date();end.setDate(end.getDate()+(OB.data.goalWeeks||8)*7);
   OB.data.freq=freq;
   return {freq:freq,sessionDur:OB.data.sessionDur||60,goalWeeks:OB.data.goalWeeks||8,startDate:todayStr(),endDate:end.toISOString().slice(0,10),days:days};
 }
 
 // Régénère le programme à partir du profil et des exercices préférés
-// actuels (par ex. après une mise à jour de l'algo de génération, ou
-// si le programme actuel ne convient plus). Remplace le programme en
-// cours — les poids cibles déjà enregistrés (targetWeight) sont perdus.
+// actuels. Remplace le programme en cours ; les poids cibles (targetWeight)
+// sont recalculés d'après l'historique via estimateTargetWeight().
 async function regenerateProgram(){
-  if(!confirm("Régénérer ton programme ? Le programme actuel sera remplacé par un nouveau (les poids cibles déjà enregistrés seront perdus)."))return;
+  if(!confirm("Régénérer ton programme ? Le programme actuel sera remplacé par un nouveau. Les poids cibles seront recalculés automatiquement d'après ton historique (records + séances passées)."))return;
   if(userProfile)OB.data=Object.assign({},OB.data,userProfile);
   obSelEx=(selectedExercises&&selectedExercises.length)?selectedExercises.slice():obSelEx;
   program=generateProgram();
@@ -5697,11 +5738,19 @@ var _barcodeVisionTimer=null;
 var _barcodeVisionBusy=false;
 var _visionAutoCount=0;      // nb d'analyses IA auto déjà lancées (borne les retries/coûts)
 var VISION_AUTO_MAX=2;
+var _scanHintTimer=null;     // indice « rapproche / plus de lumière » après 4s
+var _scanAudioCtx=null;      // bip de détection
+var _autoTorchDone=false;    // torche auto déclenchée une fois en faible luminosité
+var _scanGesturesBound=false;// écouteurs pinch/tap attachés une seule fois
 
 function openBarcodeScanner(){
   document.getElementById('barcode-result').style.display='none';
   document.getElementById('barcode-manual').value='';
-  _barcodeLastCode=null;_barcodeCooldown=false;_visionAutoCount=0;
+  _barcodeLastCode=null;_barcodeCooldown=false;_visionAutoCount=0;_autoTorchDone=false;
+  _clearScanHints();
+  // Déverrouille l'audio (bip) dans ce geste utilisateur — requis sur iOS
+  try{if(!_scanAudioCtx)_scanAudioCtx=new (window.AudioContext||window.webkitAudioContext)();if(_scanAudioCtx.state==='suspended')_scanAudioCtx.resume();}catch(e){}
+  _bindScanGestures();
   document.getElementById('barcode-modal').classList.add('open');
   _startBarcodeLineAnim();
   _torchOn=false;
@@ -5751,13 +5800,12 @@ function _startNativeScanner(feed,status){
     feed.appendChild(vid);
     vid.play().then(function(){
       if(status)status.textContent='Cadrez le code-barres dans le cadre';
-      // Formats alimentaires uniquement : décodage plus rapide, moins de faux positifs
-      var fmts=['ean_13','ean_8','upc_a','upc_e'];
+      // Formats alimentaires + Code-128/ITF (certains produits non-EAN)
+      var fmts=['ean_13','ean_8','upc_a','upc_e','code_128','itf'];
       var det;try{det=new BarcodeDetector({formats:fmts});}catch(e){det=new BarcodeDetector();}
-      // Canvas pour croppage zone de scan (68% x 44% centré = même zone que le viseur)
       var cropCanvas=document.createElement('canvas');
       var cropCtx=cropCanvas.getContext('2d');
-      _armVisionFallback();
+      _armVisionFallback();_armScanHints(status);
       var frameNo=0;
       function scan(){
         if(!_barcodeStream)return;
@@ -5774,22 +5822,12 @@ function _startNativeScanner(feed,status){
           cropCanvas.width=sw;cropCanvas.height=sh;
           cropCtx.drawImage(vid,sx,sy,sw,sh,0,0,sw,sh);
           target=cropCanvas;
+          if(frameNo%12===1)_maybeAutoTorch(_avgLuma(cropCanvas)); // torche auto si sombre (Android)
         } else {
           target=vid;
         }
         det.detect(target).then(function(codes){
-          if(codes.length&&!_barcodeCooldown){
-            var v=codes[0].rawValue;
-            if(v&&v!==_barcodeLastCode){
-              _clearVisionFallback();
-              _barcodeLastCode=v;_barcodeCooldown=true;
-              _barcodeFlash();
-              if(navigator.vibrate)navigator.vibrate(60);
-              if(status)status.textContent='✓ Code détecté !';
-              searchBarcode(v);
-              setTimeout(function(){_barcodeCooldown=false;},3000);
-            }
-          }
+          if(codes.length&&codes[0].rawValue)_onDecodeResult(codes[0].rawValue,status);
         }).catch(function(){}).finally(function(){
           if(_barcodeStream)_barcodeRaf=requestAnimationFrame(scan);
         });
@@ -5811,7 +5849,7 @@ function _startHtml5QrScan(feed,status){
     // ajoute une passe de décodage par image)
     var fmts=[];
     if(typeof Html5QrcodeSupportedFormats!=='undefined'){
-      ['EAN_13','EAN_8','UPC_A','UPC_E'].forEach(function(k){
+      ['EAN_13','EAN_8','UPC_A','UPC_E','CODE_128','ITF'].forEach(function(k){
         if(Html5QrcodeSupportedFormats[k]!==undefined)fmts.push(Html5QrcodeSupportedFormats[k]);
       });
     }
@@ -5828,18 +5866,11 @@ function _startHtml5QrScan(feed,status){
     };
     if(fmts.length)cfg.formatsToSupport=fmts;
     _barcodeScanner.start({facingMode:'environment'},cfg,function(decoded){
-      if(_barcodeCooldown||decoded===_barcodeLastCode)return;
-      _clearVisionFallback();
-      _barcodeLastCode=decoded;_barcodeCooldown=true;
-      _barcodeFlash();
-      if(navigator.vibrate)navigator.vibrate(60);
-      if(status)status.textContent='✓ Code détecté !';
-      searchBarcode(decoded);
-      setTimeout(function(){_barcodeCooldown=false;},3000);
+      _onDecodeResult(decoded,status);
     },function(){})
     .then(function(){
       if(status)status.textContent='Cadrez le code-barres dans le cadre';
-      _armVisionFallback();
+      _armVisionFallback();_armScanHints(status);
     })
     .catch(function(){_barcodeError(feed,'Caméra inaccessible.\nSaisis le code manuellement ci-dessous.');});
   }catch(e){_barcodeError(feed,'Erreur scanner.\nSaisis le code manuellement ci-dessous.');}
@@ -5856,7 +5887,7 @@ function _ensureZxing(){
     var read=mod&&(mod.readBarcodes||(mod.default&&mod.default.readBarcodes));
     if(typeof read!=='function')throw new Error('readBarcodes introuvable');
     window._zxingRead=function(img){
-      return read(img,{tryHarder:true,formats:['EAN-13','EAN-8','UPC-A','UPC-E'],maxNumberOfSymbols:1});
+      return read(img,{tryHarder:true,formats:['EAN-13','EAN-8','UPC-A','UPC-E','Code-128','ITF'],maxNumberOfSymbols:1});
     };
     return true;
   }).catch(function(){window._zxingRead=null;return false;});
@@ -5873,7 +5904,7 @@ function _startZxingScanner(feed,status){
       if(status)status.textContent='Cadre le code-barres dans le cadre';
       var cropCanvas=document.createElement('canvas');
       var cropCtx=cropCanvas.getContext('2d',{willReadFrequently:true});
-      _armVisionFallback();
+      _armVisionFallback();_armScanHints(status);
       var frameNo=0,busy=false,lastT=0;
       function loop(ts){
         if(!_barcodeStream)return;
@@ -5891,7 +5922,10 @@ function _startZxingScanner(feed,status){
         var scale=Math.min(1,1400/sw); // sous-échantillonne pour la vitesse (large suffit pour un EAN)
         cropCanvas.width=Math.round(sw*scale);cropCanvas.height=Math.round(sh*scale);
         cropCtx.drawImage(vid,sx,sy,sw,sh,0,0,cropCanvas.width,cropCanvas.height);
+        if(frameNo%12===1)_maybeAutoTorch(_avgLuma(cropCanvas)); // torche auto si sombre (si supportée)
         var img;try{img=cropCtx.getImageData(0,0,cropCanvas.width,cropCanvas.height);}catch(e){return;}
+        // 1 frame sur 2 : pré-traitement contraste (aide sur emballages difficiles)
+        if(frameNo%2===0)_prepImage(img);
         busy=true;
         window._zxingRead(img).then(function(res){
           var hit=(res&&res.length)?res[0]:null;
@@ -5910,13 +5944,116 @@ function _startZxingScanner(feed,status){
 // Traitement commun d'un code décodé (natif ou zxing)
 function _onDecodeResult(v,status){
   if(!v||_barcodeCooldown||v===_barcodeLastCode)return;
-  _clearVisionFallback();
+  _clearVisionFallback();_clearScanHints();
   _barcodeLastCode=v;_barcodeCooldown=true;
-  _barcodeFlash();
+  _barcodeFlash();_scanBeep();_freezeFrame();
   if(navigator.vibrate)navigator.vibrate(60);
   if(status)status.textContent='✓ Code détecté !';
   searchBarcode(v);
   setTimeout(function(){_barcodeCooldown=false;},3000);
+}
+
+// ─── Retours & robustesse scanner (bip, freeze, indices, pré-traitement, zoom, focus, torche auto) ───
+function _scanBeep(){
+  try{
+    if(!_scanAudioCtx)_scanAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(_scanAudioCtx.state==='suspended')_scanAudioCtx.resume();
+    var ctx=_scanAudioCtx,o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='sine';o.frequency.value=880;
+    o.connect(g);g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.09,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.14);
+    o.start();o.stop(ctx.currentTime+0.15);
+  }catch(e){}
+}
+// Fige l'image ~0,4s à la détection (feedback net)
+function _freezeFrame(){
+  try{
+    var v=document.querySelector('#barcode-cam-feed video');if(!v||!v.videoWidth)return;
+    var c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;
+    c.getContext('2d').drawImage(v,0,0);
+    c.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:2;pointer-events:none';
+    var wrap=document.getElementById('barcode-cam-feed');if(!wrap)return;
+    wrap.appendChild(c);
+    setTimeout(function(){try{wrap.removeChild(c);}catch(e){}},400);
+  }catch(e){}
+}
+// Indice d'aide si rien détecté après 4s
+function _armScanHints(status){
+  _clearScanHints();
+  _scanHintTimer=setTimeout(function(){
+    if(_barcodeLastCode)return;
+    if(status&&status.style.display!=='none')status.textContent='Rapproche le code · plus de lumière 💡';
+  },4000);
+}
+function _clearScanHints(){if(_scanHintTimer){clearTimeout(_scanHintTimer);_scanHintTimer=null;}}
+// Pré-traitement (niveaux de gris + étirement de contraste) pour aider zxing sur
+// les emballages brillants/sombres/peu contrastés
+function _prepImage(imgData){
+  var d=imgData.data,n=d.length,i,mn=255,mx=0,g;
+  for(i=0;i<n;i+=4){g=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)|0;d[i]=d[i+1]=d[i+2]=g;if(g<mn)mn=g;if(g>mx)mx=g;}
+  var rng=mx-mn;
+  if(rng>10){var sc=255/rng;for(i=0;i<n;i+=4){var v=((d[i]-mn)*sc)|0;d[i]=d[i+1]=d[i+2]=v;}}
+  return imgData;
+}
+// Luminance moyenne d'un canvas (pour la torche auto)
+function _avgLuma(cv){
+  try{
+    var w=Math.min(24,cv.width),h=Math.min(24,cv.height);
+    var t=document.createElement('canvas');t.width=w;t.height=h;
+    var c=t.getContext('2d');c.drawImage(cv,0,0,w,h);
+    var d=c.getImageData(0,0,w,h).data,s=0,i,n=d.length;
+    for(i=0;i<n;i+=4)s+=(d[i]+d[i+1]+d[i+2]);
+    return s/(n/4*3);
+  }catch(e){return 255;}
+}
+function _scanTrack(){return _barcodeStream?_barcodeStream.getVideoTracks()[0]:null;}
+function _maybeAutoTorch(luma){
+  if(_autoTorchDone||_torchOn||_barcodeLastCode)return;
+  if(luma>55)return; // assez lumineux
+  var t=_scanTrack();if(!t||!t.getCapabilities)return;
+  var caps=t.getCapabilities();if(!caps.torch)return; // iOS Safari : pas de torche via getUserMedia (no-op)
+  _autoTorchDone=true;_torchOn=true;
+  t.applyConstraints({advanced:[{torch:true}]}).catch(function(){});
+  var b=document.getElementById('barcode-torch-btn');if(b)b.style.background='var(--acc)';
+}
+function _applyZoom(z){
+  var t=_scanTrack();if(!t||!t.getCapabilities)return;
+  var caps=t.getCapabilities();if(!caps.zoom)return;
+  z=Math.max(caps.zoom.min,Math.min(caps.zoom.max,z));
+  t.applyConstraints({advanced:[{zoom:z}]}).catch(function(){});
+}
+function _focusNudge(){
+  var t=_scanTrack();if(!t||!t.getCapabilities)return;
+  var caps=t.getCapabilities();
+  if(caps.focusMode&&caps.focusMode.indexOf('continuous')!==-1){
+    t.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(function(){});
+  }
+}
+// Gestes sur la caméra : pincer = zoom, double-tap = zoom 1x/2x, tap simple = refocus
+function _bindScanGestures(){
+  if(_scanGesturesBound)return;
+  var wrap=document.getElementById('barcode-cam-wrap');if(!wrap)return;
+  _scanGesturesBound=true;
+  var pinchStart=0,zoomStart=1,curZoom=1,lastTap=0;
+  function dist(t){var dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;return Math.sqrt(dx*dx+dy*dy);}
+  wrap.addEventListener('touchstart',function(e){
+    if(e.touches.length===2){pinchStart=dist(e.touches);zoomStart=curZoom;}
+  },{passive:true});
+  wrap.addEventListener('touchmove',function(e){
+    if(e.touches.length===2&&pinchStart){
+      var f=dist(e.touches)/pinchStart;
+      curZoom=Math.max(1,Math.min(8,zoomStart*f));
+      _applyZoom(curZoom);
+    }
+  },{passive:true});
+  wrap.addEventListener('touchend',function(e){
+    if(e.touches.length===0&&pinchStart){pinchStart=0;return;}
+    var now=Date.now();
+    if(now-lastTap<300){ // double-tap → bascule zoom
+      curZoom=(curZoom>1.5)?1:2;_applyZoom(curZoom);lastTap=0;
+    }else{ lastTap=now; _focusNudge(); } // tap simple → refocus
+  },{passive:true});
 }
 
 // ─── Fallback IA (Groq Vision) : après 8s sans code détecté ───
@@ -6058,7 +6195,7 @@ function _renderGroqResult(d){
 }
 
 function stopBarcodeCamera(){
-  _clearVisionFallback();
+  _clearVisionFallback();_clearScanHints();
   _barcodeVisionBusy=false;
   if(_barcodeLineRaf){cancelAnimationFrame(_barcodeLineRaf);_barcodeLineRaf=null;}
   if(_barcodeRaf){cancelAnimationFrame(_barcodeRaf);_barcodeRaf=null;}
@@ -8422,27 +8559,58 @@ function defRenderResults(samples,annotBlob,worst,type){
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.raw+'°';}}}},
         scales:{x:{display:false},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#666',font:{size:9}}}}}});
   }catch(e){}
-  if(worst.b64&&scores.length)defSendVision(worst,scores,avg);
+  if(worst.b64&&scores.length){
+    var a1s=samples.map(function(s){return s.a1;}).filter(function(v){return isFinite(v);});
+    var minA=a1s.length?Math.round(Math.min.apply(null,a1s)):null;
+    var maxA=a1s.length?Math.round(Math.max.apply(null,a1s)):null;
+    defSendVision(worst,{
+      exercise:coachExercise,
+      reps:scores.length,
+      avgScore:avg,
+      worstScore:worst.score,
+      bestScore:scores.length?Math.max.apply(null,scores):0,
+      goodReps:scores.filter(function(x){return x>=70;}).length,
+      angleLabel:(COACH_TYPES[type]&&COACH_TYPES[type].a1lbl)||'principal',
+      minAngle:minA,maxAngle:maxA,rom:(minA!=null&&maxA!=null)?(maxA-minA):null
+    });
+  }
   try{res.scrollIntoView({behavior:'smooth',block:'nearest'});}catch(e){}
 }
 
-function defSendVision(worst,scores,avg){
+// Rendu du conseil coach détaillé (schéma structuré) ou repli sur un tip simple
+function _renderCoachAdvice(d){
+  if(!d||(d.error&&!d.defaut_principal&&!d.tip))return '🧠 Conseil IA indisponible.';
+  if(d.tip&&!d.defaut_principal)return '🧠 <b style="color:var(--text)">Conseil :</b> '+esc(d.tip);
+  var sev=(d.severite||'').toLowerCase();
+  var sevCol=(sev.indexOf('élev')!==-1||sev.indexOf('elev')!==-1)?'var(--red)':(sev.indexOf('moy')!==-1?'var(--gold)':'var(--green)');
+  function row(ico,lbl,txt){return txt?('<div style="margin:5px 0">'+ico+' <b style="color:var(--text)">'+lbl+' :</b> '+esc(txt)+'</div>'):'';}
+  var h='<div style="text-align:left">';
+  h+='<div style="font-weight:700;color:var(--text);margin-bottom:6px">🧠 Analyse technique'+(d.severite?' · <span style="color:'+sevCol+'">gravité '+esc(d.severite)+'</span>':'')+'</div>';
+  h+=row('⚠️','Défaut principal',d.defaut_principal);
+  h+=row('🔧','Correction',d.correction);
+  h+=row('🎯','À te répéter',d.cue);
+  h+=row('👀','Autre point',d.point_secondaire);
+  h+=row('✅','Ce qui est bien',d.positif);
+  h+='</div>';
+  return h;
+}
+function defSendVision(worst,ctx){
   var tipEl=document.getElementById('def-tip');
   if(!sb){if(tipEl)tipEl.textContent='';return;}
   sb.auth.getSession().then(function(r){
     var token=r&&r.data&&r.data.session&&r.data.session.access_token;
     if(!token){if(tipEl)tipEl.textContent='';return;}
     var ctrl=new AbortController();
-    var tid=setTimeout(function(){ctrl.abort();},15000);
+    var tid=setTimeout(function(){ctrl.abort();},20000);
     fetch('/api/coach-vision',{
       method:'POST',
       headers:{'content-type':'application/json','authorization':'Bearer '+token},
-      body:JSON.stringify({image:worst.b64,exercise:coachExercise,reps:scores.length,avgScore:avg,worstScore:worst.score}),
+      body:JSON.stringify(Object.assign({image:worst.b64},ctx)),
       signal:ctrl.signal
     }).then(function(r){return r.json();}).then(function(d){
       clearTimeout(tid);
       if(!tipEl)return;
-      tipEl.innerHTML=(d&&d.tip)?('🧠 <b style="color:var(--text)">Conseil :</b> '+esc(d.tip)):'🧠 Conseil IA indisponible.';
+      tipEl.innerHTML=_renderCoachAdvice(d);
     }).catch(function(){clearTimeout(tid);if(tipEl)tipEl.textContent='🧠 Conseil IA indisponible.';});
   }).catch(function(){if(tipEl)tipEl.textContent='';});
 }
