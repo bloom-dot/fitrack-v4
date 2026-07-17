@@ -2676,14 +2676,24 @@ async function routeAfterAuth(){
 async function syncSessionsPRsStreak(session){
   try{
     var ss=await sb.from('sessions').select('*').eq('user_id',session.user.id).order('date',{ascending:false});
-    if(ss.data&&ss.data.length){
-      sessions=ss.data.map(function(r){var sd=r.exercises;sd._id=r.id;return sd;});DB.s('sessions',sessions);
-    }else if(sessions.length){
-      for(var i=0;i<sessions.length;i++){
-        var sd=sessions[i];
-        await sb.from('sessions').insert({user_id:session.user.id,date:sd.date,duration_seconds:sd.duration,exercises:sd});
-      }
+    var cloud=(ss.data||[]).map(function(r){var sd=r.exercises;sd._id=r.id;return sd;});
+    // FUSION — ne JAMAIS écraser une séance locale non synchronisée.
+    // On garde le cloud comme référence, et on y remonte les séances locales
+    // encore jamais synchronisées (sans _id) absentes du cloud (protège contre la
+    // perte de données quand une séance a été enregistrée hors-ligne / avant sync).
+    var sig=function(x){return (x.date||'')+'|'+(x.duration||0)+'|'+(x.totalVolume||0);};
+    var cloudSigs={};cloud.forEach(function(c){cloudSigs[sig(c)]=true;});
+    var unsynced=(sessions||[]).filter(function(s){return !s._id&&!cloudSigs[sig(s)];});
+    for(var i=0;i<unsynced.length;i++){
+      var sd=unsynced[i];
+      try{
+        var ins=await sb.from('sessions').insert({user_id:session.user.id,date:sd.date,duration_seconds:sd.duration,exercises:sd}).select('id').single();
+        if(ins&&ins.data)sd._id=ins.data.id;
+      }catch(e){}
     }
+    sessions=cloud.concat(unsynced);
+    sessions.sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+    DB.s('sessions',sessions);
     var pr=await sb.from('personal_records').select('*').eq('user_id',session.user.id);
     if(pr.data&&pr.data.length){
       var newPrs={};
@@ -4454,19 +4464,50 @@ function roundRect(ctx,x,y,w,h,r){
   ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
   ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
 }
+var _lastDeleted=null,_undoTimer=null;
 async function deleteSession(idx){
   var s=sessions[idx];if(!s)return;
-  if(!confirm('Supprimer définitivement cette séance ("'+s.name+'") ? Cette action est irréversible.'))return;
+  if(!confirm('Supprimer cette séance ("'+s.name+'") ? Tu pourras annuler pendant quelques secondes.'))return;
+  _lastDeleted={s:s,idx:idx};
   sessions.splice(idx,1);DB.s('sessions',sessions);
   closeMBg(null,'session-detail-modal');
   renderHistory();
-  toast('Séance supprimée');
+  _showUndoDelete();
   if(s._id){
     try{
       var session=(await sb.auth.getSession()).data.session;
       if(session)await sb.from('sessions').delete().eq('id',s._id).eq('user_id',session.user.id);
     }catch(e){}
   }
+}
+function _showUndoDelete(){
+  _hideUndoDelete(true);
+  var b=document.createElement('div');b.id='undo-delete-bar';
+  b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + var(--safe));z-index:600;background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:14px;box-shadow:0 6px 24px rgba(0,0,0,.45);font-size:13px;color:var(--text)';
+  b.innerHTML='<span>Séance supprimée</span><button onclick="undoDeleteSession()" style="background:var(--acc);color:#0a0a0a;border:none;border-radius:8px;padding:7px 16px;font-weight:700;cursor:pointer">Annuler</button>';
+  document.body.appendChild(b);
+  _undoTimer=setTimeout(function(){_hideUndoDelete();_lastDeleted=null;},8000);
+}
+function _hideUndoDelete(keep){
+  if(_undoTimer){clearTimeout(_undoTimer);_undoTimer=null;}
+  var b=document.getElementById('undo-delete-bar');if(b&&b.parentNode)b.parentNode.removeChild(b);
+}
+async function undoDeleteSession(){
+  if(!_lastDeleted)return;
+  var d=_lastDeleted;_lastDeleted=null;
+  _hideUndoDelete();
+  var s=d.s;delete s._id; // ré-insertion → nouvel id cloud
+  var at=Math.max(0,Math.min(d.idx,sessions.length));
+  sessions.splice(at,0,s);DB.s('sessions',sessions);
+  renderHistory();
+  toast('Séance restaurée ✓');
+  try{
+    var session=(await sb.auth.getSession()).data.session;
+    if(session){
+      var ins=await sb.from('sessions').insert({user_id:session.user.id,date:s.date,duration_seconds:s.duration,exercises:s}).select('id').single();
+      if(ins&&ins.data){s._id=ins.data.id;DB.s('sessions',sessions);}
+    }
+  }catch(e){}
 }
 
 // ═══════════════════════════════════
