@@ -1,26 +1,27 @@
 /**
- * FiTrack — Analyse technique détaillée du Coach Mouvement (fin de série)
+ * FiTrack — Débrief technique complet du Coach Mouvement (analyse différée)
  *
- * Reçoit l'image de la pire répétition + le contexte chiffré de la série
- * (scores par rep, angles articulaires) et renvoie une analyse STRUCTURÉE
- * en français (défaut principal, correction, cue, point secondaire, positif,
- * gravité). Modèle vision Groq llama-4-maverick en mode JSON.
+ * Reçoit l'image de la PIRE répétition (+ optionnellement la MEILLEURE) et le
+ * contexte chiffré de la série (scores par rep, angles, fatigue), puis renvoie
+ * un débrief structuré en français : verdict, points forts, défauts priorisés
+ * avec correction et cue, analyse par phase, checklist de la rep parfaite et
+ * plan pour la prochaine séance.
  *
  * POST {
- *   image, exercise, reps, avgScore, worstScore, bestScore, goodReps,
- *   angleLabel, minAngle, maxAngle, rom
+ *   image (base64, pire rep), imageBest (base64, meilleure rep, optionnel),
+ *   exercise, reps, avgScore, worstScore, bestScore, goodReps, scores[],
+ *   angleLabel, minAngle, maxAngle, rom, fatigue
  * }
- * → {
- *   visible: true,
- *   defaut_principal, correction, cue, point_secondaire, positif,
- *   severite: "faible"|"moyenne"|"élevée"
- * }
+ * → { visible:true, verdict, note_globale, resume, points_forts[], defauts[],
+ *     phases{}, checklist[], plan[] }
  */
 
 export const config = { runtime: "edge" };
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
+// NB : llama-4-maverick n'est pas disponible sur ce compte Groq (404).
+// scout est le modèle vision supporté et validé sur ce projet.
+const GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 const SUPABASE_URL = "https://wszhbpsuujcgjnvvtgfv.supabase.co";
 const MAX_IMAGE_B64 = 1500000;
 const ALLOWED_ORIGINS = [
@@ -28,25 +29,46 @@ const ALLOWED_ORIGINS = [
   "https://fitrack-swart.vercel.app",
 ];
 
-const SYSTEM_PROMPT = `Tu es un coach expert en musculation et biomécanique. On te donne la photo de la répétition la MOINS bien notée d'une série, plus des mesures chiffrées (scores par rep et angles articulaires calculés automatiquement).
+const SYSTEM_PROMPT = `Tu es un coach expert en musculation et biomécanique. Tu débriefes une série filmée.
 
-Analyse la posture réellement visible sur l'image, en la corrélant aux mesures, et renvoie STRICTEMENT un objet JSON valide (aucun texte hors du JSON) :
+On te fournit une ou deux images (la PIRE répétition, et si disponible la MEILLEURE) ainsi que des mesures chiffrées calculées automatiquement (scores par répétition, angles articulaires, fatigue).
+
+Analyse ce qui est RÉELLEMENT visible et renvoie STRICTEMENT un objet JSON valide, sans aucun texte autour :
 {
   "visible": true,
-  "defaut_principal": "le défaut technique majeur visible, précis et concret",
-  "correction": "comment le corriger, action concrète et actionnable",
-  "cue": "un repère mental court à se répéter pendant l'effort (max 6 mots)",
-  "point_secondaire": "une 2e observation utile (ou \"\" si rien de notable)",
-  "positif": "un point réellement bien exécuté à conserver",
-  "severite": "faible" | "moyenne" | "élevée"
+  "verdict": "correct" | "à corriger" | "risqué",
+  "note_globale": 0-100,
+  "resume": "2 phrases : ce qui ressort de la série dans l'ensemble",
+  "points_forts": ["ce qui est bien exécuté", "..."],
+  "defauts": [
+    {
+      "titre": "nom court du défaut",
+      "impact": "conséquence concrète (perte d'efficacité et/ou risque de blessure)",
+      "correction": "comment le corriger, étape par étape, très concret",
+      "cue": "repère mental court à se répéter (max 6 mots)",
+      "priorite": "haute" | "moyenne" | "basse"
+    }
+  ],
+  "phases": {
+    "descente": "ce qui se passe pendant la phase excentrique",
+    "bas": "ce qui se passe en position basse / d'étirement",
+    "remontee": "ce qui se passe pendant la phase concentrique"
+  },
+  "checklist": [
+    { "critere": "critère d'une répétition parfaite pour CET exercice", "ok": true|false }
+  ],
+  "plan": ["action précise pour la prochaine séance", "..."]
 }
 
 Règles :
-- Français, tutoiement, ton de coach direct et bienveillant.
-- Sois PRÉCIS et spécifique à l'exercice et aux chiffres fournis (ex : profondeur, dos, alignement genoux, amplitude, tempo). Évite les généralités creuses.
-- Chaque champ = 1 phrase claire. Pas d'émojis, pas de markdown.
-- "severite" reflète le risque/impact du défaut (technique + blessure).
-- Si aucune personne n'est clairement identifiable sur l'image, renvoie exactement : {"visible": false}.`;
+- Français, tutoiement, ton de coach direct, exigeant mais bienveillant.
+- Sois PRÉCIS et spécifique à l'exercice et aux chiffres (amplitude, profondeur, alignement, tempo, symétrie). Aucune généralité creuse.
+- "defauts" : 1 à 3 entrées, triées par priorité décroissante. Si l'exécution est vraiment propre, renvoie un tableau vide.
+- "checklist" : 4 à 6 critères de la répétition parfaite, avec ok=false pour ceux qui ne sont pas respectés dans la vidéo.
+- "plan" : 2 à 3 actions concrètes (charge, tempo, amplitude, exercice correctif).
+- "note_globale" doit rester cohérente avec les scores fournis.
+- Pas d'émojis, pas de markdown.
+- Si aucune personne n'est clairement identifiable, renvoie exactement : {"visible": false}.`;
 
 export default async function handler(request) {
   const origin = request.headers.get("origin") || "";
@@ -55,7 +77,6 @@ export default async function handler(request) {
   if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders(allowedOrigin) });
   if (request.method !== "POST") return jsonError("Méthode non autorisée", 405, allowedOrigin);
 
-  // Auth
   const auth = request.headers.get("authorization") || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
   if (!token) return jsonError("Authentification requise", 401, allowedOrigin);
@@ -73,15 +94,14 @@ export default async function handler(request) {
   }
   if (!userResp.ok) return jsonError("Session invalide", 401, allowedOrigin);
 
-  // Body
   let body;
   try { body = await request.json(); } catch { return jsonError("Corps JSON invalide", 400, allowedOrigin); }
 
-  const { image } = body;
+  const { image, imageBest } = body;
   if (!image || typeof image !== "string" || image.length < 100) {
     return jsonError("Image manquante ou invalide", 400, allowedOrigin);
   }
-  if (image.length > MAX_IMAGE_B64) {
+  if (image.length > MAX_IMAGE_B64 || (imageBest && imageBest.length > MAX_IMAGE_B64)) {
     return jsonError("Image trop volumineuse", 413, allowedOrigin);
   }
 
@@ -95,19 +115,35 @@ export default async function handler(request) {
   const minA = body.minAngle == null ? null : intOr(body.minAngle, null);
   const maxA = body.maxAngle == null ? null : intOr(body.maxAngle, null);
   const rom = body.rom == null ? null : intOr(body.rom, null);
+  const fatigue = body.fatigue == null ? null : intOr(body.fatigue, null);
+  const scores = Array.isArray(body.scores)
+    ? body.scores.slice(0, 40).map((s) => intOr(s, 0)).join(", ")
+    : "";
 
-  const angleTxt =
+  const lines = [
+    `Exercice : ${ex}. Série de ${nReps} répétitions.`,
+    `Scores techniques (/100) : moyen ${avg}, meilleure ${best}, pire ${worst}, reps correctes (>=70) : ${good}/${nReps}.`,
+    scores ? `Score de chaque répétition, dans l'ordre : ${scores}.` : "",
     minA != null && maxA != null
       ? `Angle « ${angleLabel} » : de ${minA}° à ${maxA}° (amplitude ${rom != null ? rom : maxA - minA}°).`
-      : "";
-
-  const userText = `Exercice : ${ex}. Série de ${nReps} reps.
-Scores techniques (/100) : moyen ${avg}, meilleure rep ${best}, pire rep ${worst}, reps correctes (≥70) : ${good}/${nReps}.
-${angleTxt}
-L'image montre la pire répétition. Donne l'analyse JSON demandée.`;
+      : "",
+    fatigue != null
+      ? `Évolution de la qualité entre le début et la fin de la série : ${fatigue > 0 ? "+" : ""}${fatigue} points.`
+      : "",
+    imageBest
+      ? "Image 1 = la PIRE répétition. Image 2 = la MEILLEURE répétition (référence de comparaison)."
+      : "L'image montre la PIRE répétition de la série.",
+    "Donne le débrief JSON demandé.",
+  ].filter(Boolean);
 
   const groqKey = (process.env.GROQ_API_KEY || "").trim();
   if (!groqKey) return jsonError("Configuration Groq manquante", 500, allowedOrigin);
+
+  const content = [{ type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } }];
+  if (imageBest && typeof imageBest === "string" && imageBest.length > 100) {
+    content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBest}` } });
+  }
+  content.push({ type: "text", text: lines.join("\n") });
 
   let groqResp;
   try {
@@ -117,18 +153,10 @@ L'image montre la pire répétition. Donne l'analyse JSON demandée.`;
       body: JSON.stringify({
         model: GROQ_MODEL,
         temperature: 0.3,
-        max_tokens: 500,
-        // NB : pas de response_format json_object — Groq le refuse sur les requêtes
-        // multimodales (image). Le prompt impose le JSON et parseJsonLoose sécurise.
+        max_tokens: 1100,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: [
-              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } },
-              { type: "text", text: userText },
-            ],
-          },
+          { role: "user", content },
         ],
       }),
     });
@@ -140,36 +168,74 @@ L'image montre la pire répétition. Donne l'analyse JSON demandée.`;
   if (!groqResp.ok || !raw) {
     const detail =
       (raw && ((raw.error && raw.error.message) || raw.message)) || `HTTP ${groqResp.status}`;
-    // Visible dans les logs Vercel — évite de rediagnostiquer à l'aveugle
     console.error("[coach-vision] Groq KO", groqResp.status, String(detail).slice(0, 300));
     return jsonError("Analyse IA indisponible : " + String(detail).slice(0, 120), 502, allowedOrigin);
   }
 
-  const content =
+  const text =
     (raw.choices && raw.choices[0] && raw.choices[0].message && raw.choices[0].message.content) || "";
-  const parsed = parseJsonLoose(content);
-  if (!parsed) return jsonError("Analyse impossible (format IA inattendu)", 502, allowedOrigin);
-
-  if (parsed.visible === false || (!parsed.defaut_principal && !parsed.correction)) {
-    return jsonError("Personne non visible", 404, allowedOrigin);
+  const parsed = parseJsonLoose(text);
+  if (!parsed) {
+    console.error("[coach-vision] JSON illisible", String(text).slice(0, 200));
+    return jsonError("Analyse impossible (format IA inattendu)", 502, allowedOrigin);
   }
+  if (parsed.visible === false) return jsonError("Personne non visible", 404, allowedOrigin);
 
+  return new Response(JSON.stringify(normalize(parsed, avg)), {
+    status: 200,
+    headers: { "content-type": "application/json", ...corsHeaders(allowedOrigin) },
+  });
+}
+
+function normalize(p, avgScore) {
   const clip = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");
-  let sev = clip(parsed.severite, 12).toLowerCase();
-  if (!["faible", "moyenne", "élevée", "elevee"].includes(sev)) sev = "moyenne";
+  const arrStr = (a, n, max) =>
+    Array.isArray(a) ? a.filter((x) => typeof x === "string" && x.trim()).map((x) => x.trim().slice(0, n)).slice(0, max) : [];
 
-  return new Response(
-    JSON.stringify({
-      visible: true,
-      defaut_principal: clip(parsed.defaut_principal, 240),
-      correction: clip(parsed.correction, 240),
-      cue: clip(parsed.cue, 60),
-      point_secondaire: clip(parsed.point_secondaire, 240),
-      positif: clip(parsed.positif, 240),
-      severite: sev === "elevee" ? "élevée" : sev,
-    }),
-    { status: 200, headers: { "content-type": "application/json", ...corsHeaders(allowedOrigin) } }
-  );
+  let verdict = clip(p.verdict, 20).toLowerCase();
+  if (!["correct", "à corriger", "a corriger", "risqué", "risque"].includes(verdict)) verdict = "à corriger";
+  if (verdict === "a corriger") verdict = "à corriger";
+  if (verdict === "risque") verdict = "risqué";
+
+  let note = parseInt(p.note_globale, 10);
+  if (isNaN(note) || note < 0 || note > 100) note = avgScore || 0;
+
+  const defauts = (Array.isArray(p.defauts) ? p.defauts : [])
+    .filter((d) => d && (d.titre || d.correction))
+    .slice(0, 3)
+    .map((d) => {
+      let pr = clip(d.priorite, 10).toLowerCase();
+      if (!["haute", "moyenne", "basse"].includes(pr)) pr = "moyenne";
+      return {
+        titre: clip(d.titre, 90),
+        impact: clip(d.impact, 220),
+        correction: clip(d.correction, 320),
+        cue: clip(d.cue, 60),
+        priorite: pr,
+      };
+    });
+
+  const checklist = (Array.isArray(p.checklist) ? p.checklist : [])
+    .filter((c) => c && c.critere)
+    .slice(0, 6)
+    .map((c) => ({ critere: clip(c.critere, 120), ok: c.ok === true }));
+
+  const ph = p.phases || {};
+  return {
+    visible: true,
+    verdict,
+    note_globale: note,
+    resume: clip(p.resume, 320),
+    points_forts: arrStr(p.points_forts, 160, 3),
+    defauts,
+    phases: {
+      descente: clip(ph.descente, 220),
+      bas: clip(ph.bas, 220),
+      remontee: clip(ph.remontee, 220),
+    },
+    checklist,
+    plan: arrStr(p.plan, 180, 3),
+  };
 }
 
 function intOr(v, def) {

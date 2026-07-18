@@ -8585,7 +8585,17 @@ async function defAnalyze(blob){
     var cfg=COACH_TYPES[type];
     var samples=[];
     var worst={score:101,b64:null};
+    var best={score:-1,b64:null};
     var capCv=document.createElement('canvas');
+    // Capture d'une frame en JPEG base64 (réduite) pour l'envoi à l'IA
+    function _grab(){
+      try{
+        var w2=Math.min(480,vw),h2=Math.round(w2*vh/vw);
+        capCv.width=w2;capCv.height=h2;
+        capCv.getContext('2d').drawImage(src,0,0,w2,h2);
+        return capCv.toDataURL('image/jpeg',0.6).split(',')[1];
+      }catch(e){return null;}
+    }
     function handler(results){
       cctx.drawImage(src,0,0,vw,vh);
       if(!results.poseLandmarks)return;
@@ -8609,14 +8619,9 @@ async function defAnalyze(blob){
         // On capture dès qu'une posture est lisible (r), SANS exiger good :
         // sinon une série entièrement mal exécutée ne produisait aucune image
         // et le conseil IA n'était jamais demandé (exactement le cas utile).
-        if(inst<worst.score){
-          try{
-            var w2=Math.min(480,vw),h2=Math.round(w2*vh/vw);
-            capCv.width=w2;capCv.height=h2;
-            capCv.getContext('2d').drawImage(src,0,0,w2,h2);
-            worst={score:inst,b64:capCv.toDataURL('image/jpeg',0.6).split(',')[1]};
-          }catch(e){}
-        }
+        if(inst<worst.score){var _bw=_grab();if(_bw)worst={score:inst,b64:_bw};}
+        // Meilleure rep : sert de référence de comparaison pour le débrief IA
+        if(inst>best.score){var _bb=_grab();if(_bb)best={score:inst,b64:_bb};}
       }
     }
     coachPose.onResults(handler);
@@ -8643,7 +8648,7 @@ async function defAnalyze(blob){
       return;
     }
     status.style.display='none';
-    defRenderResults(samples,annotBlob,worst,type);
+    defRenderResults(samples,annotBlob,worst,type,best);
   }catch(e){
     _defAnalyzing=false;
     if(coachPose)coachPose.onResults(onCoachResults);
@@ -8652,7 +8657,7 @@ async function defAnalyze(blob){
   }
 }
 
-function defRenderResults(samples,annotBlob,worst,type){
+function defRenderResults(samples,annotBlob,worst,type,best){
   // Comptage de reps : suites d'au moins 4 échantillons "bons", séparées
   // par au moins 3 échantillons hors zone (même logique que le mode direct)
   var reps=[],streak=[],badRun=0;
@@ -8714,13 +8719,24 @@ function defRenderResults(samples,annotBlob,worst,type){
     var a1s=samples.map(function(s){return s.a1;}).filter(function(v){return isFinite(v);});
     var minA=a1s.length?Math.round(Math.min.apply(null,a1s)):null;
     var maxA=a1s.length?Math.round(Math.max.apply(null,a1s)):null;
+    // Tendance de fatigue : moyenne 2e moitié − moyenne 1re moitié (négatif = ça se dégrade)
+    var fat=null;
+    if(scores.length>=4){
+      var h=Math.floor(scores.length/2);
+      var m1=scores.slice(0,h).reduce(function(a,b){return a+b;},0)/h;
+      var m2=scores.slice(h).reduce(function(a,b){return a+b;},0)/(scores.length-h);
+      fat=Math.round(m2-m1);
+    }
     defSendVision(worst,{
+      imageBest:(best&&best.b64&&best.score>worst.score)?best.b64:null,
       exercise:coachExercise,
       reps:scores.length,
       avgScore:avg,
       worstScore:worst.score,
       bestScore:scores.length?Math.max.apply(null,scores):0,
       goodReps:scores.filter(function(x){return x>=70;}).length,
+      scores:scores.slice(0,40),
+      fatigue:fat,
       angleLabel:(COACH_TYPES[type]&&COACH_TYPES[type].a1lbl)||'principal',
       minAngle:minA,maxAngle:maxA,rom:(minA!=null&&maxA!=null)?(maxA-minA):null
     });
@@ -8730,22 +8746,62 @@ function defRenderResults(samples,annotBlob,worst,type){
 
 // Rendu du conseil coach détaillé (schéma structuré) ou repli sur un tip simple
 function _renderCoachAdvice(d){
-  if(!d||(d.error&&!d.defaut_principal&&!d.tip)){
+  if(!d||(d.error&&!d.verdict&&!d.tip)){
     var er=(d&&d.error)?String(d.error):'';
     if(/visible/i.test(er))return '🧠 Conseil IA : tu n\'es pas assez visible sur l\'image. Refilme avec le <b>corps entier dans le cadre</b> et plus de lumière.';
     return '🧠 Conseil IA indisponible pour cette série — réessaie dans un instant.';
   }
-  if(d.tip&&!d.defaut_principal)return '🧠 <b style="color:var(--text)">Conseil :</b> '+esc(d.tip);
-  var sev=(d.severite||'').toLowerCase();
-  var sevCol=(sev.indexOf('élev')!==-1||sev.indexOf('elev')!==-1)?'var(--red)':(sev.indexOf('moy')!==-1?'var(--gold)':'var(--green)');
-  function row(ico,lbl,txt){return txt?('<div style="margin:5px 0">'+ico+' <b style="color:var(--text)">'+lbl+' :</b> '+esc(txt)+'</div>'):'';}
+  if(d.tip&&!d.verdict)return '🧠 <b style="color:var(--text)">Conseil :</b> '+esc(d.tip);
+  var v=(d.verdict||'').toLowerCase();
+  var vCol=(v.indexOf('risq')!==-1)?'var(--red)':(v.indexOf('corrig')!==-1?'var(--gold)':'var(--green)');
+  var prioCol={haute:'var(--red)',moyenne:'var(--gold)',basse:'var(--t2)'};
   var h='<div style="text-align:left">';
-  h+='<div style="font-weight:700;color:var(--text);margin-bottom:6px">🧠 Analyse technique'+(d.severite?' · <span style="color:'+sevCol+'">gravité '+esc(d.severite)+'</span>':'')+'</div>';
-  h+=row('⚠️','Défaut principal',d.defaut_principal);
-  h+=row('🔧','Correction',d.correction);
-  h+=row('🎯','À te répéter',d.cue);
-  h+=row('👀','Autre point',d.point_secondaire);
-  h+=row('✅','Ce qui est bien',d.positif);
+  // En-tête : verdict + note
+  h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">'
+    +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:'+vCol+';line-height:1">'+(d.note_globale!=null?d.note_globale:'--')+'</div>'
+    +'<div><div style="font-weight:800;color:'+vCol+';text-transform:uppercase;font-size:12px;letter-spacing:.5px">'+esc(d.verdict||'')+'</div>'
+    +'<div style="font-size:10px;color:var(--t3)">Débrief technique · note /100</div></div></div>';
+  if(d.resume)h+='<div style="margin-bottom:10px">'+esc(d.resume)+'</div>';
+  // Points forts
+  if(d.points_forts&&d.points_forts.length){
+    h+='<div style="margin-bottom:10px"><b style="color:var(--green)">✅ Points forts</b>'
+      +d.points_forts.map(function(x){return '<div style="margin-top:3px">· '+esc(x)+'</div>';}).join('')+'</div>';
+  }
+  // Défauts priorisés : impact + correction + cue
+  if(d.defauts&&d.defauts.length){
+    h+='<div style="margin-bottom:10px"><b style="color:var(--text)">🔧 À corriger</b>';
+    d.defauts.forEach(function(f,i){
+      var pc=prioCol[(f.priorite||'moyenne')]||'var(--gold)';
+      h+='<div style="margin-top:8px;padding:9px 11px;background:var(--s2);border-left:3px solid '+pc+';border-radius:8px">'
+        +'<div style="font-weight:700;color:var(--text)">'+(i+1)+'. '+esc(f.titre||'')+' <span style="font-size:9px;color:'+pc+';text-transform:uppercase">· '+esc(f.priorite||'')+'</span></div>'
+        +(f.impact?'<div style="margin-top:3px;color:var(--t3)">Pourquoi : '+esc(f.impact)+'</div>':'')
+        +(f.correction?'<div style="margin-top:3px">Comment : '+esc(f.correction)+'</div>':'')
+        +(f.cue?'<div style="margin-top:4px;color:var(--acc);font-weight:700">🎯 « '+esc(f.cue)+' »</div>':'')
+        +'</div>';
+    });
+    h+='</div>';
+  }
+  // Analyse par phase du mouvement
+  var ph=d.phases||{};
+  if(ph.descente||ph.bas||ph.remontee){
+    h+='<div style="margin-bottom:10px"><b style="color:var(--text)">🎞 Par phase</b>'
+      +(ph.descente?'<div style="margin-top:3px">· <b>Descente :</b> '+esc(ph.descente)+'</div>':'')
+      +(ph.bas?'<div style="margin-top:3px">· <b>Position basse :</b> '+esc(ph.bas)+'</div>':'')
+      +(ph.remontee?'<div style="margin-top:3px">· <b>Remontée :</b> '+esc(ph.remontee)+'</div>':'')
+      +'</div>';
+  }
+  // Checklist de la rep parfaite
+  if(d.checklist&&d.checklist.length){
+    h+='<div style="margin-bottom:10px"><b style="color:var(--text)">📋 La rep parfaite</b>'
+      +d.checklist.map(function(c){
+        return '<div style="margin-top:3px;color:'+(c.ok?'var(--green)':'var(--red)')+'">'+(c.ok?'✓':'✗')+' <span style="color:var(--t2)">'+esc(c.critere)+'</span></div>';
+      }).join('')+'</div>';
+  }
+  // Plan pour la prochaine séance
+  if(d.plan&&d.plan.length){
+    h+='<div><b style="color:var(--acc)">🚀 Prochaine séance</b>'
+      +d.plan.map(function(x){return '<div style="margin-top:3px">· '+esc(x)+'</div>';}).join('')+'</div>';
+  }
   h+='</div>';
   return h;
 }
@@ -8756,7 +8812,7 @@ function defSendVision(worst,ctx){
     var token=r&&r.data&&r.data.session&&r.data.session.access_token;
     if(!token){if(tipEl)tipEl.textContent='';return;}
     var ctrl=new AbortController();
-    var tid=setTimeout(function(){ctrl.abort();},20000);
+    var tid=setTimeout(function(){ctrl.abort();},30000); // débrief long + 2 images
     fetch('/api/coach-vision',{
       method:'POST',
       headers:{'content-type':'application/json','authorization':'Bearer '+token},

@@ -26,7 +26,9 @@
 export const config = { runtime: "edge" };
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
+// NB : llama-4-maverick n'est pas disponible sur ce compte Groq (404 "does not
+// exist or you do not have access to it"). scout est le modèle vision supporté.
+const GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 const SUPABASE_URL = "https://wszhbpsuujcgjnvvtgfv.supabase.co";
 const MAX_IMAGE_B64 = 1500000; // ~1,1 Mo — borne le coût/DoS par requête
 const ALLOWED_ORIGINS = [
