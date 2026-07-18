@@ -114,7 +114,8 @@ export default async function handler(request) {
         model: GROQ_MODEL,
         temperature: 0.2,
         max_tokens: 400,
-        response_format: { type: "json_object" },
+        // NB : pas de response_format json_object — Groq le refuse sur les requêtes
+        // multimodales (image). Le prompt impose le JSON et parseJsonLoose sécurise.
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           {
@@ -133,7 +134,10 @@ export default async function handler(request) {
 
   const raw = await groqResp.json().catch(() => null);
   if (!groqResp.ok || !raw) {
-    return jsonError("Réponse Groq invalide", 502, allowedOrigin);
+    const detail =
+      (raw && ((raw.error && raw.error.message) || raw.message)) || `HTTP ${groqResp.status}`;
+    console.error("[scan-vision] Groq KO", groqResp.status, String(detail).slice(0, 300));
+    return jsonError("Analyse IA indisponible : " + String(detail).slice(0, 120), 502, allowedOrigin);
   }
 
   const content =
