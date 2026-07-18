@@ -18,10 +18,14 @@
 
 export const config = { runtime: "edge" };
 
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-// NB : llama-4-maverick n'est pas disponible sur ce compte Groq (404).
-// scout est le modèle vision supporté et validé sur ce projet.
-const GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+// NB : le compte Groq de ce projet n'expose AUCUN modèle vision (vérifié via
+// /v1/models : uniquement du texte, de l'audio et du TTS). On passe donc par
+// Gemini, qui gère l'image et le JSON structuré nativement.
+// gemini-2.5-flash n'est plus ouvert aux nouveaux comptes (404) ;
+// gemini-3-flash-preview est validé (vision + JSON) sur cette clé.
+const GEMINI_MODEL = "gemini-3-flash-preview";
+const GEMINI_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
 const SUPABASE_URL = "https://wszhbpsuujcgjnvvtgfv.supabase.co";
 const MAX_IMAGE_B64 = 1500000;
 const ALLOWED_ORIGINS = [
@@ -136,44 +140,46 @@ export default async function handler(request) {
     "Donne le débrief JSON demandé.",
   ].filter(Boolean);
 
-  const groqKey = (process.env.GROQ_API_KEY || "").trim();
-  if (!groqKey) return jsonError("Configuration Groq manquante", 500, allowedOrigin);
+  const apiKey = (process.env.GEMINI_API_KEY || "").trim();
+  if (!apiKey) return jsonError("Configuration Gemini manquante", 500, allowedOrigin);
 
-  const content = [{ type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } }];
+  const parts = [{ inline_data: { mime_type: "image/jpeg", data: image } }];
   if (imageBest && typeof imageBest === "string" && imageBest.length > 100) {
-    content.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBest}` } });
+    parts.push({ inline_data: { mime_type: "image/jpeg", data: imageBest } });
   }
-  content.push({ type: "text", text: lines.join("\n") });
+  parts.push({ text: lines.join("\n") });
 
-  let groqResp;
+  let apiResp;
   try {
-    groqResp = await fetch(GROQ_URL, {
+    apiResp = await fetch(GEMINI_URL + "?key=" + encodeURIComponent(apiKey), {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${groqKey}` },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        model: GROQ_MODEL,
-        temperature: 0.3,
-        max_tokens: 1100,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content },
-        ],
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 2048,
+          responseMimeType: "application/json",
+        },
       }),
     });
   } catch (e) {
-    return jsonError("Erreur lors de l'appel à Groq", 500, allowedOrigin);
+    return jsonError("Erreur lors de l'appel à l'IA", 500, allowedOrigin);
   }
 
-  const raw = await groqResp.json().catch(() => null);
-  if (!groqResp.ok || !raw) {
+  const raw = await apiResp.json().catch(() => null);
+  if (!apiResp.ok || !raw) {
     const detail =
-      (raw && ((raw.error && raw.error.message) || raw.message)) || `HTTP ${groqResp.status}`;
-    console.error("[coach-vision] Groq KO", groqResp.status, String(detail).slice(0, 300));
+      (raw && ((raw.error && raw.error.message) || raw.message)) || `HTTP ${apiResp.status}`;
+    console.error("[coach-vision] Gemini KO", apiResp.status, String(detail).slice(0, 300));
     return jsonError("Analyse IA indisponible : " + String(detail).slice(0, 120), 502, allowedOrigin);
   }
 
-  const text =
-    (raw.choices && raw.choices[0] && raw.choices[0].message && raw.choices[0].message.content) || "";
+  const cand = raw.candidates && raw.candidates[0];
+  const text = (cand && cand.content && Array.isArray(cand.content.parts)
+    ? cand.content.parts.map((p) => p.text || "").join("")
+    : "") || "";
   const parsed = parseJsonLoose(text);
   if (!parsed) {
     console.error("[coach-vision] JSON illisible", String(text).slice(0, 200));

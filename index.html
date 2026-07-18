@@ -8697,8 +8697,6 @@ function defRenderResults(samples,annotBlob,worst,type,best){
     +tile(scores.length?Math.max.apply(null,scores):'--','Meilleure',scores.length?col(Math.max.apply(null,scores)):null)
     +tile(scores.length?Math.min.apply(null,scores):'--','Pire',scores.length?col(Math.min.apply(null,scores)):null)
     +'</div>';
-  html+='<div class="inp-label" style="margin:12px 0 6px">Angle « '+esc(COACH_TYPES[type].a1lbl||'principal')+' » au fil de la série</div>'
-    +'<div style="position:relative;height:140px;background:var(--s2);border-radius:10px;padding:8px"><canvas id="def-chart"></canvas></div>';
   html+='<div id="def-tip" style="font-size:12px;color:var(--t2);margin-top:10px;line-height:1.5">'
     +(worst.b64&&scores.length
       ?'🧠 Conseil IA en cours d\'analyse...'
@@ -8706,15 +8704,8 @@ function defRenderResults(samples,annotBlob,worst,type,best){
     +'</div>';
   res.innerHTML=html;
   res.style.display='block';
-  try{
-    var ctx=document.getElementById('def-chart').getContext('2d');
-    if(_defChart)_defChart.destroy();
-    _defChart=new Chart(ctx,{type:'line',
-      data:{labels:samples.map(function(s){return s.t.toFixed(1);}),
-        datasets:[{data:samples.map(function(s){return Math.round(s.a1);}),borderColor:'#d4ff00',backgroundColor:'rgba(212,255,0,.08)',fill:true,tension:.3,pointRadius:0,borderWidth:2}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.raw+'°';}}}},
-        scales:{x:{display:false},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#666',font:{size:9}}}}}});
-  }catch(e){}
+  // Courbe d'angles retirée : peu lisible et sans valeur pratique.
+  // Les angles restent calculés et envoyés à l'IA pour le débrief.
   if(worst.b64&&scores.length){
     var a1s=samples.map(function(s){return s.a1;}).filter(function(v){return isFinite(v);});
     var minA=a1s.length?Math.round(Math.min.apply(null,a1s)):null;

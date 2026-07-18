@@ -25,10 +25,13 @@
 
 export const config = { runtime: "edge" };
 
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-// NB : llama-4-maverick n'est pas disponible sur ce compte Groq (404 "does not
-// exist or you do not have access to it"). scout est le modèle vision supporté.
-const GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+// NB : le compte Groq de ce projet n'expose AUCUN modèle vision (vérifié via
+// /v1/models). On passe donc par Gemini, qui gère l'image et le JSON structuré.
+// gemini-2.5-flash n'est plus ouvert aux nouveaux comptes (404) ;
+// gemini-3-flash-preview est validé (vision + JSON) sur cette clé.
+const GEMINI_MODEL = "gemini-3-flash-preview";
+const GEMINI_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
 const SUPABASE_URL = "https://wszhbpsuujcgjnvvtgfv.supabase.co";
 const MAX_IMAGE_B64 = 1500000; // ~1,1 Mo — borne le coût/DoS par requête
 const ALLOWED_ORIGINS = [
@@ -103,47 +106,50 @@ export default async function handler(request) {
   }
   const safeMime = (mime === "image/png" || mime === "image/webp") ? mime : "image/jpeg";
 
-  const groqKey = (process.env.GROQ_API_KEY || "").trim();
-  if (!groqKey) return jsonError("Configuration Groq manquante", 500, allowedOrigin);
+  const apiKey = (process.env.GEMINI_API_KEY || "").trim();
+  if (!apiKey) return jsonError("Configuration Gemini manquante", 500, allowedOrigin);
 
-  // ── Appel Groq Vision (mode JSON) ─────────────────────────────────
-  let groqResp;
+  // ── Appel Gemini Vision (JSON natif) ──────────────────────────────
+  let apiResp;
   try {
-    groqResp = await fetch(GROQ_URL, {
+    apiResp = await fetch(GEMINI_URL + "?key=" + encodeURIComponent(apiKey), {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${groqKey}` },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        model: GROQ_MODEL,
-        temperature: 0.2,
-        max_tokens: 400,
-        // NB : pas de response_format json_object — Groq le refuse sur les requêtes
-        // multimodales (image). Le prompt impose le JSON et parseJsonLoose sécurise.
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [
           {
             role: "user",
-            content: [
-              { type: "image_url", image_url: { url: `data:${safeMime};base64,${image}` } },
-              { type: "text", text: "Analyse cette image et renvoie l'objet JSON demandé." },
+            parts: [
+              { inline_data: { mime_type: safeMime, data: image } },
+              { text: "Analyse cette image et renvoie l'objet JSON demandé." },
             ],
           },
         ],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 1024,
+          responseMimeType: "application/json",
+        },
       }),
     });
   } catch (e) {
-    return jsonError("Erreur lors de l'appel à Groq", 500, allowedOrigin);
+    return jsonError("Erreur lors de l'appel à l'IA", 500, allowedOrigin);
   }
 
-  const raw = await groqResp.json().catch(() => null);
-  if (!groqResp.ok || !raw) {
+  const raw = await apiResp.json().catch(() => null);
+  if (!apiResp.ok || !raw) {
     const detail =
-      (raw && ((raw.error && raw.error.message) || raw.message)) || `HTTP ${groqResp.status}`;
-    console.error("[scan-vision] Groq KO", groqResp.status, String(detail).slice(0, 300));
+      (raw && ((raw.error && raw.error.message) || raw.message)) || `HTTP ${apiResp.status}`;
+    console.error("[scan-vision] Gemini KO", apiResp.status, String(detail).slice(0, 300));
     return jsonError("Analyse IA indisponible : " + String(detail).slice(0, 120), 502, allowedOrigin);
   }
 
+  const cand = raw.candidates && raw.candidates[0];
   const content =
-    (raw.choices && raw.choices[0] && raw.choices[0].message && raw.choices[0].message.content) || "";
+    (cand && cand.content && Array.isArray(cand.content.parts)
+      ? cand.content.parts.map((p) => p.text || "").join("")
+      : "") || "";
 
   const parsed = parseJsonLoose(content);
   if (!parsed) return jsonError("Analyse impossible (format IA inattendu)", 502, allowedOrigin);
