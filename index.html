@@ -1542,11 +1542,13 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
       <div id="coach-def-block" style="display:none">
       <div class="card" id="coach-deferred-card">
         <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:10px">Filme ta série sans t'occuper de l'écran — tu recevras ensuite la <b>vidéo annotée</b> (squelette), la <b>courbe d'angles</b>, un <b>score par répétition</b> et une <b>analyse technique détaillée</b>.<br><span style="color:var(--t3);font-size:11px">Cadrage : corps entier visible, bonne lumière.</span></div>
-        <video id="def-preview" playsinline muted style="display:none;width:100%;border-radius:12px;background:#000;aspect-ratio:3/4;max-height:38vh;object-fit:cover;margin-bottom:10px"></video>
-        <div style="display:flex;gap:8px">
-          <button class="btn-primary" id="def-rec-btn" onclick="defToggleRec()" style="flex:2;margin:0">🎬 Filmer une série</button>
-          <button class="btn-outline" id="def-switch-btn" onclick="defSwitchCamera()" style="flex:1;margin:0;white-space:nowrap">📷 Arrière</button>
+        <div id="def-preview-wrap" style="display:none;position:relative;margin-bottom:10px">
+          <video id="def-preview" playsinline muted style="display:block;width:100%;border-radius:12px;background:#000;aspect-ratio:3/4;max-height:38vh;object-fit:cover"></video>
+          <button class="coach-switch-btn" id="def-switch-btn" onclick="defSwitchCamera()" title="Changer de caméra" aria-label="Changer de caméra">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg>
+          </button>
         </div>
+        <button class="btn-primary" id="def-rec-btn" onclick="defToggleRec()">🎬 Filmer une série</button>
         <div id="def-status" style="display:none;margin-top:10px;font-size:12px;color:var(--t2);text-align:center"></div>
         <div id="def-results" style="display:none;margin-top:12px"></div>
       </div>
@@ -8042,7 +8044,6 @@ function coachSetMode(m){
   if(bd)bd.className='coach-mode'+(_coachMode==='def'?' on':'');
   // Si on quitte le direct alors que la caméra tourne, on la coupe (libère le capteur)
   if(_coachMode!=='live'&&typeof coachRunning!=='undefined'&&coachRunning){try{toggleCoachCamera();}catch(e){}}
-  try{_updateDefCamLabel();}catch(e){}
 }
 function resetCoachSession(){
   coachReps=0;coachRepPhase='top';coachRepScores=[];coachCurrentRepAngles=[];coachBadStreak=0;
@@ -8472,6 +8473,7 @@ var _coachGotResults=false;
 // d'angles → comptage de reps + scores → courbe Chart.js + conseil VLM
 // (/api/coach-vision) sur l'image de la pire rep.
 var _defRecorder=null,_defChunks=[],_defStream=null,_defAnalyzing=false,_defAnnotUrl=null,_defChart=null;
+var _defRecStart=0,_defRestartPending=false,_defTakeId=0;
 
 async function defEnsurePose(){
   await loadCoachScript('https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js');
@@ -8484,22 +8486,28 @@ async function defEnsurePose(){
 }
 
 // Bascule avant/arrière pour le mode différé (partage coachFacing avec le direct)
-function _updateDefCamLabel(){
-  var b=document.getElementById('def-switch-btn');
-  if(b)b.textContent=(coachFacing==='user')?'🤳 Frontale':'📷 Arrière';
-}
+// Bascule avant/arrière depuis l'icône superposée sur la prévisualisation.
+// MediaRecorder est lié au flux : impossible de changer de caméra sans relancer
+// la prise → on relance proprement (confirmation si la prise dure déjà).
 function defSwitchCamera(){
-  if(_defRecorder){toast('Impossible pendant l\'enregistrement');return;}
+  var recording=!!_defRecorder;
+  if(recording&&(Date.now()-_defRecStart)/1000>5){
+    if(!confirm('Changer de caméra relance la prise en cours. Continuer ?'))return;
+  }
   coachFacing=(coachFacing==='environment')?'user':'environment';
-  _updateDefCamLabel();
-  // Coupe une éventuelle prévisualisation : la nouvelle caméra sera prise au prochain démarrage
+  if(recording){
+    _defRestartPending=true;
+    toast(coachFacing==='user'?'Caméra frontale — nouvelle prise':'Caméra arrière — nouvelle prise');
+    try{_defRecorder.stop();}catch(e){}
+    return;
+  }
   if(_defStream){
     try{_defStream.getTracks().forEach(function(t){t.stop();});}catch(e){}
     _defStream=null;
-    var prev=document.getElementById('def-preview');
-    if(prev){prev.srcObject=null;prev.style.display='none';}
+    var w=document.getElementById('def-preview-wrap');if(w)w.style.display='none';
+    var p=document.getElementById('def-preview');if(p)p.srcObject=null;
   }
-  toast(coachFacing==='user'?'Caméra frontale sélectionnée':'Caméra arrière sélectionnée');
+  toast(coachFacing==='user'?'Caméra frontale':'Caméra arrière');
 }
 async function defToggleRec(){
   var btn=document.getElementById('def-rec-btn');
@@ -8517,26 +8525,34 @@ async function defToggleRec(){
     return;
   }
   var prev=document.getElementById('def-preview');
-  prev.srcObject=_defStream;prev.style.display='block';
+  var wrap=document.getElementById('def-preview-wrap');
+  prev.srcObject=_defStream;
+  if(wrap)wrap.style.display='block';
   try{await prev.play();}catch(e){}
   _defChunks=[];
   var mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9'
     :(MediaRecorder.isTypeSupported('video/webm')?'video/webm':'video/mp4');
   _defRecorder=new MediaRecorder(_defStream,{mimeType:mime});
+  var takeId=++_defTakeId;
   _defRecorder.ondataavailable=function(e){if(e.data&&e.data.size)_defChunks.push(e.data);};
   _defRecorder.onstop=function(){
-    prev.pause();prev.srcObject=null;prev.style.display='none';
+    prev.pause();prev.srcObject=null;
+    if(wrap)wrap.style.display='none';
     if(_defStream){_defStream.getTracks().forEach(function(t){t.stop();});_defStream=null;}
     _defRecorder=null;
     btn.textContent='🎬 Filmer une série';
+    // Changement de caméra demandé : on repart sur une nouvelle prise
+    if(_defRestartPending){_defRestartPending=false;_defChunks=[];defToggleRec();return;}
     if(_defChunks.length)defAnalyze(new Blob(_defChunks,{type:_defChunks[0].type||'video/webm'}));
   };
   _defRecorder.start(500);
+  _defRecStart=Date.now();
   btn.textContent='⏹ Terminer la série';
   var status=document.getElementById('def-status');
   status.style.display='block';
   status.textContent='🔴 Enregistrement... fais ta série puis appuie sur « Terminer » (max 60 s)';
-  setTimeout(function(){if(_defRecorder){try{_defRecorder.stop();}catch(e){}}},60000);
+  // Coupure auto à 60 s — ne doit couper QUE la prise qui l'a armée
+  setTimeout(function(){if(_defRecorder&&takeId===_defTakeId){try{_defRecorder.stop();}catch(e){}}},60000);
 }
 
 async function defAnalyze(blob){
