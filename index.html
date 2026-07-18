@@ -618,7 +618,23 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
 .coach-promo .cp-ico{font-size:28px;flex-shrink:0}
 .coach-promo .cp-title{font-weight:800;font-size:14px}
 .coach-promo .cp-sub{font-size:11px;color:var(--t2);margin-top:2px}
+/* ═══ CHOIX DU MODE COACH (direct / différé) ═══ */
+.coach-modes{display:flex;gap:8px;margin-bottom:12px}
+.coach-mode{flex:1;min-width:0;text-align:left;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:12px 11px;cursor:pointer;font-family:Inter,sans-serif;color:var(--t2);transition:border-color .2s,background .2s}
+.coach-mode.on{border-color:var(--acc);background:var(--acc-d)}
+.coach-mode .cm-ico{font-size:20px;line-height:1;margin-bottom:6px}
+.coach-mode .cm-title{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:var(--text);line-height:1}
+.coach-mode.on .cm-title{color:var(--acc)}
+.coach-mode .cm-sub{font-size:11px;font-weight:600;color:var(--t2);margin-top:3px}
+.coach-mode .cm-feat{font-size:10px;color:var(--t3);line-height:1.45;margin-top:6px}
+.coach-mode .cm-for{font-size:10px;color:var(--t3);font-style:italic;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)}
+.coach-steps{display:flex;gap:10px;justify-content:center;align-items:flex-start;padding:0 14px}
+.coach-step{flex:1;max-width:110px;text-align:center}
+.coach-step .cst-ico{font-size:22px;line-height:1;margin-bottom:5px}
+.coach-step .cst-txt{font-size:10.5px;color:var(--t2);line-height:1.4}
 .coach-cam-wrap{position:relative;width:100%;aspect-ratio:3/4;max-height:42vh;margin:0 auto 12px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+/* Au repos (caméra éteinte) la boîte est compacte : le bouton d'action reste visible sans scroller */
+.coach-cam-wrap.idle{max-height:24vh}
 .coach-cam-wrap video,.coach-cam-wrap canvas{position:absolute;top:0;right:0;bottom:0;left:0;width:100%;height:100%;object-fit:cover}
 .coach-cam-wrap.mirror video,.coach-cam-wrap.mirror canvas{transform:scaleX(-1)}
 .coach-switch-btn{position:absolute;top:10px;right:10px;z-index:2;width:38px;height:38px;border-radius:50%;background:rgba(10,10,10,.6);backdrop-filter:blur(6px);border:1px solid var(--border2);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -1398,8 +1414,25 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
 
   <!-- COACH MOUVEMENT -->
   <div class="screen" id="screen-coach">
-    <div class="topbar"><div><button onclick="goTo('ai')" style="background:none;border:none;color:var(--t2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;margin-bottom:4px">← Retour</button><h1 class="D">Coach Mouvement</h1><div class="sub">Analyse ta technique en direct par caméra</div></div><div class="tbr"><button class="ib" id="coach-tts-btn" onclick="toggleCoachTTS()" aria-label="Activer/désactiver la voix" style="font-size:18px;width:40px;height:40px">🔊</button></div></div>
+    <div class="topbar"><div><button onclick="goTo('ai')" style="background:none;border:none;color:var(--t2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;margin-bottom:4px">← Retour</button><h1 class="D">Coach Mouvement</h1><div class="sub">Analyse ta technique — en direct ou après coup</div></div><div class="tbr"><button class="ib" id="coach-tts-btn" onclick="toggleCoachTTS()" aria-label="Activer/désactiver la voix" style="font-size:18px;width:40px;height:40px">🔊</button></div></div>
     <div class="scroll">
+      <!-- CHOIX DU MODE : deux façons d'analyser, présentées à poids égal -->
+      <div class="coach-modes">
+        <button class="coach-mode on" id="coach-mode-live" onclick="coachSetMode('live')">
+          <div class="cm-ico">⚡</div>
+          <div class="cm-title">En direct</div>
+          <div class="cm-sub">Corrige-toi pendant l'effort</div>
+          <div class="cm-feat">Squelette rouge→vert · bip de position · comptage de reps · voix du coach</div>
+          <div class="cm-for">Pour apprendre le mouvement</div>
+        </button>
+        <button class="coach-mode" id="coach-mode-def" onclick="coachSetMode('def')">
+          <div class="cm-ico">🎬</div>
+          <div class="cm-title">Différé</div>
+          <div class="cm-sub">Le bilan complet après la série</div>
+          <div class="cm-feat">Vidéo annotée · courbe d'angles · score par rep · analyse IA détaillée</div>
+          <div class="cm-for">Pour progresser finement · ~30 s d'analyse</div>
+        </button>
+      </div>
       <div class="card">
         <div class="inp-label">Exercice</div>
         <select class="inp" id="coach-exercise" onchange="coachSetExercise(this.value)">
@@ -1454,12 +1487,22 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
           </optgroup>
         </select>
       </div>
-      <div class="coach-cam-wrap mirror" id="coach-cam-wrap">
+      <!-- ═══ MODE DIRECT ═══ -->
+      <div id="coach-live-block">
+      <div class="coach-cam-wrap mirror idle" id="coach-cam-wrap">
         <video id="coach-video" playsinline muted></video>
         <canvas id="coach-canvas"></canvas>
         <div class="coach-placeholder" id="coach-placeholder">
-          <div class="cph-ico">🎥</div>
-          <div>Lance la caméra pour que le coach analyse ta posture en direct.</div>
+          <div class="coach-steps">
+            <div class="coach-step"><div class="cst-ico">📱</div><div class="cst-txt">Pose ton téléphone</div></div>
+            <div class="coach-step"><div class="cst-ico">🏋️</div><div class="cst-txt">Fais ta série</div></div>
+            <div class="coach-step"><div class="cst-ico">⚡</div><div class="cst-txt">Corrections en direct</div></div>
+          </div>
+          <div style="margin-top:16px;font-size:10.5px;color:var(--t3);line-height:1.7;text-align:left">
+            ✓ Téléphone posé face à toi (banc, rack, sol)<br>
+            ✓ Corps entier visible dans le cadre<br>
+            ✓ Lumière suffisante, pas à contre-jour
+          </div>
         </div>
         <button class="coach-switch-btn" id="coach-switch-btn" onclick="coachSwitchCamera()" style="display:none" title="Changer de caméra" aria-label="Changer de caméra">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg>
@@ -1493,18 +1536,21 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
         <div id="coach-last-rep" style="font-size:11px;color:var(--t3);margin-top:6px;text-align:center"></div>
       </div>
       <div class="coach-replay" id="coach-replay"></div>
-      <!-- ANALYSE DIFFÉRÉE : filme ta série, analyse complète après coup -->
-      <div class="card" id="coach-deferred-card" style="margin-top:14px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🎬 Analyse différée</div>
-        <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:10px">Filme ta série sans t'occuper de l'écran. FiTrack analyse ensuite la vidéo image par image : vidéo annotée avec squelette, courbe d'angles, score par rep et conseil IA.</div>
+      </div><!-- /coach-live-block -->
+
+      <!-- ═══ MODE DIFFÉRÉ ═══ -->
+      <div id="coach-def-block" style="display:none">
+      <div class="card" id="coach-deferred-card">
+        <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:10px">Filme ta série sans t'occuper de l'écran — tu recevras ensuite la <b>vidéo annotée</b> (squelette), la <b>courbe d'angles</b>, un <b>score par répétition</b> et une <b>analyse technique détaillée</b>.<br><span style="color:var(--t3);font-size:11px">Cadrage : corps entier visible, bonne lumière.</span></div>
         <video id="def-preview" playsinline muted style="display:none;width:100%;border-radius:12px;background:#000;aspect-ratio:3/4;max-height:38vh;object-fit:cover;margin-bottom:10px"></video>
         <button class="btn-primary" id="def-rec-btn" onclick="defToggleRec()">🎬 Filmer une série</button>
         <div id="def-status" style="display:none;margin-top:10px;font-size:12px;color:var(--t2);text-align:center"></div>
         <div id="def-results" style="display:none;margin-top:12px"></div>
       </div>
+      </div><!-- /coach-def-block -->
       <!-- Historique des scores -->
       <div id="coach-history-section" style="margin-top:12px"></div>
-      <div class="coach-tip" id="coach-tip" style="margin-top:8px">Pose ton téléphone face à toi (banc, rack, sol). <b>Pas besoin de recul</b> — le coach s'adapte automatiquement au cadrage. Le squelette devient <span style="color:var(--green);font-weight:700">vert</span> + bip quand la position est bonne.</div>
+      <div class="coach-tip" id="coach-tip" style="margin-top:8px"><b>Pas besoin de recul</b> — le coach s'adapte automatiquement au cadrage. En direct, le squelette devient <span style="color:var(--green);font-weight:700">vert</span> + bip quand la position est bonne.</div>
     </div>
   </div>
 
@@ -3229,6 +3275,7 @@ function goTo(name){
   var fab=document.getElementById('nav-log');if(fab)fab.style.display='flex';
   var fabLbl=document.querySelector('.fab-label');if(fabLbl)fabLbl.style.display='block';
   if(name==='home'){renderHome();switchHomeTab('today');}
+  if(name==='coach')coachSetMode(_coachMode); // restaure le mode choisi (direct / différé)
   if(name==='records')renderRecords('all');
   if(name==='history')renderHistory();
   if(name==='social')renderSocial();
@@ -7979,6 +8026,20 @@ var coachRecorder=null,coachRecChunks=[],coachRecording=false,coachReplayUrl=nul
 // Rep counter & scoring
 var coachReps=0,coachRepPhase='top',coachRepScores=[],coachCurrentRepAngles=[];
 var coachHistory=DB.g('coachHistory',[]);
+// Mode d'analyse choisi : 'live' (direct) ou 'def' (différé). Mémorisé.
+var _coachMode=DB.g('coachMode','live');
+function coachSetMode(m){
+  _coachMode=(m==='def')?'def':'live';
+  DB.s('coachMode',_coachMode);
+  var live=document.getElementById('coach-live-block'),def=document.getElementById('coach-def-block');
+  var bl=document.getElementById('coach-mode-live'),bd=document.getElementById('coach-mode-def');
+  if(live)live.style.display=(_coachMode==='live')?'':'none';
+  if(def)def.style.display=(_coachMode==='def')?'':'none';
+  if(bl)bl.className='coach-mode'+(_coachMode==='live'?' on':'');
+  if(bd)bd.className='coach-mode'+(_coachMode==='def'?' on':'');
+  // Si on quitte le direct alors que la caméra tourne, on la coupe (libère le capteur)
+  if(_coachMode!=='live'&&typeof coachRunning!=='undefined'&&coachRunning){try{toggleCoachCamera();}catch(e){}}
+}
 function resetCoachSession(){
   coachReps=0;coachRepPhase='top';coachRepScores=[];coachCurrentRepAngles=[];coachBadStreak=0;
   var r=document.getElementById('coach-reps');if(r)r.textContent='0';
@@ -8252,6 +8313,7 @@ async function toggleCoachCamera(){
       }
     },8000);
     document.getElementById('coach-placeholder').style.display='none';
+    var _cw=document.getElementById('coach-cam-wrap');if(_cw)_cw.classList.remove('idle');
     document.getElementById('coach-stats').style.display='flex';
     document.getElementById('coach-switch-btn').style.display='flex';
     document.getElementById('coach-rec-btn').style.display='block';
@@ -8351,6 +8413,9 @@ function stopCoachCamera(){
   if(canvas){var ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);}
   var hasReplay=document.getElementById('coach-replay')&&(document.getElementById('coach-replay').style.display==='block'||hadRecording);
   var ph=document.getElementById('coach-placeholder');if(ph)ph.style.display=hasReplay?'none':'flex';
+  // Caméra éteinte : on remet la boîte compacte (sauf si un replay occupe la zone)
+  var _cw2=document.getElementById('coach-cam-wrap');
+  if(_cw2){if(hasReplay)_cw2.classList.remove('idle');else _cw2.classList.add('idle');}
   var stats=document.getElementById('coach-stats');if(stats)stats.style.display='none';
   var aew=document.getElementById('coach-active-ex-wrap');if(aew)aew.style.display='none';
   var sw=document.getElementById('coach-switch-btn');if(sw)sw.style.display='none';
