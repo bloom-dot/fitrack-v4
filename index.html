@@ -3007,6 +3007,51 @@ function exAllowed(e){
 }
 // Temps de repos indicatif (s) selon l'objectif — influe sur la charge soutenable
 function restForObj(obj){return {strength:180,bulk:120,recomp:90,maintain:90,cut:60}[obj]||90;}
+// ─── Temps de repos personnalisé, par exercice ───
+// Base = objectif (force → long, sèche → court), modulée par l'exigence du
+// mouvement (polyarticulaire lourd vs isolation) et le niveau : un débutant
+// soulève relativement moins lourd et récupère plus vite ; un avancé génère
+// plus de fatigue nerveuse sur les gros mouvements.
+var LEVEL_REST={beginner:0.9,intermediate:1,advanced:1.1};
+function restForExercise(name,obj,level){
+  var base=restForObj(obj);
+  var ref=EX_DB.find(function(x){return x.name===name;});
+  var pr=(ref&&ref.pr)||2;
+  var typeCoef=pr<=1?1.3:(pr===2?1:0.7);        // 1 = gros polyarticulaire, 3 = isolation
+  if(ref&&ref.cat==='Core')typeCoef=0.6;
+  var lvl=LEVEL_REST[level||'beginner']||1;
+  var s=base*typeCoef*lvl;
+  s=Math.round(s/15)*15;                         // arrondi à 15 s (lisible)
+  return Math.max(45,Math.min(300,s));
+}
+function userLevel(){
+  var p=(typeof userProfile!=='undefined'&&userProfile)?userProfile:((typeof OB!=='undefined'&&OB.data)?OB.data:{});
+  return (p&&p.level)||'beginner';
+}
+// ─── Choix du découpage (split) selon fréquence, niveau et objectif ───
+// Un débutant progresse mieux en full body (fréquence par muscle élevée) ;
+// un pratiquant confirmé tire profit d'un découpage plus spécialisé.
+function chooseSplit(freq,level,obj){
+  var f=Math.max(1,Math.min(7,freq));
+  if(level==='beginner'){
+    // Full body jusqu'à 3 séances : chaque muscle est sollicité 3x/semaine,
+    // ce qui maximise l'apprentissage moteur et la progression au démarrage.
+    if(f<=3){var fb=[];for(var i=0;i<f;i++)fb.push('full');return fb;}
+    if(f===4)return ['upper','lower','upper','lower'];
+    return SPLITS[f];
+  }
+  if(level==='advanced'){
+    if(f===3)return ['push','pull','legs'];
+    if(f===4)return ['upper','lower','upper','lower'];
+    if(f===5)return ['push','pull','legs','upper','lower'];
+    if(f>=6)return ['push','pull','legs','push','pull','legs'].slice(0,f);
+    return SPLITS[f];
+  }
+  // intermédiaire
+  if(f===3)return (obj==='strength')?['full','full','full']:['push','pull','legs'];
+  if(f===4)return ['upper','lower','upper','lower'];
+  return SPLITS[f];
+}
 // Meilleur 1RM estimé d'un exercice à partir des records + de tout l'historique de séances
 function bestEst1RM(name){
   var best=0;
@@ -3024,6 +3069,12 @@ function bestEst1RM(name){
 // Poids cible de départ pour un exercice, calculé depuis l'historique (1RM estimé),
 // les reps visées, le nombre de séries et le repos. 0 si aucun historique.
 function estimateTargetWeight(name,reps,sets,restSec){
+  // Mouvement au poids du corps sans historique : la cible est le poids de corps,
+  // pas une charge additionnelle — on ne lui applique aucun coefficient.
+  if(BODYWEIGHT_EX.indexOf(name)!==-1&&!bestEst1RM(name)){
+    var _bw=currentBodyweight();
+    return _bw?round25(_bw):0;
+  }
   var range=parseRepsRange(reps);
   var r=range[1]||range[0]||10;          // borne haute des reps → charge plus conservatrice
   var oneRM=bestEst1RM(name);
@@ -3106,11 +3157,42 @@ function suggestWeightFor(name,reps){
   }
   return estimateFromProfile(name,reps);
 }
+// Réordonne les séances du split pour éviter deux jours consécutifs qui
+// sollicitent les mêmes muscles. On teste les rotations possibles du split et on
+// garde celle dont l'écart minimal entre deux séances identiques est le plus grand.
+function orderSplitForDays(split,trainDays){
+  if(!split||split.length<3)return split;
+  var n=split.length;
+  function score(arr){
+    var worst=99;
+    for(var i=0;i<n;i++){
+      for(var j=i+1;j<n;j++){
+        if(arr[i]!==arr[j])continue;
+        // écart circulaire en jours réels entre les deux séances
+        var d1=WEEK_ORDER.indexOf(trainDays[i]),d2=WEEK_ORDER.indexOf(trainDays[j]);
+        var gap=Math.min(Math.abs(d2-d1),7-Math.abs(d2-d1));
+        if(gap<worst)worst=gap;
+      }
+    }
+    return worst;
+  }
+  var best=split.slice(),bestScore=score(split);
+  for(var k=1;k<n;k++){
+    var rot=split.slice(k).concat(split.slice(0,k));
+    var s=score(rot);
+    if(s>bestScore){bestScore=s;best=rot;}
+  }
+  return best;
+}
 function generateProgram(){
   var trainDays=(OB.data.trainDays&&OB.data.trainDays.length)?OB.data.trainDays.slice():['Lundi','Mercredi','Vendredi'];
   trainDays.sort(function(a,b){return WEEK_ORDER.indexOf(a)-WEEK_ORDER.indexOf(b);});
   var freq=Math.max(1,Math.min(7,trainDays.length));
-  var split=SPLITS[freq]||SPLITS[3];
+  var _lvl=(OB.data.level)||'beginner';
+  var split=chooseSplit(freq,_lvl,OB.data.obj)||SPLITS[freq]||SPLITS[3];
+  // Répartit les séances sur les jours choisis en maximisant l'écart entre deux
+  // séances qui sollicitent les mêmes muscles (meilleure récupération).
+  split=orderSplitForDays(split,trainDays);
   var nbEx=Math.max(3,Math.min(6,Math.round((OB.data.sessionDur||60)/12)));
   var scheme=repsSchemeFor(OB.data.obj);
   var allowed=EX_DB.filter(exAllowed);
@@ -3123,13 +3205,26 @@ function generateProgram(){
   Object.keys(byGroup).forEach(function(g){if(!byGroup[g].length)byGroup[g]=EX_DB.filter(function(e){return exGroup(e)===g;});});
   var ptr={push:0,pull:0,legs:0,core:0};
   function pick(g){var arr=byGroup[g];if(!arr.length)return null;var ex=arr[ptr[g]%arr.length];ptr[g]++;return {name:ex.name,muscle:ex.muscle,sets:scheme.sets,reps:scheme.reps,_pr:ex.pr||2};}
-  // Ordonne les exercices d'une séance du plus exigeant (mouvements
-  // polyarticulaires lourds : squat, deadlift, développé, tractions...)
-  // au moins exigeant (isolation), pour les placer à fraîcheur maximale
-  // et préserver la technique sur les mouvements les plus techniques.
+  // Ordre d'une séance, selon les principes d'organisation de l'entraînement :
+  //  1. les mouvements les plus techniques/lourds à fraîcheur maximale ;
+  //  2. les gros groupes musculaires avant les petits (pas de pré-fatigue des
+  //     bras avant les tirages/poussées) ;
+  //  3. le core en dernier — le gainage sert de stabilisateur, le fatiguer tôt
+  //     dégrade la technique et la sécurité sur tout le reste.
+  var MUSCLE_RANK={legs:0,pull:1,push:1,core:9};
   function orderByPriority(exos){
-    return exos.map(function(e,i){return {e:e,i:i};})
-      .sort(function(a,b){return (a.e._pr-b.e._pr)||(a.i-b.i);})
+    return exos.map(function(e,i){
+        var ref=EX_DB.find(function(x){return x.name===e.name;});
+        var g=ref?exGroup(ref):'push';
+        var isArm=!!(ref&&ref.cat==='Bras');
+        return {e:e,i:i,pr:e._pr||2,grp:(MUSCLE_RANK[g]==null?1:MUSCLE_RANK[g]),arm:isArm?1:0};
+      })
+      .sort(function(a,b){
+        if(a.grp!==b.grp)return a.grp-b.grp;   // core relégué en fin de séance
+        if(a.pr!==b.pr)return a.pr-b.pr;       // polyarticulaire avant isolation
+        if(a.arm!==b.arm)return a.arm-b.arm;   // bras après les gros groupes
+        return a.i-b.i;
+      })
       .map(function(x){delete x.e._pr;return x.e;});
   }
   var days=split.map(function(type,i){
@@ -3145,8 +3240,10 @@ function generateProgram(){
     d.exercises.forEach(function(e){
       var ref=EX_DB.find(function(x){return x.name===e.name;});
       e.topStreak=0;
+      // Repos personnalisé : objectif + type de mouvement + niveau
+      e.rest=restForExercise(e.name,OB.data.obj,_lvl);
       if(ref&&ref.cat==='Cardio'){e.targetWeight=0;return;}
-      e.targetWeight=estimateTargetWeight(e.name,e.reps,e.sets,restSec);
+      e.targetWeight=estimateTargetWeight(e.name,e.reps,e.sets,e.rest);
     });
   });
   var end=new Date();end.setDate(end.getDate()+(OB.data.goalWeeks||8)*7);
@@ -3672,7 +3769,14 @@ function onSetDone(el){
   updateSessionProgress();
   if(el.classList.contains('done')){
     if(rAlarm){stopRestAlarm();setRestEdgeAlarm(false);rAlarm=false;}
-    if(!rRun){if(rLeft<=0)rLeft=rDur;rEndTime=null;toggleRest();}
+    // Applique le repos conseillé de l'exercice avant de lancer le minuteur
+    if(!rRun){
+      var blk=el.closest('.ex-block');
+      var rs=blk&&blk.dataset.rest?parseInt(blk.dataset.rest):0;
+      if(rs>0){rDur=rs;rLeft=rs;}
+      else if(rLeft<=0)rLeft=rDur;
+      rEndTime=null;toggleRest();
+    }
   }
 }
 function stopSessionTimer(){clearInterval(sInt);sInt=null;var d=sStart?Math.floor((Date.now()-sStart)/1000):0;sStart=null;return d;}
@@ -3913,13 +4017,19 @@ function addExBlock(name,muscle,sugWeight,sugReps,nbSets,cat){
       sug=suggestWeightFor(name,sugR)||'';
     }
   }
+  var _p=(typeof userProfile!=='undefined'&&userProfile)?userProfile:((typeof OB!=='undefined'&&OB.data)?OB.data:{});
   var muscleLine=esc(muscle);
   if(!isCardio){
     if(last)muscleLine+='<br><span style="color:var(--t2)">Dernière fois ('+last.date+') : '+last.sets.filter(function(s){return s.kg&&s.reps;}).map(function(s){return s.kg+'×'+s.reps;}).join(', ')+'</span>';
     if(sug&&sugR)muscleLine+=' · <span style="color:var(--acc)">Pré-rempli : '+sug+' kg × '+sugR+' reps</span>';
+    var _rs=restForExercise(name,_p&&_p.obj,userLevel());
+    muscleLine+='<br><span style="color:var(--t3)">⏱ Repos conseillé : '+(_rs>=60?(Math.floor(_rs/60)+' min'+(_rs%60?' '+(_rs%60)+' s':'')):(_rs+' s'))+'</span>';
   }
   var block=document.createElement('div');
   block.className='ex-block';block.id=id;block.dataset.name=name;block.dataset.muscle=muscle||'—';block.dataset.est=est;block.dataset.cat=cat||'';
+  // Repos conseillé pour CET exercice (objectif + type de mouvement + niveau) —
+  // appliqué automatiquement au minuteur quand une série est validée.
+  block.dataset.rest=restForExercise(name,_p&&_p.obj,userLevel());
   var hdr=isCardio
     ?'<span>#</span><span>Durée (min)</span><span>Dist. (km)</span><span>Info</span><span>✓</span><span></span>'
     :'<span>#</span><span>Poids kg</span><span>Reps</span><span class="tip" data-tip="Volume = poids × reps. Plus il est haut, plus tu progresses.">Vol.</span><span>✓</span><span></span>';
