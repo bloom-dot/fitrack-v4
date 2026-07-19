@@ -1338,6 +1338,20 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
     </div>
   </div>
 
+  <!-- REGENERATE PROGRAM MODAL -->
+  <div class="modal-bg" id="regen-modal" onclick="closeMBg(event,'regen-modal')">
+    <div class="modal" style="padding:16px">
+      <div class="modal-handle"></div>
+      <div style="font-weight:700;font-size:16px;margin-bottom:4px">Régénérer mon programme</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:14px">Ajuste tes contraintes — le programme sera reconstruit et les poids recalculés d'après ton historique.</div>
+      <div id="regen-content"></div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn-outline" style="flex:1;margin:0" onclick="closeMBg({target:document.getElementById('regen-modal')},'regen-modal')">Annuler</button>
+        <button class="btn-primary" style="flex:2;margin:0" onclick="confirmRegenerate()">Régénérer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ADD FOOD MODAL -->
   <div class="modal-bg" id="food-modal" onclick="closeMBg(event,'food-modal')">
     <div class="modal" style="padding:16px">
@@ -3010,11 +3024,19 @@ function bestEst1RM(name){
 // Poids cible de départ pour un exercice, calculé depuis l'historique (1RM estimé),
 // les reps visées, le nombre de séries et le repos. 0 si aucun historique.
 function estimateTargetWeight(name,reps,sets,restSec){
-  var oneRM=bestEst1RM(name);
-  if(!oneRM)return 0;
   var range=parseRepsRange(reps);
   var r=range[1]||range[0]||10;          // borne haute des reps → charge plus conservatrice
-  var w=oneRM/(1+r/30);                  // Epley inverse : charge pour r reps
+  var oneRM=bestEst1RM(name);
+  var w;
+  if(oneRM){
+    w=oneRM/(1+r/30);                    // Epley inverse : charge pour r reps
+  }else{
+    // Pas d'historique sur cet exercice : même repli que la séance
+    // (force démontrée ailleurs, sinon profil) pour ne jamais laisser 0.
+    w=estimateFromProfile(name,r);
+    if(!w)return 0;
+    w/=0.9;                              // estimateFromProfile applique déjà une marge
+  }
   w*=0.92;                               // marge de départ (soutenable sur plusieurs séries)
   if(sets>=4)w*=0.97;                    // plus de séries → fatigue cumulée → un peu plus léger
   if(sets>=5)w*=0.96;
@@ -3132,12 +3154,76 @@ function generateProgram(){
   return {freq:freq,sessionDur:OB.data.sessionDur||60,goalWeeks:OB.data.goalWeeks||8,startDate:todayStr(),endDate:end.toISOString().slice(0,10),days:days};
 }
 
-// Régénère le programme à partir du profil et des exercices préférés
-// actuels. Remplace le programme en cours ; les poids cibles (targetWeight)
-// sont recalculés d'après l'historique via estimateTargetWeight().
-async function regenerateProgram(){
-  if(!confirm("Régénérer ton programme ? Le programme actuel sera remplacé par un nouveau. Les poids cibles seront recalculés automatiquement d'après ton historique (records + séances passées)."))return;
-  if(userProfile)OB.data=Object.assign({},OB.data,userProfile);
+// Régénération : on laisse d'abord l'utilisateur ajuster ses contraintes
+// (jours disponibles, durée par séance, horizon), au lieu de réutiliser en
+// silence les valeurs saisies à l'onboarding.
+var _regen=null;
+function regenerateProgram(){
+  var src=Object.assign({},OB.data,userProfile||{});
+  _regen={
+    trainDays:(src.trainDays&&src.trainDays.length?src.trainDays.slice():['Lundi','Mercredi','Vendredi']),
+    sessionDur:src.sessionDur||60,
+    goalWeeks:src.goalWeeks||8
+  };
+  buildRegenContent();
+  document.getElementById('regen-modal').classList.add('open');
+}
+function buildRegenContent(){
+  var c=document.getElementById('regen-content');if(!c)return;
+  var days=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+  var nb=_regen.trainDays.length;
+  var nbEx=Math.max(3,Math.min(6,Math.round(_regen.sessionDur/12)));
+  c.innerHTML='<div style="margin-bottom:16px"><div class="inp-label">Jours disponibles par semaine</div>'
+      +'<div class="pills">'+days.map(function(d){
+        return '<div class="pill'+(_regen.trainDays.indexOf(d)!==-1?' on':'')+'" onclick="toggleRegenDay(\''+d+'\',this)">'+d.slice(0,3)+'</div>';
+      }).join('')+'</div>'
+      +'<div style="font-size:11px;color:var(--acc);margin-top:6px;font-weight:600" id="regen-freq">'+nb+' séance'+(nb>1?'s':'')+' / semaine</div></div>'
+    +'<div style="margin-bottom:16px"><div class="inp-label">Temps par séance</div><div class="slider-row">'
+      +'<input type="range" id="regen-dur" min="30" max="120" value="'+_regen.sessionDur+'" step="15" oninput="onRegenDur(this.value)">'
+      +'<span class="slider-val" id="regen-dur-v">'+_regen.sessionDur+' min</span></div>'
+      +'<div style="font-size:11px;color:var(--t2);margin-top:4px" id="regen-nbex">≈ '+nbEx+' exercices par séance</div></div>'
+    +'<div><div class="inp-label">Atteindre mon objectif en</div><div class="slider-row">'
+      +'<input type="range" id="regen-goal" min="4" max="24" value="'+_regen.goalWeeks+'" step="1" oninput="onRegenGoal(this.value)">'
+      +'<span class="slider-val" id="regen-goal-v">'+_regen.goalWeeks+' sem.</span></div></div>';
+}
+function toggleRegenDay(d,el){
+  var i=_regen.trainDays.indexOf(d);
+  if(i!==-1){
+    if(_regen.trainDays.length<=1){toast('Garde au moins un jour');return;}
+    _regen.trainDays.splice(i,1);el.classList.remove('on');
+  }else{_regen.trainDays.push(d);el.classList.add('on');}
+  var n=_regen.trainDays.length;
+  var f=document.getElementById('regen-freq');
+  if(f)f.textContent=n+' séance'+(n>1?'s':'')+' / semaine';
+}
+function onRegenDur(v){
+  _regen.sessionDur=+v;
+  document.getElementById('regen-dur-v').textContent=v+' min';
+  var nbEx=Math.max(3,Math.min(6,Math.round(_regen.sessionDur/12)));
+  var e=document.getElementById('regen-nbex');
+  if(e)e.textContent='≈ '+nbEx+' exercices par séance';
+}
+function onRegenGoal(v){
+  _regen.goalWeeks=+v;
+  document.getElementById('regen-goal-v').textContent=v+' sem.';
+}
+async function confirmRegenerate(){
+  if(!_regen)return;
+  document.getElementById('regen-modal').classList.remove('open');
+  // Les contraintes choisies deviennent celles du profil (mémorisées pour la suite)
+  OB.data=Object.assign({},OB.data,userProfile||{},{
+    trainDays:_regen.trainDays.slice(),
+    sessionDur:_regen.sessionDur,
+    goalWeeks:_regen.goalWeeks,
+    freq:_regen.trainDays.length
+  });
+  if(userProfile){
+    userProfile.trainDays=_regen.trainDays.slice();
+    userProfile.sessionDur=_regen.sessionDur;
+    userProfile.goalWeeks=_regen.goalWeeks;
+    userProfile.freq=_regen.trainDays.length;
+    DB.s('profile',userProfile);
+  }
   obSelEx=(selectedExercises&&selectedExercises.length)?selectedExercises.slice():obSelEx;
   program=generateProgram();
   DB.s('program',program);
