@@ -1239,7 +1239,7 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
 
   <!-- LOG -->
   <div class="screen" id="screen-log">
-    <div class="topbar" style="padding-bottom:12px"><div><h1 class="D" style="font-size:22px">Séance en cours</h1></div><div class="tbr"><div class="ib" onclick="toast('Brouillon sauvegardé 💾')" role="button" aria-label="Sauvegarder le brouillon" title="Sauvegarder le brouillon">💾</div></div></div>
+    <div class="topbar" style="padding-bottom:12px"><div><h1 class="D" style="font-size:22px">Séance en cours</h1></div><div class="tbr"><div class="ib" onclick="saveSessionDraft(true)" role="button" aria-label="Sauvegarder le brouillon" title="Sauvegarder le brouillon">💾</div></div></div>
     <div class="scroll">
       <div class="session-hdr">
         <input class="session-name" id="session-name" placeholder="Nom de la séance..." value="Push Day">
@@ -3022,6 +3022,41 @@ function estimateTargetWeight(name,reps,sets,restSec){
   else if(restSec<=60)w*=0.95;           // repos court → un peu plus léger
   return round25(w);
 }
+// ─── Estimation d'une charge de départ quand l'historique est vide ───
+// Ratios de 1RM rapportés au poids de corps, par catégorie et type de mouvement
+var STRENGTH_RATIO={
+  compound:{'Jambes':1.2,'Dos':0.9,'Poitrine':0.9,'Épaules':0.55,'Bras':0.4,'Core':0.3},
+  isolation:{'Jambes':0.5,'Dos':0.4,'Poitrine':0.35,'Épaules':0.2,'Bras':0.25,'Core':0.2}
+};
+var LEVEL_COEF={beginner:0.7,intermediate:1,advanced:1.3};
+// Mouvements classiquement au poids du corps → on propose le poids de corps
+var BODYWEIGHT_EX=['Pompes','Pompes diamant','Tractions','Dips','Planche','Crunch','Relevé de jambes','Superman','Ab wheel'];
+function estimateFromProfile(name,reps){
+  var bw=currentBodyweight();
+  if(!bw)return 0;
+  if(BODYWEIGHT_EX.indexOf(name)!==-1)return round25(bw);
+  var ref=EX_DB.find(function(x){return x.name===name;});
+  var cat=(ref&&ref.cat)||'Poitrine';
+  var isIso=!!(ref&&ref.pr>=3);
+  var table=STRENGTH_RATIO[isIso?'isolation':'compound'];
+  var ratio=table[cat];
+  if(ratio==null)ratio=isIso?0.3:0.7;
+  var p=(typeof userProfile!=='undefined'&&userProfile)?userProfile:((typeof OB!=='undefined'&&OB.data)?OB.data:{});
+  var lvl=LEVEL_COEF[(p&&p.level)||'beginner']||0.7;
+  var sexCoef=((p&&p.sexe)==='F')?0.65:1;
+  var oneRM=bw*ratio*lvl*sexCoef;
+  var r=parseInt(reps)||10;
+  return round25(Math.max(2.5,oneRM/(1+r/30)*0.9));
+}
+// Charge suggérée : historique en priorité, sinon estimation depuis le profil
+function suggestWeightFor(name,reps){
+  var oneRM=bestEst1RM(name);
+  if(oneRM){
+    var r=parseInt(reps)||10;
+    return round25(Math.max(2.5,oneRM/(1+r/30)*0.9));
+  }
+  return estimateFromProfile(name,reps);
+}
 function generateProgram(){
   var trainDays=(OB.data.trainDays&&OB.data.trainDays.length)?OB.data.trainDays.slice():['Lundi','Mercredi','Vendredi'];
   trainDays.sort(function(a,b){return WEEK_ORDER.indexOf(a)-WEEK_ORDER.indexOf(b);});
@@ -3513,6 +3548,7 @@ function playConfetti(){
   frame();
 }
 function onSetDone(el){
+  scheduleDraftSave();
   el.classList.toggle('done');
   el.textContent=el.classList.contains('done')?'✓':'';
   if(el.classList.contains('done')){
@@ -3757,6 +3793,12 @@ function addExBlock(name,muscle,sugWeight,sugReps,nbSets,cat){
       var bestSet=last.sets.reduce(function(a,b){return (b.kg*b.reps>a.kg*a.reps)?b:a;},last.sets[0]);
       sug=bestSet.kg;sugR=bestSet.reps;
     }else if(est){sug=round25(est*0.80);}
+    // Aucun historique sur cet exercice → charge de départ estimée depuis le profil
+    // (poids de corps, sexe, niveau, type de mouvement) pour ne jamais laisser vide
+    if(!sug){
+      if(!sugR)sugR=10;
+      sug=suggestWeightFor(name,sugR)||'';
+    }
   }
   var muscleLine=esc(muscle);
   if(!isCardio){
@@ -4027,6 +4069,7 @@ function toggleVoiceInput(){
   _voiceRecog.start();
 }
 function onSetInp(inp){
+  scheduleDraftSave(); // sauvegarde continue du brouillon
   var row=inp.closest('.set-row');var block=inp.closest('.ex-block');
   var ins=row.querySelectorAll('.set-inp');
   var vc=row.querySelector('.set-vol');
@@ -4735,6 +4778,7 @@ function finishSession(){
   var met=sd.totalVolume>0?(4+Math.min(2,sd.totalVolume/(durationH*3600)*0.002)):3;
   sd.calories=Math.round(met*wt*durationH);
   sessions.unshift(sd);DB.s('sessions',sessions);
+  clearSessionDraft(); // séance enregistrée → le brouillon n'a plus lieu d'être
   syncSessionToSupabase(sd);
   updateStreak();
   adjustProgramAfterSession(sd);
@@ -4956,6 +5000,75 @@ function nextDeloadInfo(){
   var inWeeks=(6-(wk%6))%6; // 0 = c'est cette semaine
   return {week:wk,inWeeks:inWeeks,deloadWeek:wk+inWeeks};
 }
+// ═══ BROUILLON DE SÉANCE EN COURS ═══
+// Sauvegarde locale continue : si l'app est fermée/évincée de la mémoire
+// (passage sur une autre app, onglet purgé par iOS), la séance est restaurée.
+var _draftT=null;
+function collectSessionDraft(){
+  var list=document.getElementById('ex-list');if(!list)return null;
+  var blocks=list.querySelectorAll('.ex-block');
+  if(!blocks.length)return null;
+  var exs=[],any=false;
+  for(var i=0;i<blocks.length;i++){
+    var b=blocks[i],rows=b.querySelectorAll('.set-row'),sets=[];
+    for(var j=0;j<rows.length;j++){
+      var ins=rows[j].querySelectorAll('.set-inp');
+      var v1=ins[0]?ins[0].value:'',v2=ins[1]?ins[1].value:'';
+      var ck=rows[j].querySelector('.set-ck');
+      if(v1||v2)any=true;
+      sets.push({a:v1,b:v2,done:!!(ck&&ck.classList.contains('done'))});
+    }
+    var note=b.querySelector('.ex-note');
+    exs.push({name:b.dataset.name,muscle:b.dataset.muscle||'',cat:b.dataset.cat||'',est:b.dataset.est||0,sets:sets,note:note?note.value:''});
+  }
+  var nm=document.getElementById('session-name');
+  return {date:todayStr(),name:nm?nm.value:'',exercises:exs,any:any,ts:Date.now()};
+}
+function saveSessionDraft(showToast){
+  try{
+    var d=collectSessionDraft();
+    if(!d){DB.s('sessionDraft',null);if(showToast)toast('Rien à sauvegarder');return;}
+    DB.s('sessionDraft',d);
+    if(showToast)toast('Brouillon sauvegardé 💾');
+  }catch(e){}
+}
+function scheduleDraftSave(){
+  if(_draftT)clearTimeout(_draftT);
+  _draftT=setTimeout(function(){saveSessionDraft(false);},600);
+}
+function clearSessionDraft(){try{DB.s('sessionDraft',null);}catch(e){}}
+function getSessionDraft(){
+  var d=DB.g('sessionDraft',null);
+  if(!d||d.date!==todayStr()||!d.exercises||!d.exercises.length)return null;
+  return d;
+}
+function restoreSessionDraft(d){
+  var list=document.getElementById('ex-list');if(!list||!d)return false;
+  list.innerHTML='';exCtr=0;
+  var nm=document.getElementById('session-name');if(nm&&d.name)nm.value=d.name;
+  d.exercises.forEach(function(e){
+    addExBlock(e.name,e.muscle,'','',(e.sets&&e.sets.length)||3,e.cat);
+    var block=list.lastElementChild;if(!block)return;
+    if(e.est)block.dataset.est=e.est;
+    var rows=block.querySelectorAll('.set-row');
+    (e.sets||[]).forEach(function(s,i){
+      var r=rows[i];if(!r)return;
+      var ins=r.querySelectorAll('.set-inp');
+      if(ins[0]){ins[0].value=s.a;ins[0].classList.remove('sug');}
+      if(ins[1])ins[1].value=s.b;
+      if(s.done){var ck=r.querySelector('.set-ck');if(ck){ck.classList.add('done');ck.textContent='✓';}}
+      if(ins[0])onSetInp(ins[0]);
+    });
+    var note=block.querySelector('.ex-note');if(note&&e.note)note.value=e.note;
+  });
+  updateSessionProgress();
+  return true;
+}
+// Sauvegarde au moment critique : l'app passe en arrière-plan / est fermée
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='hidden')saveSessionDraft(false);
+});
+window.addEventListener('pagehide',function(){saveSessionDraft(false);});
 function buildDefaultSession(force){
   var list=document.getElementById('ex-list');if(!list)return;list.innerHTML='';exCtr=0;
   resetSessionTimerUI();
@@ -4966,6 +5079,8 @@ function buildDefaultSession(force){
   if(doneEl)doneEl.remove();
   var cancelEl=document.getElementById('session-cancel-banner');
   if(cancelEl)cancelEl.remove();
+  var draftEl=document.getElementById('draft-banner');
+  if(draftEl)draftEl.remove();
   if(force&&sessions.length&&sessions[0].date===todayStr()){
     var cancel=document.createElement('div');cancel.id='session-cancel-banner';cancel.className='card';cancel.style.cssText='text-align:center;font-size:12px;color:var(--t2)';
     cancel.innerHTML='Tu as déjà enregistré "'+esc(sessions[0].name)+'" aujourd\'hui. <button class="btn-outline" style="margin-top:8px" onclick="buildDefaultSession(false)">← Annuler, revenir à la séance enregistrée</button>';
@@ -4978,6 +5093,17 @@ function buildDefaultSession(force){
     done.innerHTML='<div style="font-size:32px;margin-bottom:8px">✅</div><div style="font-weight:700;margin-bottom:4px">Séance déjà enregistrée aujourd\'hui</div><div style="font-size:12px;color:var(--t2);margin-bottom:14px">'+esc(sessions[0].name)+' · '+(sessions[0].totalVolume||0).toLocaleString('fr-FR')+' kg</div><button class="btn-outline" onclick="buildDefaultSession(true)">+ Logger une autre séance</button>';
     list.parentNode.insertBefore(done,list);
     return;
+  }
+  // Brouillon du jour avec des données saisies → on le restaure au lieu de repartir de zéro
+  if(!force){
+    var _dr=getSessionDraft();
+    if(_dr&&_dr.any&&restoreSessionDraft(_dr)){
+      var rb=document.createElement('div');rb.id='draft-banner';rb.className='card';
+      rb.style.cssText='margin-bottom:12px;font-size:12px;color:var(--t2);border:1px solid rgba(212,255,0,.3);background:var(--acc-d)';
+      rb.innerHTML='💾 <b style="color:var(--acc)">Séance en cours restaurée</b><br>Tes saisies ont été récupérées. <button class="btn-outline" style="margin-top:8px" onclick="clearSessionDraft();buildDefaultSession(true)">Repartir à zéro</button>';
+      list.parentNode.insertBefore(rb,list);
+      return;
+    }
   }
   if(program){
     var today=DAYS_FR[new Date().getDay()];
