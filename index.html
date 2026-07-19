@@ -3031,20 +3031,47 @@ var STRENGTH_RATIO={
 var LEVEL_COEF={beginner:0.7,intermediate:1,advanced:1.3};
 // Mouvements classiquement au poids du corps → on propose le poids de corps
 var BODYWEIGHT_EX=['Pompes','Pompes diamant','Tractions','Dips','Planche','Crunch','Relevé de jambes','Superman','Ab wheel'];
+// Ratio de référence (1RM / poids de corps) attendu pour un exercice donné
+function exStrengthRatio(name){
+  var ref=EX_DB.find(function(x){return x.name===name;});
+  var cat=(ref&&ref.cat)||'Poitrine';
+  var isIso=!!(ref&&ref.pr>=3);
+  var t=STRENGTH_RATIO[isIso?'isolation':'compound'];
+  var r=t[cat];
+  return (r==null)?(isIso?0.3:0.7):r;
+}
+// Force réelle de l'utilisateur, calibrée sur TOUT ce qu'il a déjà soulevé :
+// pour chaque exercice avec historique, on compare son 1RM au ratio de référence.
+// La médiane rend l'estimation robuste aux valeurs extrêmes. 0 si aucun historique.
+function personalStrengthFactor(){
+  var bw=currentBodyweight();
+  if(!bw)return 0;
+  var names={},facs=[];
+  Object.keys(prs||{}).forEach(function(n){names[n]=1;});
+  (sessions||[]).forEach(function(s){(s.exercises||[]).forEach(function(e){if(e&&e.name)names[e.name]=1;});});
+  Object.keys(names).forEach(function(n){
+    if(BODYWEIGHT_EX.indexOf(n)!==-1)return;   // charge = poids du corps, non comparable
+    var o=bestEst1RM(n);if(!o)return;
+    var r=exStrengthRatio(n);if(!r)return;
+    var f=o/(bw*r);
+    if(isFinite(f)&&f>0.2&&f<4)facs.push(f);   // écarte les saisies aberrantes
+  });
+  if(!facs.length)return 0;
+  facs.sort(function(a,b){return a-b;});
+  return facs[Math.floor(facs.length/2)];
+}
 function estimateFromProfile(name,reps){
   var bw=currentBodyweight();
   if(!bw)return 0;
   if(BODYWEIGHT_EX.indexOf(name)!==-1)return round25(bw);
-  var ref=EX_DB.find(function(x){return x.name===name;});
-  var cat=(ref&&ref.cat)||'Poitrine';
-  var isIso=!!(ref&&ref.pr>=3);
-  var table=STRENGTH_RATIO[isIso?'isolation':'compound'];
-  var ratio=table[cat];
-  if(ratio==null)ratio=isIso?0.3:0.7;
-  var p=(typeof userProfile!=='undefined'&&userProfile)?userProfile:((typeof OB!=='undefined'&&OB.data)?OB.data:{});
-  var lvl=LEVEL_COEF[(p&&p.level)||'beginner']||0.7;
-  var sexCoef=((p&&p.sexe)==='F')?0.65:1;
-  var oneRM=bw*ratio*lvl*sexCoef;
+  var ratio=exStrengthRatio(name);
+  // Priorité : force démontrée par l'historique. À défaut seulement, le profil.
+  var f=personalStrengthFactor();
+  if(!f){
+    var p=(typeof userProfile!=='undefined'&&userProfile)?userProfile:((typeof OB!=='undefined'&&OB.data)?OB.data:{});
+    f=(LEVEL_COEF[(p&&p.level)||'beginner']||0.7)*(((p&&p.sexe)==='F')?0.65:1);
+  }
+  var oneRM=bw*ratio*f;
   var r=parseInt(reps)||10;
   return round25(Math.max(2.5,oneRM/(1+r/30)*0.9));
 }

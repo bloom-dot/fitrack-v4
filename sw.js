@@ -1,5 +1,5 @@
 // Service worker FiTrack — cache app shell + gestion notifications push
-const CACHE_NAME = 'fitrack-v4-shell-48';
+const CACHE_NAME = 'fitrack-v4-shell-49';
 // Cache séparé et persistant pour les libs CDN versionnées (zxing-wasm, html5-qrcode)
 // → scanner fonctionnel hors-ligne une fois chargé une première fois.
 const CDN_CACHE = 'fitrack-cdn-v1';
