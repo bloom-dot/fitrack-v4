@@ -5035,33 +5035,122 @@ function finishSession(){
   if(newPRs.length){prQueue=newPRs.slice();pendingPRs=[];showNextPR();}
   else{haptic(80);playConfetti();showDebrief(sd);}
 }
+// Exercice le moins travaillé récemment : celui dont le volume sur 4 semaines
+// est le plus faible, parmi ceux réellement pratiqués (au moins 2 fois).
+function weakestExercise(){
+  var since=new Date();since.setDate(since.getDate()-28);
+  var sinceStr=since.toISOString().slice(0,10);
+  var stat={};
+  (sessions||[]).forEach(function(s){
+    if(!s.date||s.date<sinceStr)return;
+    (s.exercises||[]).forEach(function(e){
+      if(!e.name)return;
+      var ref=EX_DB.find(function(x){return x.name===e.name;});
+      if(ref&&ref.cat==='Cardio')return;
+      if(!stat[e.name])stat[e.name]={vol:0,n:0};
+      stat[e.name].vol+=(e.volume||0);
+      stat[e.name].n++;
+    });
+  });
+  var names=Object.keys(stat).filter(function(n){return stat[n].n>=2;});
+  if(!names.length)return null;
+  names.sort(function(a,b){return stat[a].vol-stat[b].vol;});
+  return names[0];
+}
+// Chaque objectif est mesurable : il porte de quoi calculer sa propre progression.
 function generateAIChallenge(){
-  var lastChallenge=DB.g('aiChallenge',null);
-  if(lastChallenge&&lastChallenge.week===getMonday(new Date()).toISOString().slice(0,10))return;
-  if(sessions.length<2)return;
-  var lastWeekVol=0,thisWeekVol=0;
   var mon=getMonday(new Date());var monStr=mon.toISOString().slice(0,10);
+  var lastChallenge=DB.g('aiChallenge',null);
+  if(lastChallenge&&lastChallenge.week===monStr)return;
+  if(sessions.length<2)return;
+  var lastWeekVol=0;
   var prevMon=new Date(mon);prevMon.setDate(prevMon.getDate()-7);var prevMonStr=prevMon.toISOString().slice(0,10);
   sessions.forEach(function(s){
-    if(s.date>=monStr)thisWeekVol+=(s.totalVolume||0);
-    else if(s.date>=prevMonStr)lastWeekVol+=(s.totalVolume||0);
+    if(s.date<monStr&&s.date>=prevMonStr)lastWeekVol+=(s.totalVolume||0);
   });
+  var prevSessions=sessions.filter(function(s){return s.date>=prevMonStr&&s.date<monStr;}).length;
   var challenges=[
-    'Augmente ton volume total de 5% cette semaine (objectif: '+Math.round(lastWeekVol*1.05)+' kg)',
-    'Fais au moins '+(sessions.filter(function(s){return s.date>=prevMonStr&&s.date<monStr;}).length+1)+' séances cette semaine',
-    'Bats un record personnel cette semaine sur n\'importe quel exercice',
-    'Ajoute une série supplémentaire sur ton exercice le plus faible',
-    'Tiens un streak de 3 jours consécutifs d\'entraînement'
+    {type:'volume',target:Math.round(lastWeekVol*1.05),
+     text:'Augmente ton volume total de 5 % cette semaine',
+     help:'Volume = poids × répétitions, cumulé sur toutes tes séances de la semaine.'},
+    {type:'sessions',target:prevSessions+1,
+     text:'Fais au moins '+(prevSessions+1)+' séances cette semaine',
+     help:'Chaque séance enregistrée compte.'},
+    {type:'pr',target:1,
+     text:'Bats un record personnel cette semaine',
+     help:'N\'importe quel exercice : il suffit de dépasser ton meilleur 1RM estimé.'}
   ];
+  var weak=weakestExercise();
+  if(weak){
+    challenges.push({type:'extra_set',exercise:weak,target:1,
+      text:'Ajoute une série supplémentaire sur « '+weak+' »',
+      help:'C\'est ton exercice le moins travaillé sur les 4 dernières semaines. Fais-en simplement une série de plus que d\'habitude.'});
+  }
   var pick=challenges[Math.floor(Math.random()*challenges.length)];
-  DB.s('aiChallenge',{text:pick,week:monStr});
+  pick.week=monStr;
+  DB.s('aiChallenge',pick);
   renderAIChallenge();
+}
+// Progression calculée à partir des séances de la semaine — aucune saisie manuelle.
+function aiChallengeProgress(data){
+  if(!data)return null;
+  var monStr=data.week||getMonday(new Date()).toISOString().slice(0,10);
+  var week=(sessions||[]).filter(function(s){return s.date&&s.date>=monStr;});
+  var cur=0,unit='';
+  if(data.type==='volume'){
+    week.forEach(function(s){cur+=(s.totalVolume||0);});
+    unit=' kg';
+  }else if(data.type==='sessions'){
+    cur=week.length;unit=' séance'+(week.length>1?'s':'');
+  }else if(data.type==='pr'){
+    week.forEach(function(s){cur+=((s.newPRs&&s.newPRs.length)||0);});
+    unit=' record'+(cur>1?'s':'');
+  }else if(data.type==='extra_set'){
+    // Référence : nombre de séries habituel sur cet exercice avant cette semaine
+    var before=[],now=0;
+    (sessions||[]).forEach(function(s){
+      (s.exercises||[]).forEach(function(e){
+        if(e.name!==data.exercise)return;
+        var n=(e.sets&&e.sets.length)||0;
+        if(s.date>=monStr){if(n>now)now=n;}
+        else before.push(n);
+      });
+    });
+    var ref=before.length?Math.max.apply(null,before.slice(0,6)):0;
+    cur=now;unit=' séries';
+    return {cur:now,goal:ref?ref+1:0,unit:unit,done:!!(ref&&now>=ref+1),ref:ref,noRef:!ref};
+  }
+  var goal=data.target||0;
+  return {cur:cur,goal:goal,unit:unit,done:goal>0&&cur>=goal};
 }
 function renderAIChallenge(){
   var data=DB.g('aiChallenge',null);
   var el=document.getElementById('ai-challenge');
   if(!el||!data)return;
-  el.innerHTML='<span style="color:var(--gold);font-weight:600">Objectif IA :</span> '+esc(data.text);
+  // Compat : anciens objectifs enregistrés en simple texte
+  if(!data.type){
+    el.innerHTML='<span style="color:var(--gold);font-weight:600">Objectif IA :</span> '+esc(data.text||'');
+    el.style.display='block';return;
+  }
+  var p=aiChallengeProgress(data);
+  var pct=(p&&p.goal)?Math.min(100,Math.round(p.cur/p.goal*100)):0;
+  var col=p&&p.done?'var(--green)':'var(--gold)';
+  var h='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+    +'<span><span style="color:var(--gold);font-weight:600">Objectif IA :</span> '+esc(data.text)+'</span>'
+    +(p&&p.done?'<span style="color:var(--green);font-weight:700;flex-shrink:0">✓ Atteint</span>':'')
+    +'</div>';
+  if(p&&p.noRef){
+    h+='<div style="font-size:11px;color:var(--t3);margin-top:6px">Fais une première séance avec cet exercice — le nombre de séries à battre sera calculé ensuite.</div>';
+  }else if(p&&p.goal){
+    h+='<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-bottom:4px">'
+      +'<span>'+p.cur.toLocaleString('fr-FR')+p.unit+' / '+p.goal.toLocaleString('fr-FR')+p.unit+'</span>'
+      +'<span style="color:'+col+';font-weight:700">'+pct+' %</span></div>'
+      +'<div style="background:var(--s2);border-radius:4px;height:6px;overflow:hidden">'
+      +'<div style="height:100%;width:'+pct+'%;background:'+col+';border-radius:4px;transition:width .4s"></div></div></div>';
+  }
+  if(data.help)h+='<div style="font-size:11px;color:var(--t3);margin-top:6px;line-height:1.5">💡 '+esc(data.help)+'</div>';
+  h+='<div style="font-size:10px;color:var(--t3);margin-top:6px;font-style:italic">Validé automatiquement d\'après tes séances — rien à cocher.</div>';
+  el.innerHTML=h;
   el.style.display='block';
 }
 function generateWarmup(){
