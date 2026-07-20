@@ -1503,6 +1503,16 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
       </div>
       <!-- ═══ MODE DIRECT ═══ -->
       <div id="coach-live-block">
+      <!-- Débit de parole du coach -->
+      <div class="card" id="coach-verbosity-card" style="padding:11px 13px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div style="min-width:0">
+            <div style="font-size:12px;font-weight:700">🗣 Consignes vocales</div>
+            <div style="font-size:11px;color:var(--t2);margin-top:2px" id="coach-verbosity-hint">—</div>
+          </div>
+          <div class="pills" style="flex-shrink:0;margin:0" id="coach-verbosity-pills"></div>
+        </div>
+      </div>
       <div class="coach-cam-wrap mirror idle" id="coach-cam-wrap">
         <video id="coach-video" playsinline muted></video>
         <canvas id="coach-canvas"></canvas>
@@ -8507,6 +8517,7 @@ function coachSetMode(m){
   if(bd)bd.className='coach-mode'+(_coachMode==='def'?' on':'');
   // Si on quitte le direct alors que la caméra tourne, on la coupe (libère le capteur)
   if(_coachMode!=='live'&&typeof coachRunning!=='undefined'&&coachRunning){try{toggleCoachCamera();}catch(e){}}
+  try{renderCoachVerbosity();}catch(e){}
 }
 function resetCoachSession(){
   coachReps=0;coachRepPhase='top';coachRepScores=[];coachCurrentRepAngles=[];coachBadStreak=0;
@@ -9376,19 +9387,142 @@ function toggleCoachTTS(){
     toast('Voix désactivée');
   }
 }
-var coachSpokenLog={},coachLastSpokenTime=0;
+// ═══ VARIANTES DE FEEDBACK ═══
+// Chaque consigne existe en plusieurs formulations. Sans ça, la même phrase
+// exacte revient à chaque répétition et le coach sonne "pré-enregistré".
+var COACH_VARIANTS={
+  // — Squat / profondeur —
+  "Position de départ : descends en pliant genoux et hanches":["Vas-y, amorce la descente","Plie les genoux et les hanches, c'est parti","Descends tranquillement"],
+  "Continue de descendre pour atteindre la profondeur":["Encore un peu plus bas","Descends davantage","Va chercher la profondeur"],
+  "Garde le buste plus droit, évite de trop te pencher en avant":["Redresse le buste","Trop penché en avant, remonte la poitrine","Ouvre la poitrine, buste plus vertical"],
+  "Bonne profondeur, garde le dos droit !":["Belle profondeur","Voilà, dos bien droit","Parfait en bas"],
+  "Bonne profondeur, repousse maintenant !":["Bien bas, remonte","Profondeur atteinte, pousse","Voilà, repousse le sol"],
+  "Bonne profondeur, reviens en poussant sur le talon":["Bien bas, pousse dans les talons","Remonte en poussant les talons","Parfait, remonte fort"],
+  // — Wall sit —
+  "Descends jusqu'à former un angle de 90° au genou":["Descends jusqu'à 90 degrés","Plie encore un peu les genoux","Cherche l'angle droit"],
+  "Remonte légèrement, ne descends pas trop bas":["Un peu trop bas, remonte","Remonte légèrement","Tu es descendu trop loin"],
+  "Bon angle, maintiens la position !":["Parfait, tiens comme ça","Bonne position, garde-la","C'est ça, maintiens"],
+  // — Hinge / hanches —
+  "Bon mouvement de hanches, pousse le sol avec les pieds":["Belles hanches, pousse le sol","Bon mouvement, ancre les pieds","Voilà, pousse dans le sol"],
+  "Position haute : verrouille les hanches sans cambrer le bas du dos":["Verrouille les hanches, sans cambrer","En haut : serre les fessiers, dos neutre","Termine hanches verrouillées"],
+  "Continue de monter, verrouille les hanches en haut":["Monte jusqu'au verrouillage","Continue, va chercher le haut","Termine le mouvement en haut"],
+  "Bonne amplitude, redescends en contrôlant sans cambrer":["Belle amplitude, redescends contrôlé","Bien, reviens sans cambrer","Voilà, descente maîtrisée"],
+  // — Pompes / développé —
+  "Continue de descendre vers 90° au coude":["Descends encore vers 90 degrés","Plie plus les coudes","Va plus bas"],
+  "Position basse : barre aux épaules, pousse vers le haut":["En bas : pousse maintenant","Position basse, repousse","Pousse fort vers le haut"],
+  "Bonne amplitude ! Redescends en contrôlant le mouvement":["Belle amplitude, redescends contrôlé","Bien, contrôle le retour","Voilà, descente lente"],
+  "Continue de pousser au-dessus de la tête":["Pousse jusqu'en haut","Continue, bras au-dessus de la tête","Termine l'extension"],
+  "Termine le mouvement bras tendus au-dessus de la tête":["Va jusqu'aux bras tendus","Termine bras tendus","Verrouille en haut"],
+  "Bon verrouillage, redescends en contrôlant":["Bien verrouillé, reviens contrôlé","Voilà, descente maîtrisée","Parfait, redescends doucement"],
+  // — Tractions / tirages —
+  "Bras tendus : étire bien avant de tirer":["Étire-toi bien avant de tirer","Bras tendus, cherche l'étirement","Repars de l'extension complète"],
+  "Continue de tirer, monte le menton au-dessus des mains":["Tire encore, menton au-dessus","Continue de tirer vers le haut","Monte plus haut"],
+  "Bonne amplitude, reviens en contrôlant":["Belle amplitude, redescends contrôlé","Bien, retour maîtrisé","Voilà, contrôle la descente"],
+  "Bras tendus : descends en contrôlant":["Redescends bras tendus, en contrôle","Descends lentement jusqu'à l'extension","Contrôle jusqu'en bas"],
+  "Bras tendus : position basse correcte, tire vers le haut":["Bonne position basse, tire","En bas, maintenant tire","Voilà, tire vers le haut"],
+  "Bonne contraction, garde le dos droit en revenant":["Belle contraction, dos droit au retour","Bien serré, reviens dos droit","Voilà, garde le dos droit"],
+  // — Curl / biceps —
+  "Bras tendus : position de départ, débute la flexion":["Départ bras tendus, amorce","Commence la flexion","C'est parti, plie le coude"],
+  "Continue de plier le coude":["Plie davantage le coude","Continue la flexion","Monte encore"],
+  "Bonne contraction, redescends en contrôlant":["Belle contraction, descente contrôlée","Bien serré, redescends lentement","Voilà, contrôle la descente"],
+  // — Triceps —
+  "Position fléchie : étends le coude en contrôlant":["Étends le coude, en contrôle","Tends le bras doucement","Déplie en contrôlant"],
+  "Bonne extension, redescends en contrôlant":["Belle extension, retour contrôlé","Bien tendu, redescends lentement","Voilà, contrôle le retour"],
+  "Bonne extension, reviens en contrôlant sans bouger les coudes":["Belle extension, coudes fixes","Bien, garde les coudes immobiles","Voilà, coudes bien stables"],
+  // — Épaules / élévations —
+  "Continue de monter les bras":["Monte encore les bras","Continue l'élévation","Lève un peu plus"],
+  "Ne monte pas plus haut que les épaules":["Stop à hauteur d'épaules","Ne dépasse pas les épaules","Trop haut, redescends un peu"],
+  "Bonne hauteur, contrôle la descente":["Bonne hauteur, descente contrôlée","Voilà, redescends lentement","Parfait, contrôle le retour"],
+  // — Gainage / core —
+  "Hanches trop basses : remonte le bassin pour aligner le corps":["Remonte le bassin","Hanches trop basses, aligne-toi","Monte les hanches, corps droit"],
+  "Presque aligné, gaine un peu plus les abdos":["Serre encore les abdos","Presque, gaine davantage","Contracte un peu plus le ventre"],
+  "Bon alignement, garde la position !":["Bel alignement, tiens","Corps bien droit, maintiens","Parfait, garde cette ligne"],
+  "Position de départ : enroule le buste vers le haut":["Enroule le buste","Décolle les épaules","Monte en enroulant"],
+  "Position de départ : lève les jambes en gardant le bas du dos au sol":["Lève les jambes, dos plaqué","Monte les jambes, bas du dos au sol","Décolle les jambes sans cambrer"],
+  "Continue de lever les jambes":["Monte encore les jambes","Continue de lever","Plus haut"],
+  // — Fentes —
+  "Position de départ : descends en fléchissant le genou avant":["Descends sur la jambe avant","Plie le genou avant","Amorce la descente"],
+  "Continue de descendre vers 90° au genou avant":["Descends vers 90 degrés","Plie plus le genou avant","Va plus bas"],
+  "Garde le buste droit, évite de te pencher en avant":["Redresse le buste","Reste bien vertical","Ne te penche pas en avant"],
+  // — Mollets / hip thrust —
+  "Continue de monter sur la pointe des pieds":["Monte plus haut sur les pointes","Continue, sur la pointe","Pousse sur les orteils"],
+  "Position basse : pousse sur la pointe des pieds":["Pousse sur les pointes","En bas, remonte sur la pointe","Repousse avec les orteils"],
+  "Position basse : pousse les hanches vers le haut":["Pousse les hanches en haut","Monte le bassin","Repousse avec les hanches"],
+  "Position tendue : commence le mouvement en contrôlant":["Amorce en contrôlant","Démarre doucement","C'est parti, en contrôle"],
+  "Position basse : lève les bras jusqu'à hauteur d'épaule":["Lève les bras à hauteur d'épaules","Monte jusqu'aux épaules","Élève les bras, stop aux épaules"]
+};
+var _variantLast={};
+// Choisit une formulation différente de la précédente pour une même consigne
+function pickCoachVariant(msg){
+  var pool=COACH_VARIANTS[msg];
+  if(!pool||!pool.length)return msg;
+  var all=[msg].concat(pool);
+  var last=_variantLast[msg];
+  var choices=all.filter(function(x){return x!==last;});
+  if(!choices.length)choices=all;
+  var out=choices[Math.floor(Math.random()*choices.length)];
+  _variantLast[msg]=out;
+  return out;
+}
+// Débit de parole : moins un pratiquant est débutant, moins il a besoin qu'on
+// lui parle. 'auto' se cale sur le niveau du profil.
+var COACH_VERBOSITY={
+  high:  {gap:5000, same:20000, praise:25000},
+  normal:{gap:9000, same:40000, praise:60000},
+  low:   {gap:14000,same:70000, praise:0}      // praise:0 → corrections uniquement
+};
+var COACH_VERB_LABELS={auto:'Auto',high:'Guidé',normal:'Normal',low:'Discret'};
+function renderCoachVerbosity(){
+  var box=document.getElementById('coach-verbosity-pills');if(!box)return;
+  var cur=DB.g('coachVerbosity','auto');
+  box.innerHTML=['auto','high','normal','low'].map(function(k){
+    return '<div class="pill'+(cur===k?' on':'')+'" style="padding:6px 10px;font-size:11px" onclick="setCoachVerbosity(\''+k+'\')">'+COACH_VERB_LABELS[k]+'</div>';
+  }).join('');
+  var hint=document.getElementById('coach-verbosity-hint');
+  if(hint){
+    var eff=coachVerbosityMode();
+    var txt={high:'consignes fréquentes',normal:'consignes espacées',low:'corrections seulement'}[eff];
+    hint.textContent=(cur==='auto'?('D\'après ton niveau : '+txt):txt);
+  }
+}
+function setCoachVerbosity(v){
+  DB.s('coachVerbosity',v);
+  renderCoachVerbosity();
+  toast('Consignes vocales : '+COACH_VERB_LABELS[v]);
+}
+function coachVerbosityMode(){
+  var v=DB.g('coachVerbosity','auto');
+  if(v!=='auto')return v;
+  var lvl=userLevel();
+  return lvl==='advanced'?'low':(lvl==='intermediate'?'normal':'high');
+}
+// Une consigne "positive" confirme que tout va bien : c'est la plus lassante à
+// entendre en boucle, on l'espace beaucoup plus que les corrections.
+function isPraise(msg){return /^(Bonne?|Bon |Bel|Belle|Parfait|Voilà|C'est ça)/i.test(msg);}
+var coachSpokenLog={},coachLastSpokenTime=0,coachLastPraiseTime=0;
 function showCoachFeedback(msg,warn){
   var fb=document.getElementById('coach-feedback');
+  // L'affichage reste réactif : seule la VOIX est espacée.
   fb.textContent=msg;
   fb.classList.add('show');
   fb.classList.toggle('warn',!!warn);
   if(!coachTTSEnabled||!msg)return;
   var now=Date.now();
-  if(now-coachLastSpokenTime<3000)return;
-  if(coachSpokenLog[msg]&&now-coachSpokenLog[msg]<15000)return;
+  var cfg=COACH_VERBOSITY[coachVerbosityMode()]||COACH_VERBOSITY.normal;
+  var praise=isPraise(msg);
+  // Les corrections passent en priorité ; les encouragements attendent leur tour
+  if(praise){
+    if(!cfg.praise)return;
+    if(now-coachLastPraiseTime<cfg.praise)return;
+  }
+  if(now-coachLastSpokenTime<(praise?cfg.gap*1.5:cfg.gap))return;
+  if(coachSpokenLog[msg]&&now-coachSpokenLog[msg]<cfg.same)return;
   coachSpokenLog[msg]=now;
   coachLastSpokenTime=now;
-  speak(msg,{rate:1.0,volume:0.9});
+  if(praise)coachLastPraiseTime=now;
+  var spoken=pickCoachVariant(msg);
+  fb.textContent=spoken; // l'écran affiche la formulation réellement prononcée
+  speak(spoken,{rate:1.0,volume:0.9});
 }
 
 // Joue un court bip lorsque le mouvement passe en position correcte
