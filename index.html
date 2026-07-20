@@ -8548,6 +8548,12 @@ function coachRepScore(a1,a2,type){
     'calf':{a1:{target:165,range:10}}
   };
   var cfg=ideal[type];if(!cfg||!cfg.a1)return 80;
+  // Poignet reconstruit (barre/haltères hors cadre) : l'angle du coude est
+  // décalé vers le haut. On décale la cible d'autant, sinon une exécution
+  // correcte serait notée comme mauvaise.
+  if(coachWristEstimated&&(type==='pull-vertical'||type==='press-overhead')){
+    cfg={a1:{target:cfg.a1.target+35,range:cfg.a1.range+10},a2:cfg.a2};
+  }
   function devScore(val,c){return Math.max(0,100-Math.abs(val-c.target)/c.range*40);}
   var s=devScore(a1,cfg.a1);
   // Angle secondaire (ex. buste au squat) : 30% du score quand il est défini
@@ -9298,6 +9304,7 @@ function pickCoachSide(lm){
   return rv>=lv?{sh:12,hip:24,knee:26,ankle:28,elb:14,wr:16,foot:32}:{sh:11,hip:23,knee:25,ankle:27,elb:13,wr:15,foot:31};
 }
 
+var coachWristEstimated=false;
 var coachTTSEnabled=DB.g('coachTTS',true),coachLastSpoken='';
 var cachedVoice=null;
 function getBestFrVoice(){
@@ -9615,9 +9622,13 @@ var COACH_TYPES={
   'pull-vertical':{a1lbl:'Coude',a2lbl:'Amplitude',a2suffix:'%',calc:function(p){
     if(!p.elb||!p.wr)return null;
     var e=coachAngle(p.sh,p.elb,p.wr),amp=Math.abs(p.wr.y-p.sh.y)*100;
-    return {a1:e,a2:amp,good:e<=80,msg:
-      e>150?['Bras tendus : position basse correcte, tire vers le haut',false]
-      :e>80?['Continue de tirer, monte le menton au-dessus des mains',false]
+    // Poignet reconstruit (barre hors cadre) : l'angle mesuré est biaisé vers le
+    // haut, on décale les seuils d'autant pour que le haut de traction soit
+    // malgré tout détecté.
+    var hi=coachWristEstimated?115:80, lo=coachWristEstimated?155:150;
+    return {a1:e,a2:amp,good:e<=hi,msg:
+      e>lo?['Bras tendus : position basse correcte, tire vers le haut',false]
+      :e>hi?['Continue de tirer, monte le menton au-dessus des mains',false]
       :['Bonne amplitude ! Redescends en contrôlant le mouvement',false]};
   }},
   'pull-horizontal':{a1lbl:'Coude',a2lbl:'Buste',calc:function(p){
@@ -9732,6 +9743,21 @@ function computeCoachFeedback(lm){
       return;
     }
     if(hipVis<MIN_VIS){p.hip=p.hip||{x:p.sh.x,y:p.sh.y+0.3,z:0,visibility:0.5};p.knee=p.knee||{x:p.sh.x,y:p.sh.y+0.5,z:0,visibility:0.5};p.ankle=p.ankle||{x:p.sh.x,y:p.sh.y+0.7,z:0,visibility:0.5};}
+    // Poignets hors cadre — cas classique des tractions filmées de face : la barre
+    // est au-dessus de la tête et les mains sortent de l'image. Sans reconstruction,
+    // calc() renvoyait null et l'analyse s'arrêtait en silence (ni angle, ni rep).
+    // L'avant-bras étant quasi vertical sur ces mouvements, on projette le poignet
+    // dans son prolongement : l'angle du coude reste exploitable.
+    var wrVis=(p.wr&&p.wr.visibility)||0;
+    if(wrVis<MIN_VIS&&p.elb){
+      var up=(type==='pull-vertical'||type==='press-overhead')?-0.18:0.18;
+      p.wr={x:p.elb.x,y:p.elb.y+up,z:0,visibility:0.5};
+      coachWristEstimated=true;
+    }else coachWristEstimated=false;
+    // Coude non détecté : on le reconstruit à mi-chemin épaule/poignet
+    if(elbVis<MIN_VIS&&p.sh&&p.wr){
+      p.elb=p.elb||{x:(p.sh.x+p.wr.x)/2,y:(p.sh.y+p.wr.y)/2,z:0,visibility:0.5};
+    }
   }else{
     if(!p.sh||!p.hip||shVis<MIN_VIS){
       setCoachFormState(false);
@@ -9743,7 +9769,19 @@ function computeCoachFeedback(lm){
   }
   var cfg=COACH_TYPES[type];
   var r=cfg.calc(p);
-  if(!r)return;
+  // Points clés manquants : on le DIT au lieu de rester muet (l'utilisateur
+  // croyait que le coach ne fonctionnait pas).
+  if(!r){
+    setCoachFormState(false);
+    var nowN=Date.now();
+    if(nowN-coachLastFeedback>2500){
+      showCoachFeedback(isUpperBody
+        ? 'Cadre plus large : tes bras doivent être visibles en entier'
+        : 'Recule un peu pour que tout ton corps soit dans le cadre',true);
+      coachLastFeedback=nowN;
+    }
+    return;
+  }
   document.getElementById('coach-angle-1').textContent=Math.round(r.a1)+(cfg.a1suffix||'°');
   document.getElementById('coach-angle-2').textContent=Math.round(r.a2)+(cfg.a2suffix||'°');
   setCoachFormState(r.good);
