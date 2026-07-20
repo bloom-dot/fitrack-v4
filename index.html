@@ -1559,6 +1559,8 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
         </div>
         <div id="coach-last-rep" style="font-size:11px;color:var(--t3);margin-top:6px;text-align:center"></div>
       </div>
+      <!-- Débrief IA de fin de série (mode direct) -->
+      <div class="card" id="coach-live-debrief" style="display:none;margin-top:12px;font-size:12px;color:var(--t2);line-height:1.5"></div>
       <div class="coach-replay" id="coach-replay"></div>
       </div><!-- /coach-live-block -->
 
@@ -8525,6 +8527,9 @@ function resetCoachSession(){
   var s=document.getElementById('coach-score');if(s)s.textContent='--';
   var fw=document.getElementById('coach-fatigue-wrap');if(fw)fw.style.display='none';
   var lr=document.getElementById('coach-last-rep');if(lr)lr.textContent='';
+  // Nouvelle série : on repart sur un débrief vierge
+  try{resetLiveDebrief();}catch(e){}
+  var dbf=document.getElementById('coach-live-debrief');if(dbf){dbf.style.display='none';dbf.innerHTML='';}
 }
 function coachRepScore(a1,a2,type){
   // Score 0-100 based on how well angles match ideal for exercise type
@@ -8590,6 +8595,10 @@ function updateRepCounter(good,a1,a2){
       var avgA2=coachCurrentRepAngles.reduce(function(s,x){return s+(x.a2||0);},0)/nAng;
       var score=coachRepScore(avgA1,avgA2,type);
       coachRepScores.push(score);
+      // Mémorise une image de la pire et de la meilleure rep pour le débrief IA
+      // de fin de série (même pipeline que l'analyse différée).
+      try{liveGrabRepFrame(score);}catch(e){}
+      liveAngles.push({a1:avgA1,a2:avgA2});
       coachCurrentRepAngles=[];
       coachRepPhase='top';
       // Update UI
@@ -8674,6 +8683,75 @@ function updateFatigueBar(){
     if(trend<=-15){speak('Attention, ta forme se dégrade. Pense à faire une pause.',{rate:1.0});}
   }
 }
+// ═══ DÉBRIEF IA DU MODE DIRECT ═══
+// Le mode direct ne donnait que des consignes vocales : aucun bilan en fin de
+// série. On capture la pire et la meilleure répétition pendant l'effort, puis
+// on les envoie au même endpoint que l'analyse différée.
+var liveWorst={score:101,b64:null},liveBest={score:-1,b64:null},liveAngles=[];
+function resetLiveDebrief(){
+  liveWorst={score:101,b64:null};liveBest={score:-1,b64:null};liveAngles=[];
+}
+function liveGrabRepFrame(score){
+  var better=score>liveBest.score, worse=score<liveWorst.score;
+  if(!better&&!worse)return;
+  var vid=document.getElementById('coach-video');
+  if(!vid||!vid.videoWidth)return;
+  var cv=document.createElement('canvas');
+  var w=Math.min(480,vid.videoWidth);
+  cv.width=w;cv.height=Math.round(w*vid.videoHeight/vid.videoWidth);
+  cv.getContext('2d').drawImage(vid,0,0,cv.width,cv.height);
+  var b64=cv.toDataURL('image/jpeg',0.6).split(',')[1];
+  if(!b64)return;
+  if(worse)liveWorst={score:score,b64:b64};
+  if(better)liveBest={score:score,b64:b64};
+}
+function requestLiveDebrief(){
+  var box=document.getElementById('coach-live-debrief');
+  if(!box||!liveWorst.b64||!coachRepScores.length)return;
+  box.style.display='block';
+  box.innerHTML='<div style="font-size:12px;color:var(--t2)">🧠 Analyse technique en cours…</div>';
+  if(!sb){box.innerHTML='<div style="font-size:12px;color:var(--t2)">Connecte-toi pour recevoir le débrief IA.</div>';return;}
+  var scores=coachRepScores.slice();
+  var avg=Math.round(scores.reduce(function(s,x){return s+x;},0)/scores.length);
+  var a1s=liveAngles.map(function(a){return a.a1;}).filter(function(v){return isFinite(v);});
+  var minA=a1s.length?Math.round(Math.min.apply(null,a1s)):null;
+  var maxA=a1s.length?Math.round(Math.max.apply(null,a1s)):null;
+  var fat=null;
+  if(scores.length>=4){
+    var h=Math.floor(scores.length/2);
+    var m1=scores.slice(0,h).reduce(function(a,b){return a+b;},0)/h;
+    var m2=scores.slice(h).reduce(function(a,b){return a+b;},0)/(scores.length-h);
+    fat=Math.round(m2-m1);
+  }
+  var type=COACH_EX_TYPE[coachExercise]||'squat';
+  sb.auth.getSession().then(function(r){
+    var token=r&&r.data&&r.data.session&&r.data.session.access_token;
+    if(!token){box.innerHTML='<div style="font-size:12px;color:var(--t2)">Connecte-toi pour recevoir le débrief IA.</div>';return;}
+    var ctrl=new AbortController();
+    var tid=setTimeout(function(){ctrl.abort();},30000);
+    fetch('/api/coach-vision',{
+      method:'POST',
+      headers:{'content-type':'application/json','authorization':'Bearer '+token},
+      body:JSON.stringify({
+        image:liveWorst.b64,
+        imageBest:(liveBest.b64&&liveBest.score>liveWorst.score)?liveBest.b64:null,
+        exercise:coachExercise,reps:scores.length,avgScore:avg,
+        worstScore:liveWorst.score,bestScore:Math.max.apply(null,scores),
+        goodReps:scores.filter(function(x){return x>=70;}).length,
+        scores:scores.slice(0,40),fatigue:fat,
+        angleLabel:(COACH_TYPES[type]&&COACH_TYPES[type].a1lbl)||'principal',
+        minAngle:minA,maxAngle:maxA,rom:(minA!=null&&maxA!=null)?(maxA-minA):null
+      }),
+      signal:ctrl.signal
+    }).then(function(r2){return r2.json();}).then(function(d){
+      clearTimeout(tid);
+      box.innerHTML=_renderCoachAdvice(d);
+    }).catch(function(){
+      clearTimeout(tid);
+      box.innerHTML='<div style="font-size:12px;color:var(--t2)">🧠 Débrief indisponible — réessaie après ta prochaine série.</div>';
+    });
+  }).catch(function(){box.innerHTML='';});
+}
 function saveCoachSession(){
   if(coachReps===0||coachRepScores.length===0)return;
   var avg=Math.round(coachRepScores.reduce(function(s,x){return s+x;},0)/coachRepScores.length);
@@ -8681,6 +8759,8 @@ function saveCoachSession(){
   if(coachHistory.length>50)coachHistory=coachHistory.slice(0,50);
   DB.s('coachHistory',coachHistory);
   renderCoachHistory();
+  // Bilan détaillé de la série qui vient de se terminer
+  try{requestLiveDebrief();}catch(e){}
 }
 function renderCoachHistory(){
   var sec=document.getElementById('coach-history-section');if(!sec)return;
