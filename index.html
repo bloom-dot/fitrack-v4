@@ -3184,6 +3184,28 @@ function orderSplitForDays(split,trainDays){
   }
   return best;
 }
+// Complète a posteriori les champs manquants d'un programme déjà enregistré
+// (poids cible, repos). Indispensable pour les programmes créés par une version
+// antérieure : sans ça, ils resteraient affichés « poids à définir » jusqu'à une
+// régénération manuelle. Renvoie true si quelque chose a été complété.
+function ensureProgramWeights(){
+  if(!program||!program.days)return false;
+  var p=(typeof userProfile!=='undefined'&&userProfile)?userProfile:((typeof OB!=='undefined'&&OB.data)?OB.data:{});
+  var lvl=userLevel(),changed=false;
+  program.days.forEach(function(d){
+    (d.exercises||[]).forEach(function(e){
+      var ref=EX_DB.find(function(x){return x.name===e.name;});
+      var isCardio=!!(ref&&ref.cat==='Cardio');
+      if(!e.rest){e.rest=restForExercise(e.name,p&&p.obj,lvl);changed=true;}
+      if(!isCardio&&!e.targetWeight){
+        var w=estimateTargetWeight(e.name,e.reps,e.sets,e.rest);
+        if(w){e.targetWeight=w;changed=true;}
+      }
+    });
+  });
+  if(changed)DB.s('program',program);
+  return changed;
+}
 function generateProgram(){
   var trainDays=(OB.data.trainDays&&OB.data.trainDays.length)?OB.data.trainDays.slice():['Lundi','Mercredi','Vendredi'];
   trainDays.sort(function(a,b){return WEEK_ORDER.indexOf(a)-WEEK_ORDER.indexOf(b);});
@@ -3507,6 +3529,7 @@ function showApp(){
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('ob-screen').style.display='none';
   document.getElementById('app').style.display='flex';
+  try{ensureProgramWeights();}catch(e){} // complète les programmes créés avant cette version
   goTo('home');
   buildDefaultSession();
   setTimeout(startAppTour,900);
@@ -5329,6 +5352,7 @@ function buildDefaultSession(force){
     }
   }
   if(program){
+    try{ensureProgramWeights();}catch(e){}
     var today=DAYS_FR[new Date().getDay()];
     var d=program.days.find(function(x){return x.day===today;});
     if(d&&d.exercises.length){
@@ -7737,6 +7761,7 @@ function renderPlanSection(){
   }
 }
 function renderProfile(){
+  try{ensureProgramWeights();}catch(e){} // aucun « poids à définir » résiduel à l'affichage
   var pk=Object.keys(prs);
   var name=DB.g('user_name','FiTrack User');
   var initials=name.split(' ').map(function(n){return n[0]||'';}).slice(0,2).join('').toUpperCase()||'FT';
