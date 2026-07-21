@@ -39,6 +39,36 @@ const ALLOWED_ORIGINS = [
   "https://fitrack-swart.vercel.app",
 ];
 
+// Mode "étiquette" : on ne DEVINE plus les valeurs, on LIT le tableau
+// nutritionnel imprimé sur l'emballage. C'est la seule façon d'être exact quand
+// le produit est absent de la base ou que ses données y sont fausses.
+const LABEL_PROMPT = `Tu es un expert en nutrition. On te fournit la photo du TABLEAU NUTRITIONNEL (et éventuellement de la liste d'ingrédients) d'un produit alimentaire emballé.
+
+Ta mission : TRANSCRIRE les valeurs imprimées. Tu ne dois RIEN estimer ni inventer.
+
+Réponds STRICTEMENT avec un objet JSON valide (aucun texte autour) :
+{
+  "food_name": "Nom du produit en français, ou description courte si absent",
+  "brand": "marque si visible, sinon \\"\\"",
+  "per": "100g" | "100ml" | "portion",
+  "serving_size_g": 30,
+  "calories": 250,
+  "macros": { "carbs_g": 30.5, "protein_g": 12.0, "fat_g": 8.5 },
+  "micros": { "sugars_g": 12.0, "saturated_fat_g": 3.5, "fiber_g": 2.0, "salt_g": 0.8 },
+  "ingredients": "liste d'ingrédients telle qu'imprimée, ou \\"\\"",
+  "readable": true,
+  "confidence_score": 0.9
+}
+
+Règles impératives :
+- Recopie les nombres EXACTEMENT tels qu'imprimés. Aucune estimation.
+- "per" : indique à quelle base se rapportent les valeurs recopiées. Privilégie la colonne "pour 100 g" ou "pour 100 ml" si elle existe.
+- "serving_size_g" : taille d'une portion en grammes si elle est indiquée, sinon 0.
+- Si l'énergie n'est donnée qu'en kJ, convertis en kcal (kJ ÷ 4,184) et arrondis.
+- Une valeur absente du tableau vaut 0.
+- "readable" : false si le tableau est illisible, flou ou absent de l'image.
+- Pas d'émojis, pas de markdown.`;
+
 const SYSTEM_PROMPT = `Tu es un expert en nutrition et diététique. On te fournit la photo d'un aliment, d'un plat cuisiné ou d'un produit emballé.
 Analyse l'image et estime la portion RÉELLEMENT visible.
 
@@ -105,6 +135,8 @@ export default async function handler(request) {
     return jsonError("Image trop volumineuse", 413, allowedOrigin);
   }
   const safeMime = (mime === "image/png" || mime === "image/webp") ? mime : "image/jpeg";
+  // mode 'label' = transcription du tableau nutritionnel ; sinon identification du plat
+  const isLabel = body.mode === "label";
 
   const apiKey = (process.env.GEMINI_API_KEY || "").trim();
   if (!apiKey) return jsonError("Configuration Gemini manquante", 500, allowedOrigin);
@@ -116,13 +148,15 @@ export default async function handler(request) {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: isLabel ? LABEL_PROMPT : SYSTEM_PROMPT }] },
         contents: [
           {
             role: "user",
             parts: [
               { inline_data: { mime_type: safeMime, data: image } },
-              { text: "Analyse cette image et renvoie l'objet JSON demandé." },
+              { text: isLabel
+                  ? "Transcris le tableau nutritionnel de cette photo et renvoie l'objet JSON demandé."
+                  : "Analyse cette image et renvoie l'objet JSON demandé." },
             ],
           },
         ],
@@ -154,6 +188,17 @@ export default async function handler(request) {
   const parsed = parseJsonLoose(content);
   if (!parsed) return jsonError("Analyse impossible (format IA inattendu)", 502, allowedOrigin);
 
+  if (isLabel) {
+    const lab = normalizeLabel(parsed);
+    if (!lab.readable) {
+      return jsonError("Tableau nutritionnel illisible sur la photo", 404, allowedOrigin);
+    }
+    return new Response(JSON.stringify(lab), {
+      status: 200,
+      headers: { "content-type": "application/json", ...corsHeaders(allowedOrigin) },
+    });
+  }
+
   const result = normalize(parsed);
   if (!result.food_name) {
     return jsonError("Aucun aliment reconnu sur l'image", 404, allowedOrigin);
@@ -175,6 +220,54 @@ function parseJsonLoose(text) {
     try { return JSON.parse(text.slice(start, end + 1)); } catch {}
   }
   return null;
+}
+
+// Normalise la transcription d'étiquette et ramène TOUT à 100 g/ml, base
+// unique utilisée par la fiche produit et le journal.
+function normalizeLabel(p) {
+  const num = (v, min, max, def) => {
+    let n = typeof v === "number" ? v : parseFloat(String(v).replace(",", "."));
+    if (!isFinite(n) || isNaN(n)) n = def;
+    return Math.min(max, Math.max(min, n));
+  };
+  const m = p.macros || {};
+  const mi = p.micros || {};
+  const serving = Math.round(num(p.serving_size_g, 0, 2000, 0));
+  const per = String(p.per || "100g").toLowerCase();
+  // Valeurs données par portion : on les rapporte à 100 g (sinon tout est faux)
+  const isPortion = per.indexOf("portion") !== -1;
+  const factor = isPortion && serving > 0 ? 100 / serving : 1;
+  const sc = (v, max) => Math.round(num(v, 0, max, 0) * factor * 10) / 10;
+
+  const cal = Math.round(num(p.calories, 0, 2000, 0) * factor);
+  const out = {
+    mode: "label",
+    readable: p.readable !== false,
+    food_name: String(p.food_name || "").trim().slice(0, 80),
+    brand: String(p.brand || "").trim().slice(0, 60),
+    unit: per.indexOf("ml") !== -1 ? "ml" : "g",
+    serving_size_g: serving,
+    calories: cal,
+    macros: {
+      carbs_g: sc(m.carbs_g, 200),
+      protein_g: sc(m.protein_g, 200),
+      fat_g: sc(m.fat_g, 200),
+    },
+    micros: {
+      sugars_g: sc(mi.sugars_g, 200),
+      saturated_fat_g: sc(mi.saturated_fat_g, 200),
+      fiber_g: sc(mi.fiber_g, 100),
+      salt_g: sc(mi.salt_g, 50),
+    },
+    ingredients: String(p.ingredients || "").trim().slice(0, 500),
+    confidence_score: Math.round(num(p.confidence_score, 0, 1, 0.8) * 100) / 100,
+  };
+  // Sécurité : des valeurs entièrement nulles = tableau non lu
+  if (!out.calories && !out.macros.carbs_g && !out.macros.protein_g && !out.macros.fat_g) {
+    out.readable = false;
+  }
+  if (!out.food_name) out.food_name = "Produit scanné";
+  return out;
 }
 
 // Normalise / borne les valeurs pour garantir le schéma côté client
