@@ -6795,27 +6795,22 @@ function searchBarcode(code){
   var res=document.getElementById('barcode-result');
   res.innerHTML='<div style="text-align:center;color:var(--t2);font-size:12px;padding:8px">Recherche du produit...</div>';
   res.style.display='block';
-  // Essaie Open Food Facts d'abord, puis Open Beauty Facts
-  _barcodeApiCall('https://world.openfoodfacts.org/api/v0/product/'+encodeURIComponent(c)+'.json',function(err,d){
-    if(err&&scanCache[c]){
+  // Open Food Facts API v2 avec champs ciblés : ~3,5 Ko au lieu de ~160 Ko en v0
+  // (46x moins de données à télécharger, décisif en 4G), et expose en plus les
+  // allergènes et le groupe NOVA. Repli automatique sur v0 si v2 ne répond pas.
+  _barcodeApiCall(OFF_V2('world.openfoodfacts.org',c),function(err,d){
+    if((err||!d||!d.product)&&scanCache[c]){
       // Hors ligne : produit déjà scanné servi depuis le cache local
       _renderFoodResult(scanCache[c]);
       toast('Hors ligne — produit chargé depuis le cache');
       return;
     }
-    if(d&&d.product&&(d.product.product_name_fr||d.product.product_name)){
-      // Cache local (100 max) pour un usage hors ligne
-      try{
-        var pp=d.product;
-        scanCache[c]={product_name:pp.product_name,product_name_fr:pp.product_name_fr,nutriments:pp.nutriments,image_small_url:pp.image_small_url,nutriscore_grade:pp.nutriscore_grade,serving_quantity:pp.serving_quantity,serving_size:pp.serving_size,product_quantity:pp.product_quantity,product_quantity_unit:pp.product_quantity_unit,quantity:pp.quantity,categories_tags:(pp.categories_tags||[]).slice(0,3)};
-        var keys=Object.keys(scanCache);
-        if(keys.length>100)delete scanCache[keys[0]];
-        DB.s('scanCache',scanCache);
-      }catch(e){}
-      _renderFoodResult(d.product);
-    } else {
-      _barcodeApiCall('https://world.openbeautyfacts.org/api/v0/product/'+encodeURIComponent(c)+'.json',function(err2,d2){
-        if(d2&&d2.product&&(d2.product.product_name_fr||d2.product.product_name)){
+    if(_offHasProduct(d)){_offSuccess(c,d.product);return;}
+    // v2 muette (indisponible/limite) → on retente en v0 avant d'abandonner
+    _barcodeApiCall('https://world.openfoodfacts.org/api/v0/product/'+encodeURIComponent(c)+'.json',function(errB,dB){
+      if(_offHasProduct(dB)){_offSuccess(c,dB.product);return;}
+      _barcodeApiCall(OFF_V2('world.openbeautyfacts.org',c),function(err2,d2){
+        if(_offHasProduct(d2)){
           _renderBeautyResult(d2.product);
         } else {
           // Autorise un nouveau scan du même code (sinon impossible de réessayer)
@@ -6823,8 +6818,34 @@ function searchBarcode(code){
           res.innerHTML='<div style="color:var(--red);font-size:12px;padding:8px">Produit introuvable (code '+esc(c)+').<br><span style="color:var(--t2)">Réessaie, ou utilise le bouton ✨ Identifier avec l\'IA.</span></div>';
         }
       });
-    }
+    });
   });
+}
+// URL Open Food/Beauty Facts v2 limitée aux champs utiles (payload minimal)
+function OFF_V2(host,code){
+  return 'https://'+host+'/api/v2/product/'+encodeURIComponent(code)
+    +'?fields=code,product_name,product_name_fr,brands,quantity,serving_size,serving_quantity,'
+    +'product_quantity,product_quantity_unit,nutriscore_grade,nova_group,image_small_url,'
+    +'ingredients_text_fr,ingredients_text,allergens_tags,categories_tags,nutriments';
+}
+function _offHasProduct(d){
+  return !!(d&&d.product&&(d.product.product_name_fr||d.product.product_name));
+}
+// Produit trouvé : on le met en cache local (usage hors ligne) puis on l'affiche
+function _offSuccess(code,p){
+  try{
+    scanCache[code]={product_name:p.product_name,product_name_fr:p.product_name_fr,nutriments:p.nutriments,
+      image_small_url:p.image_small_url,nutriscore_grade:p.nutriscore_grade,nova_group:p.nova_group,
+      serving_quantity:p.serving_quantity,serving_size:p.serving_size,product_quantity:p.product_quantity,
+      product_quantity_unit:p.product_quantity_unit,quantity:p.quantity,
+      allergens_tags:(p.allergens_tags||[]).slice(0,6),
+      ingredients_text_fr:(p.ingredients_text_fr||p.ingredients_text||'').slice(0,400),
+      categories_tags:(p.categories_tags||[]).slice(0,3)};
+    var keys=Object.keys(scanCache);
+    if(keys.length>100)delete scanCache[keys[0]];
+    DB.s('scanCache',scanCache);
+  }catch(e){}
+  _renderFoodResult(p);
 }
 
 var NS_COLORS={a:'#1fa363',b:'#8bc34a',c:'#ffc340',d:'#ff8a3d',e:'#ff5252'};
@@ -6897,6 +6918,32 @@ function _foodCardHTML(o){
       +mrow('Sel',mi.salt,'g',0.3,1.5,false)
       +mrow('Fibres',mi.fib,'g',3,6,true)
       +'</div></div>';
+  }
+  // Allergènes déclarés (étiquetage UE) — information de sécurité, mise en avant
+  if(o.allergens&&o.allergens.length){
+    var ALLERG={milk:'Lait',eggs:'Œufs',gluten:'Gluten',nuts:'Fruits à coque',peanuts:'Arachides',
+      soybeans:'Soja',fish:'Poisson',crustaceans:'Crustacés',molluscs:'Mollusques',celery:'Céleri',
+      mustard:'Moutarde',sesame:'Sésame','sulphur-dioxide-and-sulphites':'Sulfites',lupin:'Lupin'};
+    var names=o.allergens.map(function(a){
+      var k=String(a).replace(/^[a-z]{2}:/,'');
+      return ALLERG[k]||k.replace(/-/g,' ');
+    });
+    h+='<div style="margin-top:10px;padding:8px 10px;background:rgba(255,138,61,.08);border:1px solid rgba(255,138,61,.3);border-radius:8px">'
+      +'<span style="font-size:10px;font-weight:700;color:var(--gold)">⚠️ ALLERGÈNES</span> '
+      +'<span style="font-size:11px;color:var(--t2)">'+esc(names.join(' · '))+'</span></div>';
+  }
+  // Groupe NOVA : degré de transformation (4 = ultra-transformé)
+  if(o.nova){
+    var novaTxt={1:'Aliment brut ou peu transformé',2:'Ingrédient culinaire',3:'Aliment transformé',4:'Ultra-transformé'}[o.nova];
+    var novaCol=o.nova>=4?'var(--red)':(o.nova===3?'var(--gold)':'var(--green)');
+    if(novaTxt)h+='<div style="margin-top:6px;font-size:11px;color:var(--t2)">'
+      +'<b style="color:'+novaCol+'">NOVA '+o.nova+'</b> · '+esc(novaTxt)+'</div>';
+  }
+  // Liste d'ingrédients (repliable) — priorité à la version française
+  if(o.ingredients&&o.ingredients.length>3){
+    h+='<div style="margin-top:8px">'
+      +'<div onclick="var b=this.nextElementSibling;b.style.display=b.style.display===\'none\'?\'block\':\'none\';this.querySelector(\'span\').textContent=b.style.display===\'none\'?\'▸\':\'▾\'" style="font-size:11px;color:var(--t2);cursor:pointer;padding:4px 0">Ingrédients <span>▸</span></div>'
+      +'<div style="display:none;font-size:11px;color:var(--t3);line-height:1.5;padding:2px 0 4px">'+esc(o.ingredients)+'</div></div>';
   }
   // Alternatives suggérées par l'IA (aliments plus sains / proches)
   if(o.alternatives&&o.alternatives.length){
@@ -6982,7 +7029,8 @@ function _renderFoodResult(p){
   var ns=p.nutriscore_grade?p.nutriscore_grade.toLowerCase():'';
   // Micro-nutriments (pour 100 g/ml) avec seuils "feux tricolores"
   var micros={sug:n.sugars_100g,fib:n.fiber_100g,salt:n.salt_100g,sat:n['saturated-fat_100g']};
-  res.innerHTML=_foodCardHTML({name:name,cal:cal,prot:prot,carb:carb,fat:fat,img:img,ns:ns,ai:false,unit:unit,qty0:qty0,portions:portions,micros:micros});
+  res.innerHTML=_foodCardHTML({name:name,cal:cal,prot:prot,carb:carb,fat:fat,img:img,ns:ns,ai:false,unit:unit,qty0:qty0,portions:portions,micros:micros,
+    allergens:p.allergens_tags||[],nova:p.nova_group,ingredients:p.ingredients_text_fr||p.ingredients_text||''});
   res.style.display='block';
   // Nutri-Score D/E → propose une alternative mieux notée de la même catégorie
   if((ns==='d'||ns==='e')&&p.categories_tags&&p.categories_tags.length)_suggestHealthierAlt(p);
