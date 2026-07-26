@@ -1689,7 +1689,9 @@ body.simple-ui .setting-lbl,body.simple-ui .hist-name,body.simple-ui .pr-name{fo
     <div class="rest-float-time" id="rest-float-time">2:00</div>
     <div class="rest-float-lbl" id="rest-float-lbl">Repos en cours · touche pour mettre en pause</div>
     <div class="rest-float-acts">
-      <button class="btn-sm" onclick="event.stopPropagation();resetRest()">✕</button>
+      <button class="btn-sm" onclick="event.stopPropagation();adjustRest(-15)" aria-label="Retirer 15 secondes">−15</button>
+      <button class="btn-sm" onclick="event.stopPropagation();adjustRest(15)" aria-label="Ajouter 15 secondes">+15</button>
+      <button class="btn-sm" onclick="event.stopPropagation();resetRest()" aria-label="Annuler le repos">✕</button>
     </div>
   </div>
 
@@ -3808,9 +3810,12 @@ function onSetDone(el){
   updateSessionProgress();
   if(el.classList.contains('done')){
     if(rAlarm){stopRestAlarm();setRestEdgeAlarm(false);rAlarm=false;}
-    // Applique le repos conseillé de l'exercice avant de lancer le minuteur
+    // Applique le repos de l'exercice avant de lancer le minuteur.
+    // On mémorise l'exercice courant (_restBlock) : si l'utilisateur ajuste
+    // ensuite la durée, le nouveau réglage est retenu pour toutes ses séries.
     if(!rRun){
       var blk=el.closest('.ex-block');
+      _restBlock=blk||null;
       var rs=blk&&blk.dataset.rest?parseInt(blk.dataset.rest):0;
       if(rs>0){rDur=rs;rLeft=rs;}
       else if(rLeft<=0)rLeft=rDur;
@@ -3841,9 +3846,32 @@ function cancelSession(){
 
 // REST TIMER
 var rDur=120,rLeft=120,rRun=false,rInt=null,rEndTime=null,rAlarm=false,rAlarmInt=null,alarmAudioCtx=null;
+var _restBlock=null;   // exercice dont le repos est en cours (pour mémoriser un ajustement)
+// Mémorise la durée choisie sur l'exercice courant → toutes ses séries suivantes
+// repartiront sur cette valeur, plus besoin de réajuster à chaque série.
+function rememberRest(sec){
+  if(_restBlock)_restBlock.dataset.rest=sec;
+}
 function setRest(s){
-  if(rRun)return;
-  rDur=s;rLeft=s;updRest();
+  s=Math.max(5,s|0);
+  rDur=s;rLeft=s;
+  if(rRun)rEndTime=Date.now()+rLeft*1000;   // en cours : on rebasse la fin
+  rememberRest(s);
+  updRest();
+}
+// Ajuste le repos en cours (± secondes), en direct, et le retient pour l'exercice
+function adjustRest(delta){
+  if(rAlarm){stopRestAlarm();setRestEdgeAlarm(false);rAlarm=false;}
+  rDur=Math.max(5,rDur+delta);   // durée de référence (celle retenue pour les séries suivantes)
+  if(rRun){
+    var restant=Math.max(0,Math.round((rEndTime-Date.now())/1000));
+    rLeft=Math.max(1,restant+delta);
+    rEndTime=Date.now()+rLeft*1000;
+  }else{
+    rLeft=Math.max(1,rLeft+delta);
+  }
+  rememberRest(rDur);
+  updRest();
 }
 function updRest(){
   var m=Math.floor(rLeft/60);var s=rLeft%60;var txt=m+':'+s.toString().padStart(2,'0');
