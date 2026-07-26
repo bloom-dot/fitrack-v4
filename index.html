@@ -8638,7 +8638,19 @@ function dismissPwaModal(){
 // ═══════════════════════════════════
 var coachExercise='Tractions',coachStream=null,coachPose=null,coachRunning=false,coachLastFeedback=0,coachFacing='environment';
 var coachFormGood=false,coachLastBeep=0,coachAudioCtx=null;
-var coachRecorder=null,coachRecChunks=[],coachRecording=false,coachReplayUrl=null;
+var coachRecorder=null,coachRecChunks=[],coachRecording=false,coachReplayUrl=null,coachRecFmt=null;
+// Choisit le meilleur format d'enregistrement vidéo pour l'appareil.
+// PRIORITÉ AU MP4/H.264 : iOS Safari ne sait ni lire, ni télécharger, ni
+// partager le WebM. Android/Chrome retombe sur WebM sans problème.
+function pickVideoFormat(){
+  var cands=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  var sup=(window.MediaRecorder&&MediaRecorder.isTypeSupported)?function(t){return MediaRecorder.isTypeSupported(t);}:function(){return false;};
+  for(var i=0;i<cands.length;i++){
+    if(sup(cands[i])){var base=cands[i].indexOf('mp4')!==-1?'video/mp4':'video/webm';return {mime:cands[i],base:base,ext:base==='video/mp4'?'mp4':'webm'};}
+  }
+  // Aucun type confirmé : MediaRecorder prendra son défaut (mp4 sur iOS)
+  return {mime:'',base:'video/mp4',ext:'mp4'};
+}
 // Rep counter & scoring
 var coachReps=0,coachRepPhase='top',coachRepScores=[],coachCurrentRepAngles=[];
 var coachHistory=DB.g('coachHistory',[]);
@@ -9226,9 +9238,8 @@ async function defToggleRec(){
   if(wrap)wrap.style.display='block';
   try{await prev.play();}catch(e){}
   _defChunks=[];
-  var mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9'
-    :(MediaRecorder.isTypeSupported('video/webm')?'video/webm':'video/mp4');
-  _defRecorder=new MediaRecorder(_defStream,{mimeType:mime});
+  var _defFmt=pickVideoFormat();
+  _defRecorder=_defFmt.mime?new MediaRecorder(_defStream,{mimeType:_defFmt.mime}):new MediaRecorder(_defStream);
   var takeId=++_defTakeId;
   _defRecorder.ondataavailable=function(e){if(e.data&&e.data.size)_defChunks.push(e.data);};
   _defRecorder.onstop=function(){
@@ -9268,11 +9279,10 @@ async function defAnalyze(blob){
     // Canvas annoté (vidéo + squelette) ré-enregistré en direct
     var cv=document.createElement('canvas');cv.width=vw;cv.height=vh;
     var cctx=cv.getContext('2d');
-    var outRec=null,outChunks=[];
+    var outRec=null,outChunks=[],outFmt=pickVideoFormat();
     if(cv.captureStream){
       try{
-        var m2=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';
-        outRec=new MediaRecorder(cv.captureStream(30),{mimeType:m2});
+        outRec=outFmt.mime?new MediaRecorder(cv.captureStream(30),{mimeType:outFmt.mime}):new MediaRecorder(cv.captureStream(30));
         outRec.ondataavailable=function(e){if(e.data&&e.data.size)outChunks.push(e.data);};
         outRec.start(500);
       }catch(e){outRec=null;}
@@ -9333,7 +9343,7 @@ async function defAnalyze(blob){
     var annotBlob=null;
     if(outRec){
       annotBlob=await new Promise(function(r){
-        outRec.onstop=function(){r(outChunks.length?new Blob(outChunks,{type:'video/webm'}):null);};
+        outRec.onstop=function(){r(outChunks.length?new Blob(outChunks,{type:outFmt.base}):null);};
         try{outRec.stop();}catch(e){r(null);}
       });
     }
@@ -9353,6 +9363,22 @@ async function defAnalyze(blob){
   }
 }
 
+// Partage de la vidéo annotée du mode différé (réseaux sociaux)
+async function shareDefAnnot(){
+  if(!_defAnnotUrl)return;
+  try{
+    var resp=await fetch(_defAnnotUrl);
+    var blob=await resp.blob();
+    var ext=(blob.type&&blob.type.indexOf('mp4')!==-1)?'mp4':'webm';
+    var file=new File([blob],'fitrack-coach.'+ext,{type:blob.type||'video/mp4'});
+    var text='💪 Analyse '+coachExercise+' par FiTrack Coach Mouvement 📱\nfitrack-v4.vercel.app';
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],text:text});
+    }else{
+      await navigator.share({text:text,url:'https://fitrack-v4.vercel.app'});
+    }
+  }catch(e){}
+}
 function defRenderResults(samples,annotBlob,worst,type,best){
   // Comptage de reps : suites d'au moins 4 échantillons "bons", séparées
   // par au moins 3 échantillons hors zone (même logique que le mode direct)
@@ -9383,9 +9409,13 @@ function defRenderResults(samples,annotBlob,worst,type,best){
   if(_defAnnotUrl){URL.revokeObjectURL(_defAnnotUrl);_defAnnotUrl=null;}
   if(annotBlob){
     _defAnnotUrl=URL.createObjectURL(annotBlob);
+    var annotExt=(annotBlob.type&&annotBlob.type.indexOf('mp4')!==-1)?'mp4':'webm';
+    var annotShare=(navigator.share&&navigator.canShare)?'<button class="btn-outline" style="flex:1;margin-top:8px" onclick="shareDefAnnot()">Partager</button>':'';
     html+='<div class="inp-label" style="margin-bottom:6px">Vidéo annotée (squelette vert = position bonne)</div>'
       +'<video src="'+_defAnnotUrl+'" controls playsinline style="width:100%;border-radius:12px;background:#000"></video>'
-      +'<a href="'+_defAnnotUrl+'" download="fitrack-analyse.webm" class="btn-outline" style="margin-top:8px;text-align:center;text-decoration:none;display:block">Télécharger la vidéo annotée</a>';
+      +'<div style="display:flex;gap:8px">'
+      +'<a href="'+_defAnnotUrl+'" download="fitrack-analyse.'+annotExt+'" class="btn-outline" style="flex:1;margin-top:8px;text-align:center;text-decoration:none">Télécharger</a>'
+      +annotShare+'</div>';
   }
   html+='<div style="display:flex;gap:6px;margin-top:12px">'
     +tile(scores.length,'Reps','var(--acc)')
@@ -10024,8 +10054,8 @@ function toggleCoachRecording(){
   var canvas=document.getElementById('coach-canvas');
   var stream=canvas.captureStream?canvas.captureStream(30):canvas.mozCaptureStream(30);
   coachRecChunks=[];
-  var mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';
-  coachRecorder=new MediaRecorder(stream,{mimeType:mime});
+  coachRecFmt=pickVideoFormat();
+  coachRecorder=coachRecFmt.mime?new MediaRecorder(stream,{mimeType:coachRecFmt.mime}):new MediaRecorder(stream);
   coachRecorder.ondataavailable=function(e){if(e.data&&e.data.size)coachRecChunks.push(e.data);};
   coachRecorder.onstop=function(){
     coachRecording=false;
@@ -10033,11 +10063,12 @@ function toggleCoachRecording(){
     btn.classList.remove('active');
     if(!coachRecChunks.length){toast('Vidéo vide — relance la caméra puis réessaie');return;}
     if(coachReplayUrl){var ov=document.querySelector('#coach-replay video');if(ov){ov.pause();ov.src='';}URL.revokeObjectURL(coachReplayUrl);}
-    var blob=new Blob(coachRecChunks,{type:'video/webm'});
+    var fmt=coachRecFmt||{base:(coachRecChunks[0]&&coachRecChunks[0].type)||'video/mp4',ext:'mp4'};
+    var blob=new Blob(coachRecChunks,{type:fmt.base});
     coachReplayUrl=URL.createObjectURL(blob);
     var wrap=document.getElementById('coach-replay');
     var shareBtn=navigator.share&&navigator.canShare?'<button class="btn-outline" style="flex:1" onclick="shareCoachReplay()">Partager</button>':'';
-    wrap.innerHTML='<div class="inp-label" style="margin-bottom:8px">Dernière exécution enregistrée</div><video src="'+coachReplayUrl+'" controls playsinline preload="auto" style="width:100%;border-radius:9px;background:#000;min-height:200px;cursor:pointer"></video><div style="display:flex;gap:8px;margin-top:8px"><a href="'+coachReplayUrl+'" download="coach-mouvement.webm" class="btn-outline" style="flex:1;text-align:center;text-decoration:none">Télécharger</a>'+shareBtn+'<button class="btn-outline" style="flex:1" onclick="deleteCoachReplay()">Supprimer</button></div>';
+    wrap.innerHTML='<div class="inp-label" style="margin-bottom:8px">Dernière exécution enregistrée</div><video src="'+coachReplayUrl+'" controls playsinline preload="auto" style="width:100%;border-radius:9px;background:#000;min-height:200px;cursor:pointer"></video><div style="display:flex;gap:8px;margin-top:8px"><a href="'+coachReplayUrl+'" download="coach-mouvement.'+fmt.ext+'" class="btn-outline" style="flex:1;text-align:center;text-decoration:none">Télécharger</a>'+shareBtn+'<button class="btn-outline" style="flex:1" onclick="deleteCoachReplay()">Supprimer</button></div>';
     wrap.style.display='block';
     var ph=document.getElementById('coach-placeholder');if(ph)ph.style.display='none';
   };
